@@ -155,6 +155,9 @@ function compact(input: unknown) {
 function describe(detail: unknown): string {
   if (detail === undefined || detail === null) return '';
   if (typeof detail === 'string') return detail;
-  if (typeof detail === 'object' && 'count' in detail) return `${(detail as { count: number }).count} messages`;
+  if (typeof detail === 'object' && 'count' in detail) {
+    const { count, turns } = detail as { count: number; turns?: unknown };
+    return typeof turns === 'string' && turns !== 'none' ? `${count} messages (turns ${turns})` : `${count} messages`;
+  }
   return JSON.stringify(detail);
 }

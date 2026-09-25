@@ -5,7 +5,8 @@ import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import type { Config } from './config';
 import type { Db } from './db/client';
-import { createAnthropicStream } from './engine/anthropic';
+import { createAnthropicStream, createAnthropicUtility } from './engine/anthropic';
+import { createMaintenance, type Maintenance, type UtilityFn } from './engine/memory';
 import type { StreamFn } from './engine/narrator';
 import type { EngineDeps } from './engine/turn';
 import { HttpError, httpErrorFromPg } from './http/errors';
@@ -22,6 +23,8 @@ export interface AppDeps {
   pingDb: () => Promise<void>;
   /** Model stream for the narrator. Omit to build one from ANTHROPIC_API_KEY; tests pass a scripted fake. */
   stream?: StreamFn | null;
+  /** Utility model for memory maintenance. Omit to build one from ANTHROPIC_API_KEY; tests pass a fake. */
+  utility?: UtilityFn | null;
   /** Serve the built SPA from web/dist. Off in tests. */
   serveWeb?: boolean;
 }
@@ -32,6 +35,7 @@ declare module 'fastify' {
     db: Db;
     pingDb: () => Promise<void>;
     engine: Omit<EngineDeps, 'log'>;
+    maintenance: Maintenance;
   }
   interface FastifyRequest {
     isAuthenticated: boolean;
@@ -54,7 +58,7 @@ function readSession(request: FastifyRequest, password: string): boolean {
   return unsigned.valid && unsigned.value !== null && isSessionValueValid(unsigned.value, password);
 }
 
-export async function buildApp({ config, db, pingDb, stream, serveWeb = true }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ config, db, pingDb, stream, utility, serveWeb = true }: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     trustProxy: true, // Render terminates TLS in front of us.
     logger: {
@@ -81,11 +85,22 @@ export async function buildApp({ config, db, pingDb, stream, serveWeb = true }: 
   app.decorate('config', config);
   app.decorate('db', db);
   app.decorate('pingDb', pingDb);
+  const maintenance = createMaintenance({
+    db,
+    utility: utility !== undefined ? utility : config.ANTHROPIC_API_KEY ? createAnthropicUtility(config.ANTHROPIC_API_KEY, config.UTILITY_MODEL) : null,
+    model: config.UTILITY_MODEL,
+    log: app.log.child({ component: 'memory' }),
+  });
+  app.decorate('maintenance', maintenance);
+  // Let in-flight maintenance finish (it is short) before the database pool closes.
+  app.addHook('onClose', () => maintenance.idle());
   app.decorate('engine', {
     db,
     stream: stream !== undefined ? stream : config.ANTHROPIC_API_KEY ? createAnthropicStream(config.ANTHROPIC_API_KEY) : null,
     model: config.NARRATOR_MODEL,
     effort: config.NARRATOR_EFFORT,
+    // Post-turn memory upkeep runs in the background, never in the player's request.
+    afterTurn: (campaignId) => maintenance.schedule(campaignId),
   });
   app.decorateRequest('isAuthenticated', false);
 

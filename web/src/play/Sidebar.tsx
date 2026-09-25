@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { characterXpToNext, skillXpToNext, type CampaignState, type StateEvent } from '@narrator/shared';
 import { api } from '../api';
 import { Button, cx } from '../components/ui';
@@ -31,7 +31,12 @@ export function Sidebar({ campaignId, state, tab, onTab }: { campaignId: string;
         {tab === 'Inventory' && <InventoryTab state={state} />}
         {tab === 'Relationships' && <RelationshipsTab state={state} />}
         {tab === 'Missions' && <MissionsTab state={state} />}
-        {tab === 'Log' && <LogTab campaignId={campaignId} />}
+        {tab === 'Log' && (
+          <>
+            <StorySoFar campaignId={campaignId} state={state} />
+            <LogTab campaignId={campaignId} />
+          </>
+        )}
       </div>
     </div>
   );
@@ -279,6 +284,63 @@ function MissionsTab({ state }: { state: CampaignState }) {
   );
 }
 
+/** The rolling summary the narrator reads in place of older turns, with a manual refresh. */
+function StorySoFar({ campaignId, state }: { campaignId: string; state: CampaignState }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const update = useMutation({
+    mutationFn: () => api.updateMemory(campaignId),
+    onSuccess: () => Promise.all(['state', 'events'].map((k) => queryClient.invalidateQueries({ queryKey: [k, campaignId] }))),
+  });
+  const summary = state.campaign.rollingSummary.trim();
+  const result = update.data;
+
+  return (
+    <Section
+      title="Story so far"
+      right={
+        state.memoryEnabled && state.campaign.turnCount > 0 ? (
+          <button
+            onClick={() => update.mutate()}
+            disabled={update.isPending}
+            className="text-[0.66rem] tracking-[0.08em] text-parchment-faint normal-case transition hover:text-brass disabled:opacity-60"
+          >
+            {update.isPending ? 'Updating…' : 'Update now'}
+          </button>
+        ) : undefined
+      }
+    >
+      {summary ? (
+        <div className="rounded-lg border border-ink-700 bg-ink-950/40 p-3">
+          <p className={cx('font-story text-sm leading-relaxed whitespace-pre-line text-parchment-dim', !open && 'line-clamp-6')}>{summary}</p>
+          <button onClick={() => setOpen((o) => !o)} className="mt-2 text-xs text-brass/80 hover:text-brass">
+            {open ? 'Show less' : 'Read all'}
+          </button>
+        </div>
+      ) : (
+        <Empty>
+          {state.memoryEnabled
+            ? `Nothing summarized yet. Every ${state.campaign.summaryInterval} turns, older scenes are folded into a summary the narrator keeps in mind.`
+            : 'Memory upkeep is off until ANTHROPIC_API_KEY is set on the server.'}
+        </Empty>
+      )}
+      {update.isError && <p className="mt-2 text-xs text-ember">{update.error.message}</p>}
+      {result && (
+        <p className="mt-2 text-xs text-parchment-faint">
+          {[
+            result.summary
+              ? `Folded turns ${result.summary.fromTurn === result.summary.toTurn ? result.summary.fromTurn : `${result.summary.fromTurn}–${result.summary.toTurn}`} into the summary.`
+              : 'The recent turns are all still in view; nothing to fold.',
+            result.condensed.length > 0 ? `Condensed notes for ${result.condensed.join(', ')}.` : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        </p>
+      )}
+    </Section>
+  );
+}
+
 function LogTab({ campaignId }: { campaignId: string }) {
   const events = useInfiniteQuery({
     queryKey: ['events', campaignId],
@@ -301,7 +363,7 @@ function LogTab({ campaignId }: { campaignId: string }) {
         <Section key={turn} title={`Turn ${turn}`}>
           <ul className="space-y-1">
             {list.map((e) => (
-              <li key={e.id} className="text-sm text-parchment-dim">
+              <li key={e.id} className={cx('text-sm', e.eventType.startsWith('memory_') ? 'text-parchment-faint italic' : 'text-parchment-dim')}>
                 {e.humanReadable}
               </li>
             ))}

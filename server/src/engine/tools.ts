@@ -1,4 +1,4 @@
-import { and, desc, eq, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, notLike, sql, type SQL } from 'drizzle-orm';
 import type Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import {
@@ -277,25 +277,65 @@ const readTools: ToolDef[] = [
     name: 'search_past_events',
     kind: 'read',
     description:
-      'Search the history of this campaign: past state changes (money, items, relationships, missions) and older story messages that may no longer be in context. Use it when the player refers to something from long ago.',
-    input: z.object({ query: z.string().trim().min(2).max(200) }),
+      "Search this campaign's history: every past state change (money, items, xp, relationships, missions, rolls) and the story passages that have been folded into the summary and are no longer in the transcript. Use it when the player refers to something from long ago, or when the summary mentions something whose details matter now. Results carry turn numbers.",
+    input: z.object({
+      query: z.string().trim().min(2).max(200).describe('Keywords: names, places, objects, e.g. "Brakka debt" or "silver key"'),
+      before_turn: z.number().int().min(1).optional().describe('Only search turns before this one'),
+    }),
     run: async (ctx, input) => {
-      const q = sql`websearch_to_tsquery('english', ${input.query})`;
-      const events = await ctx.db
-        .select({ turn: stateEvents.turnNumber, text: stateEvents.humanReadable })
-        .from(stateEvents)
-        .where(and(eq(stateEvents.campaignId, ctx.campaign.id), sql`${stateEvents.searchVector} @@ ${q}`))
-        .orderBy(sql`ts_rank(${stateEvents.searchVector}, ${q}) desc`)
-        .limit(8);
-      const story = await ctx.db
-        .select({ turn: messages.turnNumber, role: messages.role, content: messages.content })
-        .from(messages)
-        .where(and(eq(messages.campaignId, ctx.campaign.id), ne(messages.turnNumber, ctx.turnNumber), sql`${messages.searchVector} @@ ${q}`))
-        .orderBy(sql`ts_rank(${messages.searchVector}, ${q}) desc`)
-        .limit(5);
+      const cid = ctx.campaign.id;
+      // This turn's own changes are already in the tool results.
+      const beforeTurn = Math.min(input.before_turn ?? ctx.turnNumber, ctx.turnNumber);
+      const search = async (q: SQL) => {
+        const events = await ctx.db
+          .select({ turn: stateEvents.turnNumber, text: stateEvents.humanReadable })
+          .from(stateEvents)
+          .where(
+            and(
+              eq(stateEvents.campaignId, cid),
+              lt(stateEvents.turnNumber, beforeTurn),
+              notLike(stateEvents.eventType, 'memory_%'),
+              sql`${stateEvents.searchVector} @@ ${q}`,
+            ),
+          )
+          .orderBy(sql`ts_rank(${stateEvents.searchVector}, ${q}) desc`, desc(stateEvents.turnNumber))
+          .limit(10);
+        // Only passages already folded into the summary: the rest are in the transcript.
+        const story = await ctx.db
+          .select({
+            turn: messages.turnNumber,
+            role: messages.role,
+            excerpt: sql<string>`ts_headline('english', ${messages.content}, ${q}, 'MaxFragments=2, MaxWords=40, MinWords=15, FragmentDelimiter=" … ", StartSel="", StopSel=""')`,
+          })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.campaignId, cid),
+              eq(messages.summarized, true),
+              lt(messages.turnNumber, beforeTurn),
+              sql`${messages.searchVector} @@ ${q}`,
+            ),
+          )
+          .orderBy(sql`ts_rank(${messages.searchVector}, ${q}) desc`, desc(messages.turnNumber))
+          .limit(5);
+        return { events, story };
+      };
+
+      let matched = 'all keywords';
+      let found = await search(sql`websearch_to_tsquery('english', ${input.query})`);
+      if (found.events.length + found.story.length === 0) {
+        // Nothing has every word: fall back to passages with any of them.
+        matched = 'any keyword';
+        found = await search(sql`nullif(replace(plainto_tsquery('english', ${input.query})::text, ' & ', ' | '), '')::tsquery`);
+      }
+      const byTurn = <T extends { turn: number }>(rows: T[]) => [...rows].sort((a, b) => a.turn - b.turn);
       return {
-        stateChanges: events,
-        storyExcerpts: story.map((m) => ({ turn: m.turn, role: m.role, excerpt: m.content.length > 600 ? `${m.content.slice(0, 600)}…` : m.content })),
+        matched,
+        stateChanges: byTurn(found.events),
+        storyExcerpts: byTurn(found.story),
+        ...(found.events.length + found.story.length === 0
+          ? { note: 'Nothing found. Try other keywords (a name, a place, an object), or rely on the summary.' }
+          : {}),
       };
     },
   }),

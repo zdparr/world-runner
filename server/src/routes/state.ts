@@ -1,16 +1,24 @@
 import { asc, desc, eq, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import type { CampaignState } from '@narrator/shared';
+import type { CampaignState, MemoryReport } from '@narrator/shared';
+import { HttpError } from '../http/errors';
 import { campaigns, inventoryItems, locations, missions, npcs, playerCharacter, relationships, skills } from '../db/schema';
 
-/** The play screen's sidebar snapshot. Registered inside the verified-campaign scope. */
+/** The play screen's sidebar snapshot, and on-demand memory upkeep. Registered inside the verified-campaign scope. */
 export function registerStateRoutes(app: FastifyInstance): void {
   const { db } = app;
 
   app.get('/state', async (request): Promise<CampaignState> => {
     const cid = request.campaignId;
     const [campaign] = await db
-      .select({ id: campaigns.id, name: campaigns.name, currencyName: campaigns.currencyName, turnCount: campaigns.turnCount })
+      .select({
+        id: campaigns.id,
+        name: campaigns.name,
+        currencyName: campaigns.currencyName,
+        turnCount: campaigns.turnCount,
+        rollingSummary: campaigns.rollingSummary,
+        summaryInterval: campaigns.summaryInterval,
+      })
       .from(campaigns)
       .where(eq(campaigns.id, cid));
     const [character] = await db.select().from(playerCharacter).where(eq(playerCharacter.campaignId, cid));
@@ -44,6 +52,7 @@ export function registerStateRoutes(app: FastifyInstance): void {
     // Fastify serializes Dates to ISO strings, matching the DTOs.
     return {
       campaign: campaign!,
+      memoryEnabled: app.maintenance.enabled,
       character: character ?? null,
       location: location ?? null,
       skills: skillRows,
@@ -51,5 +60,19 @@ export function registerStateRoutes(app: FastifyInstance): void {
       relationships: relRows.map((r) => ({ ...r.rel, npcName: r.npcName, npcAlive: r.npcAlive })),
       missions: missionRows.map((m) => ({ ...m.mission, giverName: m.giverName })),
     } as unknown as CampaignState;
+  });
+
+  /**
+   * Run memory upkeep now instead of waiting for it to come due: fold everything outside the recent
+   * window into the summary and condense any relationship notes that have new entries.
+   */
+  app.post('/memory', async (request): Promise<MemoryReport> => {
+    if (!app.maintenance.enabled) throw new HttpError(503, 'Memory upkeep needs the utility model: set ANTHROPIC_API_KEY on the server');
+    try {
+      return await app.maintenance.runNow(request.campaignId, { force: true });
+    } catch (err) {
+      request.log.error({ err }, 'Memory upkeep failed');
+      throw new HttpError(502, 'The utility model could not update the memory. Try again in a moment.');
+    }
   });
 }

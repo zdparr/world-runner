@@ -11,6 +11,7 @@ import type {
   CharacterSheetSave,
   Location,
   LoginRequest,
+  MemoryReport,
   MeResponse,
   Message,
   Page,
@@ -76,6 +77,7 @@ export const api = {
   events: (id: string, before?: number) => request<Page<StateEvent>>(`/api/campaigns/${id}/events?limit=60${page(before)}`),
   turnDebug: (id: string, turn: number) => request<TurnDebug>(`/api/campaigns/${id}/turns/${turn}/debug`),
   undo: (id: string) => request<UndoResult>(`/api/campaigns/${id}/turns/undo`, { method: 'POST' }),
+  updateMemory: (id: string) => request<MemoryReport>(`/api/campaigns/${id}/memory`, { method: 'POST' }),
   playTurn,
 };
 

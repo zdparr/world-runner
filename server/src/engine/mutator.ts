@@ -5,6 +5,7 @@ import {
   campaigns,
   inventoryItems,
   locations,
+  messages,
   missions,
   npcs,
   playerCharacter,
@@ -29,6 +30,7 @@ const TABLES = {
   locations: { table: locations, key: ['id'] },
   missions: { table: missions, key: ['id'] },
   campaigns: { table: campaigns, key: ['id'] },
+  messages: { table: messages, key: ['id'] },
 } as const satisfies Record<string, { table: PgTable; key: string[] }>;
 
 export type TableName = keyof typeof TABLES;

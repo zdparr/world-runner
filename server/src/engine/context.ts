@@ -18,7 +18,17 @@ export interface TurnContext {
   manifest: ContextManifest;
 }
 
-const approxTokens = (text: string) => Math.ceil(text.length / 4);
+export const approxTokens = (text: string) => Math.ceil(text.length / 4);
+
+/**
+ * Unsummarized history is sent verbatim until it outgrows this many (approximate) tokens, at which
+ * point memory maintenance folds everything but the recent window into the rolling summary.
+ */
+export const HISTORY_TOKEN_BUDGET = 6_000;
+/** Hard cap on verbatim history, in case maintenance falls behind (e.g. utility model down). */
+const HISTORY_TOKEN_CAP = 2 * HISTORY_TOKEN_BUDGET;
+/** Unsummarized messages read per turn (far more than the cap ever lets through). */
+const HISTORY_SCAN_LIMIT = 200;
 
 export function characterHeader(pc: CharacterRow, locationName: string | null): string {
   const parts = [
@@ -210,25 +220,39 @@ export async function buildTurnContext(
   }
 
   // ---------------------------------------------- recent history
-  const recent = (
-    await db
-      .select({ role: messages.role, content: messages.content, turnNumber: messages.turnNumber })
-      .from(messages)
-      .where(and(eq(messages.campaignId, cid), eq(messages.summarized, false)))
-      .orderBy(desc(messages.id))
-      .limit(campaign.historyWindow)
-  ).reverse();
+  // Every message not yet folded into the summary, newest first: always the recent window, then older
+  // ones while they fit under the cap. Maintenance folds all but the window every few turns.
+  const unsummarized = await db
+    .select({ role: messages.role, content: messages.content, turnNumber: messages.turnNumber })
+    .from(messages)
+    .where(and(eq(messages.campaignId, cid), eq(messages.summarized, false)))
+    .orderBy(desc(messages.id))
+    .limit(HISTORY_SCAN_LIMIT);
+  let historyTokens = 0;
+  let take = 0;
+  for (const m of unsummarized) {
+    const cost = approxTokens(m.content);
+    if (take >= campaign.historyWindow && historyTokens + cost > HISTORY_TOKEN_CAP) break;
+    historyTokens += cost;
+    take++;
+  }
+  const recent = unsummarized.slice(0, take).reverse();
+  const overCap = unsummarized.length - take;
   // The conversation must open with a user turn.
   while (recent[0]?.role === 'narrator') recent.shift();
   const history: Anthropic.MessageParam[] = recent.map((m) => ({
     role: m.role === 'player' ? 'user' : 'assistant',
     content: m.content,
   }));
+  const turns = [...new Set(recent.map((m) => m.turnNumber))];
   core.push({
     slice: 'recent_messages',
-    reason: `last ${campaign.historyWindow} unsummarized messages`,
+    reason:
+      recent.length <= campaign.historyWindow
+        ? `last ${campaign.historyWindow} unsummarized messages`
+        : `all ${recent.length} unsummarized messages (window ${campaign.historyWindow}; older ones are folded into the summary every ${campaign.summaryInterval} turns)`,
     approxTokens: approxTokens(recent.map((m) => m.content).join('')),
-    detail: { count: recent.length, turns: [...new Set(recent.map((m) => m.turnNumber))] },
+    detail: { count: recent.length, turns: turns.length > 0 ? `${turns[0]}–${turns[turns.length - 1]}` : 'none' },
   });
 
   const dynamicText = stateLines.join('\n\n');
@@ -241,7 +265,8 @@ export async function buildTurnContext(
     prefetchedNpcs.size > 0 ? 'other NPCs' : 'NPCs',
     'missions other than the active one',
     loreHits.length > 0 ? 'other lore' : 'lore',
-    'older history (summarized)',
+    'older history (summarized; searchable with search_past_events)',
+    ...(overCap > 0 ? [`${overCap} older unsummarized messages (over the history cap)`] : []),
   ];
 
   return {

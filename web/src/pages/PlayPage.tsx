@@ -134,6 +134,12 @@ export function PlayPage() {
           case 'done':
             update((p) => ({ ...p, narration: event.narration, done: true, turnNumber: event.turnNumber }));
             void refresh().then(() => setPending(null));
+            // Memory upkeep (summary, condensed notes) finishes a few seconds after the turn: pick it up.
+            for (const delay of [6_000, 20_000]) {
+              window.setTimeout(() => {
+                for (const k of ['state', 'events']) void queryClient.invalidateQueries({ queryKey: [k, campaignId] });
+              }, delay);
+            }
             break;
           case 'error':
             fail(event.message, event.retryable);

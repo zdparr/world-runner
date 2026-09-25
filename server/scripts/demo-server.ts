@@ -1,6 +1,7 @@
 /**
  * Local UI development without API calls: runs the real app, but the narrator is a scripted fake
- * that calls real tools (so the sidebar, toasts, log, and debug drawer all have something to show).
+ * that calls real tools (so the sidebar, toasts, log, and debug drawer all have something to show),
+ * and memory upkeep uses a fake utility model.
  *
  *   npx tsx server/scripts/demo-server.ts        (uses DATABASE_URL, APP_PASSWORD, ... from .env)
  *
@@ -11,6 +12,7 @@ import { buildApp } from '../src/app';
 import { loadConfig } from '../src/config';
 import { createDb } from '../src/db/client';
 import { loadDotEnv } from '../src/env';
+import type { UtilityFn } from '../src/engine/memory';
 import type { ModelStream, StreamFn } from '../src/engine/narrator';
 
 type Reply = { text?: string; tools?: { name: string; input: unknown }[] };
@@ -124,11 +126,26 @@ function fakeStream(): StreamFn {
   };
 }
 
+/** A fake utility model: stitches summaries from first sentences, keeps the latest notes as "condensed". */
+const fakeUtility: UtilityFn = async ({ system, prompt }) => {
+  await new Promise((r) => setTimeout(r, 800));
+  const usage = { inputTokens: Math.ceil(prompt.length / 4), outputTokens: 120 };
+  if (system.includes('bullets')) {
+    const notes = prompt.match(/^- .+$/gm) ?? [];
+    return { text: notes.slice(-4).join('\n') || '- They have met.', ...usage };
+  }
+  const previous = /# Current summary\n\n([\s\S]*?)\n\n# Transcript/.exec(prompt)?.[1] ?? '';
+  const beats = [...prompt.matchAll(/\] Narrator:\n([^\n]*?[.!?])/g)].map((m) => m[1]);
+  const kept = previous.startsWith('(None') ? '' : previous.replace(/\n\nWhere things stand:[\s\S]*$/, '');
+  const text = [kept, `(Demo summary) ${beats.join(' ')}`, 'Where things stand: the demo narrator waits for your next move.'];
+  return { text: text.filter(Boolean).join('\n\n'), ...usage };
+};
+
 async function main() {
   loadDotEnv();
   const config = loadConfig();
   const { db, pool, ping } = createDb(config.DATABASE_URL);
-  const app = await buildApp({ config, db, pingDb: ping, stream: fakeStream() });
+  const app = await buildApp({ config, db, pingDb: ping, stream: fakeStream(), utility: fakeUtility });
   app.addHook('onClose', () => pool.end());
   await app.listen({ port: config.PORT, host: config.HOST });
   app.log.warn('Demo server: the narrator is a scripted fake. No API calls are made.');

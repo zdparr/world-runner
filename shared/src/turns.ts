@@ -41,6 +41,16 @@ export interface UndoResult {
   revertedChanges: StateChange[];
 }
 
+/** What a memory maintenance run changed (POST /campaigns/:id/memory). */
+export interface MemoryReport {
+  /** False when no API key is configured (maintenance never runs). */
+  enabled: boolean;
+  /** Turns folded into the rolling summary, if any. */
+  summary: { fromTurn: number; toTurn: number; messages: number } | null;
+  /** NPCs whose relationship notes were condensed. */
+  condensed: string[];
+}
+
 // ---------------------------------------------------------------- debug records (turn_debug)
 
 /** One piece of context and why it was included. */

@@ -399,7 +399,9 @@ export type CampaignFromTemplate = z.input<typeof CampaignFromTemplate>;
 
 /** Everything the play screen's sidebar shows, in one request. */
 export interface CampaignState {
-  campaign: Pick<Campaign, 'id' | 'name' | 'currencyName' | 'turnCount'>;
+  campaign: Pick<Campaign, 'id' | 'name' | 'currencyName' | 'turnCount' | 'rollingSummary' | 'summaryInterval'>;
+  /** Whether post-turn memory upkeep (summary, note condensing) can run: needs an API key. */
+  memoryEnabled: boolean;
   character: PlayerCharacter | null;
   location: Pick<Location, 'id' | 'name' | 'description'> | null;
   skills: Skill[];

@@ -55,6 +55,8 @@ All routes under `/api` except `/api/auth/*` require the session cookie. Request
 | `/api/campaigns/:cid/turns/undo` | POST: revert the last turn (narrative and state) |
 | `/api/campaigns/:cid/messages`, `/events` | GET, paginated (`?limit=&before=`) |
 | `/api/campaigns/:cid/turns/:turn/debug` | GET |
+| `/api/campaigns/:cid/state` | GET: the play screen's sidebar snapshot |
+| `/api/campaigns/:cid/memory` | POST: run memory upkeep now (fold the summary, condense notes) instead of waiting for it to come due |
 
 These routes are for editing, outside the fiction: they do not write `state_events`, and marking a mission completed here does not grant its rewards. In-story changes go through the turn engine's write tools.
 
@@ -69,6 +71,16 @@ The engine lives in `server/src/engine/`. Each turn:
 5. **Atomicity**: the whole turn is one transaction. If the model call fails, nothing is saved.
 
 Dice are server-side and seeded by (campaign seed, turn, roll index), so undoing a turn and replaying it gives the same rolls.
+
+### Memory
+
+After each turn, [memory.ts](server/src/engine/memory.ts) does upkeep in the background with `UTILITY_MODEL`. It never runs in the player's request.
+
+- **Rolling summary.** The narrator sees every message not yet summarized. Every `summary_interval` turns (default 10), or sooner once that history passes ~6k tokens, everything older than the last `history_window` messages (default 8) is folded into `campaigns.rolling_summary`, which is kept under ~800 tokens. Folded messages are marked `summarized`.
+- **Relationship notes.** After 4 new `adjust_relationship` notes, or once an NPC's notes grow long, they are condensed into 3-6 bullets.
+- **Search.** `search_past_events` searches past state changes and the folded story passages (full-text, with snippets). If no result has every keyword, it retries matching any of them.
+
+Memory writes go through the Mutator and are recorded on the latest turn, so undo reverts them with that turn. The model runs outside any transaction. Its result is saved only if its inputs are unchanged; otherwise it is dropped and retried after the next turn.
 
 ## Deploying to Render
 

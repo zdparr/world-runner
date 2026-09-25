@@ -15,6 +15,7 @@ export const useToast = () => useContext(ToastContext);
 
 /** Map a state event type to a toast colour. */
 export function toneFor(eventType: string): ToastTone {
+  if (eventType.startsWith('memory_')) return 'neutral';
   if (eventType === 'money') return 'gold';
   if (['xp', 'level_up', 'skill_xp', 'skill_level', 'skill_check'].includes(eventType)) return 'xp';
   if (eventType === 'relationship') return 'bond';
