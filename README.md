@@ -48,10 +48,24 @@ All routes under `/api` except `/api/auth/*` require the session cookie. Request
 | `/api/campaigns/:cid/character/sheet` | GET, PUT: character, skills, and items saved together in one transaction (used by the builder) |
 | `/api/campaigns/:cid/{skills,items,locations,npcs,relationships,lore,missions}` | GET, POST |
 | `/api/campaigns/:cid/{collection}/:id` | GET, PATCH, DELETE |
+| `/api/campaigns/:cid/turns` | POST `{ content }`: play a turn. Responds with a Server-Sent Events stream (`turn_start`, `text`, `tool`, `state_change`, then `done` or `error`) |
+| `/api/campaigns/:cid/turns/undo` | POST: revert the last turn (narrative and state) |
 | `/api/campaigns/:cid/messages`, `/events` | GET, paginated (`?limit=&before=`) |
 | `/api/campaigns/:cid/turns/:turn/debug` | GET |
 
 These routes are for editing, outside the fiction: they do not write `state_events`, and marking a mission completed here does not grant its rewards. In-story changes go through the turn engine's write tools.
+
+## Turn engine
+
+The engine lives in `server/src/engine/`. Each turn:
+
+1. **Context** ([context.ts](server/src/engine/context.ts)): a cached static block (narrator prompt, world bible, style) plus a small per-turn block: the one-line character header, current location, active mission and next objective, rolling summary, always-include lore, and records whose names appear in the player's message (NPC plus relationship, items, locations, lore). Everything else stays out, and the narrator fetches it with read tools. The `turn_debug.context_manifest` records what was included and why.
+2. **Narrator loop** ([narrator.ts](server/src/engine/narrator.ts)): streams text, runs tool calls between rounds, and caps tool use at 6 rounds before forcing narration.
+3. **Tools** ([tools.ts](server/src/engine/tools.ts)): 9 read tools and 16 write tools, validated with zod. Invalid input goes back to the model as an error it can correct.
+4. **Writes** ([mutator.ts](server/src/engine/mutator.ts)): each tool call runs in a savepoint and records row-level before/after diffs in `state_events`, which is what makes undo exact.
+5. **Atomicity**: the whole turn is one transaction. If the model call fails, nothing is saved.
+
+Dice are server-side and seeded by (campaign seed, turn, roll index), so undoing a turn and replaying it gives the same rolls.
 
 ## Deploying to Render
 

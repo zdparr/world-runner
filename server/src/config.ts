@@ -8,10 +8,12 @@ const ConfigSchema = z.object({
   DATABASE_URL: z.string().min(1),
   APP_PASSWORD: z.string().min(1),
   SESSION_SECRET: z.string().min(32, 'must be at least 32 characters'),
-  // Not used until the turn engine (phase 3), so the skeleton can deploy without it.
+  // Optional so the app still boots (and can be configured) without it; turns return 503 until it is set.
   ANTHROPIC_API_KEY: z.string().optional(),
   NARRATOR_MODEL: z.string().min(1).default('claude-sonnet-5'),
   UTILITY_MODEL: z.string().min(1).default('claude-haiku-4-5-20251001'),
+  /** Thinking depth for the narrator. Medium keeps turns responsive; high trades latency for care. */
+  NARRATOR_EFFORT: z.enum(['low', 'medium', 'high']).default('medium'),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

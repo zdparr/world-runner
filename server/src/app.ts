@@ -5,6 +5,9 @@ import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import type { Config } from './config';
 import type { Db } from './db/client';
+import { createAnthropicStream } from './engine/anthropic';
+import type { StreamFn } from './engine/narrator';
+import type { EngineDeps } from './engine/turn';
 import { HttpError, httpErrorFromPg } from './http/errors';
 import { SESSION_COOKIE, isSessionValueValid } from './auth';
 import { webDistDir } from './paths';
@@ -17,6 +20,8 @@ export interface AppDeps {
   config: Config;
   db: Db;
   pingDb: () => Promise<void>;
+  /** Model stream for the narrator. Omit to build one from ANTHROPIC_API_KEY; tests pass a scripted fake. */
+  stream?: StreamFn | null;
   /** Serve the built SPA from web/dist. Off in tests. */
   serveWeb?: boolean;
 }
@@ -26,6 +31,7 @@ declare module 'fastify' {
     config: Config;
     db: Db;
     pingDb: () => Promise<void>;
+    engine: Omit<EngineDeps, 'log'>;
   }
   interface FastifyRequest {
     isAuthenticated: boolean;
@@ -48,7 +54,7 @@ function readSession(request: FastifyRequest, password: string): boolean {
   return unsigned.valid && unsigned.value !== null && isSessionValueValid(unsigned.value, password);
 }
 
-export async function buildApp({ config, db, pingDb, serveWeb = true }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ config, db, pingDb, stream, serveWeb = true }: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     trustProxy: true, // Render terminates TLS in front of us.
     logger: {
@@ -75,6 +81,12 @@ export async function buildApp({ config, db, pingDb, serveWeb = true }: AppDeps)
   app.decorate('config', config);
   app.decorate('db', db);
   app.decorate('pingDb', pingDb);
+  app.decorate('engine', {
+    db,
+    stream: stream !== undefined ? stream : config.ANTHROPIC_API_KEY ? createAnthropicStream(config.ANTHROPIC_API_KEY) : null,
+    model: config.NARRATOR_MODEL,
+    effort: config.NARRATOR_EFFORT,
+  });
   app.decorateRequest('isAuthenticated', false);
 
   await app.register(cookie, { secret: config.SESSION_SECRET });
