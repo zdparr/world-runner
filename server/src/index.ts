@@ -6,8 +6,8 @@ import { buildApp } from './app';
 async function main() {
   loadDotEnv();
   const config = loadConfig();
-  const { pool, ping } = createDb(config.DATABASE_URL);
-  const app = await buildApp({ config, pingDb: ping });
+  const { db, pool, ping } = createDb(config.DATABASE_URL);
+  const app = await buildApp({ config, db, pingDb: ping });
   app.addHook('onClose', async () => {
     await pool.end();
   });

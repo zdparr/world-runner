@@ -19,7 +19,8 @@
     "db:up": "docker compose up -d db",
     "db:generate": "npm run db:generate -w @narrator/server",
     "db:migrate": "node server/dist/migrate.js",
-    "db:migrate:dev": "npm run db:migrate:dev -w @narrator/server"
+    "db:migrate:dev": "npm run db:migrate:dev -w @narrator/server",
+    "seed": "tsx server/src/db/seed/run.ts"
   },
   "devDependencies": {
     "concurrently": "^10.0.5"

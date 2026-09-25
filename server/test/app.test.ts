@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app';
 import { loadConfig } from '../src/config';
+import type { Db } from '../src/db/client';
 import { SESSION_MAX_AGE_SECONDS, createSessionValue, isSessionValueValid } from '../src/auth';
 
 const PASSWORD = 'correct horse battery staple';
@@ -19,7 +20,8 @@ afterEach(async () => {
 });
 
 async function makeApp(pingDb: () => Promise<void> = async () => {}) {
-  app = await buildApp({ config, pingDb, serveWeb: false });
+  // These tests never touch the database.
+  app = await buildApp({ config, db: {} as Db, pingDb, serveWeb: false });
   return app;
 }
 

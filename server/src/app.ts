@@ -4,14 +4,18 @@ import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import type { Config } from './config';
+import type { Db } from './db/client';
+import { HttpError, httpErrorFromPg } from './http/errors';
 import { SESSION_COOKIE, isSessionValueValid } from './auth';
 import { webDistDir } from './paths';
 import { authRoutes } from './routes/auth';
+import { campaignRoutes } from './routes/campaigns';
 import { healthRoutes } from './routes/health';
 import { helloRoutes } from './routes/hello';
 
 export interface AppDeps {
   config: Config;
+  db: Db;
   pingDb: () => Promise<void>;
   /** Serve the built SPA from web/dist. Off in tests. */
   serveWeb?: boolean;
@@ -20,6 +24,7 @@ export interface AppDeps {
 declare module 'fastify' {
   interface FastifyInstance {
     config: Config;
+    db: Db;
     pingDb: () => Promise<void>;
   }
   interface FastifyRequest {
@@ -43,7 +48,7 @@ function readSession(request: FastifyRequest, password: string): boolean {
   return unsigned.valid && unsigned.value !== null && isSessionValueValid(unsigned.value, password);
 }
 
-export async function buildApp({ config, pingDb, serveWeb = true }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ config, db, pingDb, serveWeb = true }: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     trustProxy: true, // Render terminates TLS in front of us.
     logger: {
@@ -68,6 +73,7 @@ export async function buildApp({ config, pingDb, serveWeb = true }: AppDeps): Pr
   });
 
   app.decorate('config', config);
+  app.decorate('db', db);
   app.decorate('pingDb', pingDb);
   app.decorateRequest('isAuthenticated', false);
 
@@ -82,9 +88,22 @@ export async function buildApp({ config, pingDb, serveWeb = true }: AppDeps): Pr
     }
   });
 
+  // Must be set before routes are registered: each plugin captures the handler in effect when it loads.
+  app.setErrorHandler<Error & { statusCode?: number }>((err, request, reply) => {
+    const mapped = err instanceof HttpError ? err : httpErrorFromPg(err);
+    if (mapped) {
+      return reply.code(mapped.statusCode).send({ error: mapped.message, details: mapped.details });
+    }
+    // Fastify's own client errors (bad JSON, body too large, rate limit) carry a 4xx statusCode.
+    const status = err.statusCode && err.statusCode < 500 ? err.statusCode : 500;
+    if (status >= 500) request.log.error({ err }, 'Unhandled error');
+    return reply.code(status).send({ error: status >= 500 ? 'Internal server error' : err.message });
+  });
+
   await app.register(healthRoutes);
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(helloRoutes, { prefix: '/api' });
+  await app.register(campaignRoutes, { prefix: '/api/campaigns' });
 
   const webAvailable = serveWeb && existsSync(webDistDir);
   if (webAvailable) {
@@ -107,12 +126,6 @@ export async function buildApp({ config, pingDb, serveWeb = true }: AppDeps): Pr
       return reply.header('Cache-Control', 'no-cache').sendFile('index.html');
     }
     return reply.code(404).send({ error: 'Not found' });
-  });
-
-  app.setErrorHandler<Error & { statusCode?: number }>((err, request, reply) => {
-    const status = err.statusCode ?? 500;
-    if (status >= 500) request.log.error({ err }, 'Unhandled error');
-    return reply.code(status).send({ error: status >= 500 ? 'Internal server error' : err.message });
   });
 
   return app;

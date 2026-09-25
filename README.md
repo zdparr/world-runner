@@ -20,6 +20,7 @@ npm install
 cp .env.example .env        # then set APP_PASSWORD and SESSION_SECRET
 npm run db:up               # start Postgres in Docker
 npm run db:migrate:dev      # apply migrations
+npm run seed                # create the demo campaign (Brinecross)
 npm run dev                 # server on :3000, Vite on :5173 (proxies /api)
 ```
 
@@ -27,10 +28,27 @@ Open http://localhost:5173.
 
 Other scripts:
 
-- `npm test`: server tests (vitest)
+- `npm test`: server tests (vitest). Database tests run against PGlite (in-process Postgres), so Docker is not needed for tests.
+- `npm run seed -- --reset`: delete and recreate the demo campaign. Other campaigns are untouched.
 - `npm run typecheck`: all workspaces
 - `npm run build && npm start`: production build served from one process on `PORT`
 - `npm run db:generate`: generate a migration after changing `server/src/db/schema.ts`
+
+## API
+
+All routes under `/api` except `/api/auth/*` require the session cookie. Request bodies are validated with the zod schemas in `shared/src/entities.ts`.
+
+| Route | Methods |
+| --- | --- |
+| `/api/campaigns` | GET (list), POST |
+| `/api/campaigns/:cid` | GET, PATCH, DELETE (cascades) |
+| `/api/campaigns/:cid/character` | GET, PUT (upsert), PATCH |
+| `/api/campaigns/:cid/{skills,items,locations,npcs,relationships,lore,missions}` | GET, POST |
+| `/api/campaigns/:cid/{collection}/:id` | GET, PATCH, DELETE |
+| `/api/campaigns/:cid/messages`, `/events` | GET, paginated (`?limit=&before=`) |
+| `/api/campaigns/:cid/turns/:turn/debug` | GET |
+
+These routes are for editing, outside the fiction: they do not write `state_events`, and marking a mission completed here does not grant its rewards. In-story changes go through the turn engine's write tools.
 
 ## Deploying to Render
 
@@ -52,5 +70,7 @@ Pre-deploy commands require a paid web service plan, which is why the web servic
    `SESSION_SECRET` is generated automatically. `DATABASE_URL` is wired from `narrator-db`.
 4. Click **Apply**. Render creates the database, then builds and deploys the service.
 5. When the deploy is live, open `https://narrator-<suffix>.onrender.com/healthz`. It should return `{"ok":true,"db":"up",...}`. Then open the root URL and log in.
+
+To load the demo campaign on Render, open the service's **Shell** tab and run `node server/dist/seed.js`.
 
 After that, every push to the default branch redeploys automatically. Game data lives in Postgres and survives redeploys.

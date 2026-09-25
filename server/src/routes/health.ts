@@ -3,7 +3,9 @@ import type { HealthResponse } from '@narrator/shared';
 
 export const healthRoutes: FastifyPluginAsync = async (app) => {
   // Render's health check. Returns 503 when Postgres is unreachable so a broken deploy never goes live.
-  app.get('/healthz', { logLevel: 'warn' }, async (request, reply) => {
+  // Render polls this every few seconds; keep successful checks out of the logs.
+  const logLevel = app.log.level === 'silent' ? 'silent' : 'warn';
+  app.get('/healthz', { logLevel }, async (request, reply) => {
     let db: HealthResponse['db'] = 'up';
     try {
       await app.pingDb();

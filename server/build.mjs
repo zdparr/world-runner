@@ -7,7 +7,7 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 const external = Object.keys(pkg.dependencies ?? {});
 
 await build({
-  entryPoints: { index: 'src/index.ts', migrate: 'src/db/migrate.ts' },
+  entryPoints: { index: 'src/index.ts', migrate: 'src/db/migrate.ts', seed: 'src/db/seed/run.ts' },
   outdir: 'dist',
   bundle: true,
   platform: 'node',

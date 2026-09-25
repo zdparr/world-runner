@@ -1,10 +1,11 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import pg from 'pg';
 import pino from 'pino';
 import { loadDotEnv } from '../env';
 import { migrationsDir } from '../paths';
-import { createDb } from './client';
 
 // Runs as Render's preDeployCommand (`npm run db:migrate`) and locally via `npm run db:migrate:dev`.
 async function main() {
@@ -13,15 +14,15 @@ async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is not set');
 
-  const { db, pool, ping } = createDb(url);
+  const pool = new pg.Pool({ connectionString: url, max: 1, connectionTimeoutMillis: 10_000 });
   try {
-    await ping();
+    await pool.query('select 1');
     if (!existsSync(join(migrationsDir, 'meta', '_journal.json'))) {
       log.info({ migrationsDir }, 'No migrations generated yet; database is reachable, nothing to apply');
       return;
     }
     log.info({ migrationsDir }, 'Applying migrations');
-    await migrate(db, { migrationsFolder: migrationsDir });
+    await migrate(drizzle(pool), { migrationsFolder: migrationsDir });
     log.info('Migrations complete');
   } finally {
     await pool.end();
