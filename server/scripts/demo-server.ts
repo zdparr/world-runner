@@ -59,6 +59,8 @@ function script(params: Anthropic.MessageStreamParams): Reply {
 
   if (firstRound) {
     if (/\b(ooc:|\()/.test(said)) return { text: '*(Out of character)* This is the demo narrator. It answers every question the same way: with enthusiasm and no real knowledge.' };
+    const destination = /\b(?:go|head|walk|travel|return)(?:s)? (?:back )?to (?:the )?([^.!?]+)/i.exec(lastUserText(params));
+    if (destination) return { tools: [{ name: 'move_player', input: { location_name: destination[1]!.trim() } }] };
     if (/pack|carry|inventory|bag|have on me/.test(said)) return { tools: [{ name: 'get_inventory', input: {} }] };
     if (/buy|pay|coin|gold|money/.test(said)) {
       return { text: 'You reach for your purse. ', tools: [{ name: 'get_money', input: {} }, { name: 'adjust_money', input: { delta: -3, reason: 'a round of drinks' } }] };
@@ -73,6 +75,13 @@ function script(params: Anthropic.MessageStreamParams): Reply {
     };
   }
 
+  const moved = results.find((r) => r.name === 'move_player');
+  if (moved) {
+    const place = (moved.content as { nowAt?: { name?: string } })?.nowAt?.name;
+    return { text: place ? `You make your way to **${place}**. The air changes as you step inside.
+
+What do you do?` : `You can't find the way there. (${String(moved.content)})` };
+  }
   const inventory = results.find((r) => r.name === 'get_inventory')?.content as { items?: { name: string; quantity: number; equipped: boolean }[] } | undefined;
   if (inventory?.items) {
     const lines = inventory.items.map((i) => `- **${i.name}**${i.quantity > 1 ? ` ×${i.quantity}` : ''}${i.equipped ? ' *(equipped)*' : ''}`);

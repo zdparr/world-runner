@@ -5,7 +5,7 @@ import type { StateChange, TurnStreamEvent } from '@narrator/shared';
 import { ApiRequestError, api } from '../api';
 import { toneFor, useToast } from '../components/Toasts';
 import { Button, ErrorNote, Spinner, cx } from '../components/ui';
-import { Sidebar, type Tab } from '../play/Sidebar';
+import { HamburgerIcon, Sidebar, type Tab } from '../play/Sidebar';
 import { Narration, PlayerLine, TurnBlock, groupTurns } from '../play/Story';
 
 /** Where a new turn sits after the send scroll, and the story column's bottom padding (py-8). */
@@ -273,8 +273,8 @@ export function PlayPage() {
               ↶ Undo
             </Button>
           )}
-          <Button variant="ghost" className="px-2.5 py-1 lg:hidden" onClick={() => setSheetOpen(true)}>
-            Sheet
+          <Button variant="ghost" className="px-2 py-1.5 lg:hidden" onClick={() => setSheetOpen(true)} aria-label="Open character sheet" title="Character sheet">
+            <HamburgerIcon className="size-5" />
           </Button>
         </div>
         {undo.isError && (
@@ -397,7 +397,7 @@ export function PlayPage() {
       </div>
 
       {/* ------------------------------------------------ sidebar (desktop) */}
-      <aside className="hidden w-[23rem] shrink-0 border-l border-ink-700/80 bg-ink-900/50 lg:block">{sidebar}</aside>
+      <aside className="hidden w-[30rem] shrink-0 xl:w-[32rem] border-l border-ink-700/80 bg-ink-900/50 lg:block">{sidebar}</aside>
 
       {/* ------------------------------------------------ bottom sheet (mobile) */}
       <div className={cx('fixed inset-0 z-40 lg:hidden', sheetOpen ? '' : 'pointer-events-none')} aria-hidden={!sheetOpen}>

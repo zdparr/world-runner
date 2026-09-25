@@ -408,4 +408,22 @@ export interface CampaignState {
   items: InventoryItem[];
   relationships: (Relationship & { npcName: string; npcAlive: boolean })[];
   missions: (Mission & { giverName: string | null })[];
+  /** Every location, for the map. */
+  map: {
+    locations: MapLocation[];
+    /** Journeys the character has made (from moves in the event log), one entry per pair of places. */
+    travels: { fromId: string; toId: string; count: number }[];
+  };
+}
+
+export interface MapLocation {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  parentLocationId: string | null;
+  /** The character has been here (started here, or travelled here). */
+  visited: boolean;
+  /** Living NPCs the character knows (has a relationship with) who are here. */
+  knownNpcs: string[];
 }

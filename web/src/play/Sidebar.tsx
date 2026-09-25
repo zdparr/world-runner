@@ -1,36 +1,23 @@
-import { useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { characterXpToNext, skillXpToNext, type CampaignState, type StateEvent } from '@narrator/shared';
 import { api } from '../api';
 import { Button, cx } from '../components/ui';
+import { MapTab } from './MapView';
 
-export const TABS = ['Character', 'Inventory', 'Relationships', 'Missions', 'Log'] as const;
+export const TABS = ['Character', 'Inventory', 'Relationships', 'Missions', 'Map', 'Log'] as const;
 export type Tab = (typeof TABS)[number];
 
 export function Sidebar({ campaignId, state, tab, onTab }: { campaignId: string; state: CampaignState; tab: Tab; onTab: (tab: Tab) => void }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <nav role="tablist" className="scroll-thin flex shrink-0 justify-between overflow-x-auto border-b border-ink-700 px-2">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => onTab(t)}
-            className={cx(
-              '-mb-px shrink-0 border-b-2 px-1.5 py-3 text-[0.66rem] font-semibold tracking-[0.04em] uppercase transition',
-              tab === t ? 'border-brass text-brass' : 'border-transparent text-parchment-faint hover:text-parchment',
-            )}
-          >
-            {t}
-          </button>
-        ))}
-      </nav>
+      <TabBar tab={tab} onTab={onTab} />
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto p-4">
         {tab === 'Character' && <CharacterTab state={state} />}
         {tab === 'Inventory' && <InventoryTab state={state} />}
         {tab === 'Relationships' && <RelationshipsTab state={state} />}
         {tab === 'Missions' && <MissionsTab state={state} />}
+        {tab === 'Map' && <MapTab map={state.map} currentId={state.character?.currentLocationId ?? null} />}
         {tab === 'Log' && (
           <>
             <StorySoFar campaignId={campaignId} state={state} />
@@ -39,6 +26,108 @@ export function Sidebar({ campaignId, state, tab, onTab }: { campaignId: string;
         )}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------- tab bar
+
+const tabClass = (active: boolean) =>
+  cx(
+    '-mb-px shrink-0 border-b-2 px-1.5 py-3 text-[0.7rem] font-semibold tracking-[0.05em] whitespace-nowrap uppercase transition',
+    active ? 'border-brass text-brass' : 'border-transparent text-parchment-faint hover:text-parchment',
+  );
+
+/**
+ * The section tabs in one row when they fit; otherwise (a narrow panel, e.g. on a phone) a
+ * hamburger menu. A hidden copy of the row is measured to decide, so it adapts to any width.
+ */
+function TabBar({ tab, onTab }: { tab: Tab; onTab: (tab: Tab) => void }) {
+  const bar = useRef<HTMLDivElement>(null);
+  const probe = useRef<HTMLDivElement>(null);
+  const [collapsed, setCollapsed] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = bar.current;
+    if (!el) return;
+    const check = () => setCollapsed((probe.current?.scrollWidth ?? 0) > el.clientWidth);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const choose = (t: Tab) => {
+    onTab(t);
+    setMenuOpen(false);
+  };
+
+  return (
+    <div ref={bar} className="relative shrink-0 border-b border-ink-700">
+      {/* Measuring copy: never visible, never focusable. */}
+      <div ref={probe} aria-hidden className="pointer-events-none invisible absolute top-0 left-0 flex gap-0.5 px-3">
+        {TABS.map((t) => (
+          <span key={t} className={tabClass(false)}>
+            {t}
+          </span>
+        ))}
+      </div>
+
+      {collapsed ? (
+        <>
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            aria-label="Sections"
+            className="flex w-full items-center gap-3 px-4 py-3 text-left text-[0.7rem] font-semibold tracking-[0.06em] text-brass uppercase"
+          >
+            <HamburgerIcon />
+            <span className="flex-1">{tab}</span>
+            <span className={cx('text-parchment-faint transition', menuOpen && 'rotate-180')} aria-hidden>
+              ▾
+            </span>
+          </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} aria-hidden />
+              <ul role="menu" className="absolute inset-x-2 top-full z-20 mt-1 overflow-hidden rounded-lg border border-ink-600 bg-ink-900 py-1 shadow-xl shadow-black/40">
+                {TABS.map((t) => (
+                  <li key={t}>
+                    <button
+                      role="menuitem"
+                      onClick={() => choose(t)}
+                      className={cx(
+                        'w-full px-4 py-2.5 text-left text-sm transition',
+                        t === tab ? 'bg-brass/10 text-brass' : 'text-parchment-dim hover:bg-ink-800 hover:text-parchment',
+                      )}
+                    >
+                      {t}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </>
+      ) : (
+        <nav role="tablist" className="flex justify-between gap-0.5 px-3">
+          {TABS.map((t) => (
+            <button key={t} role="tab" aria-selected={tab === t} onClick={() => onTab(t)} className={tabClass(tab === t)}>
+              {t}
+            </button>
+          ))}
+        </nav>
+      )}
+    </div>
+  );
+}
+
+export function HamburgerIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" className={cx('size-4', className)} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M3 5.5h14M3 10h14M3 14.5h14" />
+    </svg>
   );
 }
 

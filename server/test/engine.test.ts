@@ -349,3 +349,37 @@ describe('undo', () => {
     expect(again.roll).toBe(first.roll);
   });
 });
+
+// ---------------------------------------------------------------- map
+
+describe('map snapshot', () => {
+  it('lists every location with visits, journeys, and the NPCs the character knows there', async () => {
+    const id = await newCampaign();
+    await play(id, 'I go to the tavern, then explore its cellar.', [
+      {
+        tools: [
+          { name: 'move_player', input: { location_name: 'Drowned Lantern' } },
+          { name: 'create_location', input: { name: 'Lantern Cellar', description: 'Barrels and damp.', parent_location_name: 'Drowned Lantern' } },
+          { name: 'move_player', input: { location_name: 'Lantern Cellar' } },
+          { name: 'move_player', input: { location_name: 'Drowned Lantern' } },
+          { name: 'move_player', input: { location_name: 'Dockside Market' } },
+        ],
+      },
+      { text: 'Round and round.' },
+    ]);
+    const { map } = (await t.api('GET', `/api/campaigns/${id}/state`)).json() as import('@narrator/shared').CampaignState;
+    const byName = Object.fromEntries(map.locations.map((l) => [l.name, l]));
+    expect(Object.keys(byName)).toEqual(['Dockside Market', 'The Drowned Lantern', 'The Saltworks', 'Lantern Cellar']);
+    expect(byName['Lantern Cellar']).toMatchObject({ parentLocationId: byName['The Drowned Lantern']!.id, visited: true });
+    expect(byName['The Saltworks']!.visited).toBe(false);
+    // Kael knows Mara (at the Lantern) and Rook (Saltworks); the market's harbormaster and priest are strangers.
+    expect(byName['The Drowned Lantern']!.knownNpcs).toEqual(['Mara Vell']);
+    expect(byName['The Saltworks']!.knownNpcs).toEqual(['Rook']);
+    expect(byName['Dockside Market']!.knownNpcs).toEqual([]);
+    const trip = (a: string, b: string) =>
+      map.travels.find((t) => [t.fromId, t.toId].sort().join() === [byName[a]!.id, byName[b]!.id].sort().join())?.count;
+    expect(trip('Dockside Market', 'The Drowned Lantern')).toBe(2);
+    expect(trip('The Drowned Lantern', 'Lantern Cellar')).toBe(2);
+    expect(map.travels).toHaveLength(2);
+  });
+});
