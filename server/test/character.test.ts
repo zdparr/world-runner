@@ -19,14 +19,15 @@ describe('templates', () => {
   it('lists templates without colliding with campaign ids', async () => {
     const res = await t.api('GET', '/api/campaigns/templates');
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual([expect.objectContaining({ id: 'brinecross', name: 'Brinecross' })]);
+    expect(res.json().map((t: { id: string }) => t.id)).toEqual(['varenhold', 'brinecross']);
+    expect(res.json()[0]).toMatchObject({ name: 'Varenhold', description: expect.stringMatching(/fantasy/) });
   });
 
-  it('creates a Brinecross campaign without a character by default', async () => {
-    const res = await t.api('POST', '/api/campaigns/from-template', { templateId: 'brinecross', name: 'My Brinecross' });
+  it('creates a campaign from a template without a character by default', async () => {
+    const res = await t.api('POST', '/api/campaigns/from-template', { templateId: 'varenhold', name: 'My Varenhold' });
     expect(res.statusCode).toBe(201);
     const { id, name, currencyName } = res.json();
-    expect({ name, currencyName }).toEqual({ name: 'My Brinecross', currencyName: 'crowns' });
+    expect({ name, currencyName }).toEqual({ name: 'My Varenhold', currencyName: 'gold' });
 
     const sheet = (await t.api('GET', `/api/campaigns/${id}/character/sheet`)).json();
     expect(sheet).toEqual({ character: null, skills: [], items: [] });

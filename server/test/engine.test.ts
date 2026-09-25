@@ -16,7 +16,7 @@ import {
   stateEvents,
   turnDebug,
 } from '../src/db/schema';
-import { createBrinecrossCampaign } from '../src/db/seed/demo';
+import { createFromTemplate } from '../src/db/seed/templates';
 import { buildTurnContext } from '../src/engine/context';
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
@@ -28,7 +28,9 @@ afterAll(async () => {
 });
 
 let seq = 0;
-const newCampaign = (includeCharacter = true) => createBrinecrossCampaign(t.db, { name: `Engine test ${++seq}`, includeCharacter });
+// The engine tests play in Brinecross (its numbers are baked into the assertions).
+const newCampaign = (includeCharacter = true) =>
+  createFromTemplate(t.db, 'brinecross', { name: `Engine test ${++seq}`, includeCharacter });
 
 async function play(campaignId: string, content: string, steps: Step[]) {
   const model = scriptedModel(steps);

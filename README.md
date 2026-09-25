@@ -20,7 +20,7 @@ npm install
 cp .env.example .env        # then set APP_PASSWORD and SESSION_SECRET
 npm run db:up               # start Postgres in Docker
 npm run db:migrate:dev      # apply migrations
-npm run seed                # create the demo campaign (Brinecross)
+npm run seed                # create the demo campaign (Varenhold)
 npm run dev                 # server on :3000, Vite on :5173 (proxies /api)
 ```
 
@@ -29,7 +29,8 @@ Open http://localhost:5173.
 Other scripts:
 
 - `npm test`: server tests (vitest). Database tests run against PGlite (in-process Postgres), so Docker is not needed for tests.
-- `npm run seed -- --reset`: delete and recreate the demo campaign. Other campaigns are untouched.
+- `npm run seed -- --world brinecross` seeds a different world, `--all` seeds every world, and `--reset` deletes and recreates the demo campaign(s). Other campaigns are untouched.
+- Worlds are plain data in [server/src/db/seed/worlds/](server/src/db/seed/worlds/). To add one, write a file there and list it in [templates.ts](server/src/db/seed/templates.ts); it appears as a template in the New Campaign form.
 - `npm run typecheck`: all workspaces
 - `npm run build && npm start`: production build served from one process on `PORT`
 - `npm run db:generate`: generate a migration after changing `server/src/db/schema.ts`
@@ -88,6 +89,6 @@ Pre-deploy commands require a paid web service plan, which is why the web servic
 4. Click **Apply**. Render creates the database, then builds and deploys the service.
 5. When the deploy is live, open `https://narrator-<suffix>.onrender.com/healthz`. It should return `{"ok":true,"db":"up",...}`. Then open the root URL and log in.
 
-To load the demo campaign on Render, open the service's **Shell** tab and run `node server/dist/seed.js`.
+To load the demo campaign on Render, open the service's **Shell** tab and run `node server/dist/seed.js` (add `--all` for every world).
 
 After that, every push to the default branch redeploys automatically. Game data lives in Postgres and survives redeploys.

@@ -62,7 +62,9 @@ function NewCampaign({ onCancel }: { onCancel: () => void }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [name, setName] = useState('');
-  const [world, setWorld] = useState<string>('brinecross');
+  const [picked, setWorld] = useState<string | null>(null);
+  // Until the player picks, default to the first template (or a blank world if there are none).
+  const world = picked ?? templates.data?.[0]?.id ?? BLANK;
   const [includeCharacter, setIncludeCharacter] = useState(false);
 
   const create = useMutation({

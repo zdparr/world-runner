@@ -38,7 +38,7 @@ import {
   turnDebug,
 } from '../db/schema';
 import { assertNoLocationCycle } from '../db/refs';
-import { TEMPLATES } from '../db/seed/templates';
+import { TEMPLATES, createFromTemplate, findTemplate } from '../db/seed/templates';
 import { normalizeObjectives } from '../game/missions';
 import { badRequest, notFound, parseId, parseWith } from '../http/errors';
 import { registerCharacterRoutes } from './character';
@@ -92,9 +92,8 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/from-template', async (request, reply) => {
     const { templateId, name, includeCharacter } = parseWith(CampaignFromTemplate, request.body);
-    const template = TEMPLATES.find((t) => t.id === templateId);
-    if (!template) throw notFound('Template');
-    const id = await template.create(db, { name, includeCharacter });
+    if (!findTemplate(templateId)) throw notFound('Template');
+    const id = await createFromTemplate(db, templateId, { name, includeCharacter });
     const [row] = await db.select().from(campaigns).where(eq(campaigns.id, id));
     return reply.code(201).send(row);
   });

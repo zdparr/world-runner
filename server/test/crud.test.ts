@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { createTestApp } from './helpers';
 import { campaigns, messages, npcs } from '../src/db/schema';
-import { DEMO_CAMPAIGN_NAME, seedDemoCampaign } from '../src/db/seed/demo';
+import { TEMPLATES, seedDemoCampaign } from '../src/db/seed/templates';
+import { varenhold } from '../src/db/seed/worlds/varenhold';
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
 beforeAll(async () => {
@@ -219,7 +220,7 @@ describe('history', () => {
 });
 
 describe('seed', () => {
-  it('creates the demo campaign once, and recreates it on reset', async () => {
+  it('creates the default demo campaign (Varenhold) once, and recreates it on reset', async () => {
     const id = await seedDemoCampaign(t.db);
     expect(id).toBeTruthy();
     expect(await seedDemoCampaign(t.db)).toBeNull();
@@ -229,18 +230,31 @@ describe('seed', () => {
     expect(await count('locations')).toBe(3);
     expect(await count('lore')).toBe(5);
     expect(await count('missions')).toBe(1);
-    expect(await count('relationships')).toBe(2);
+    expect(await count('relationships')).toBe(3);
     expect(await count('skills')).toBe(5);
     expect(await count('items')).toBe(6);
 
+    const campaign = (await t.api('GET', `/api/campaigns/${id}`)).json();
+    expect(campaign).toMatchObject({ name: 'Varenhold: The Silent Watchtower', currencyName: 'gold' });
     const character = (await t.api('GET', `/api/campaigns/${id}/character`)).json();
-    expect(character).toMatchObject({ name: 'Kael', archetype: 'rogue', money: 40 });
+    expect(character).toMatchObject({ name: 'Rowan Ashford', archetype: 'Stormguard spellsword', money: 35 });
     const mission = (await t.api('GET', `/api/campaigns/${id}/missions`)).json()[0];
-    expect(mission).toMatchObject({ status: 'offered' });
+    expect(mission).toMatchObject({ title: 'The Silent Watchtower', status: 'offered' });
     expect(mission.objectives.map((o: { id: string }) => o.id)).toEqual(['o1', 'o2', 'o3', 'o4']);
 
     const newId = await seedDemoCampaign(t.db, { reset: true });
     expect(newId).not.toBe(id);
-    expect(await t.db.select().from(campaigns).where(eq(campaigns.name, DEMO_CAMPAIGN_NAME))).toHaveLength(1);
+    expect(await t.db.select().from(campaigns).where(eq(campaigns.name, varenhold.demoCampaignName))).toHaveLength(1);
+  });
+
+  it('seeds every world, with every name reference resolving', async () => {
+    for (const world of TEMPLATES) {
+      if (world.id === 'varenhold') continue; // seeded above
+      const id = await seedDemoCampaign(t.db, { templateId: world.id });
+      expect(id, world.id).toBeTruthy();
+      const npcs = (await t.api('GET', `/api/campaigns/${id}/npcs`)).json() as { locationId: string | null }[];
+      expect(npcs.every((n) => n.locationId), world.id).toBe(true);
+      expect((await t.api('GET', `/api/campaigns/${id}/character`)).json().currentLocationId, world.id).toBeTruthy();
+    }
   });
 });
