@@ -12,6 +12,9 @@ import { Narration, PlayerLine, TurnBlock, groupTurns } from '../play/Story';
 const TOP_GAP = 16;
 const BOTTOM_PAD = 32;
 
+/** Primary input is a finger (phones, tablets), so focusing a text box brings up the on-screen keyboard. */
+const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches;
+
 interface PendingTurn {
   player: string;
   narration: string;
@@ -127,8 +130,10 @@ export function PlayPage() {
     return () => observer.disconnect();
   });
 
+  // Ready the input for the next move, but only with a mouse or trackpad: on a touch screen, focusing
+  // it would pop up the on-screen keyboard over the story the player is about to read.
   useEffect(() => {
-    if (!busy) inputRef.current?.focus();
+    if (!busy && !isTouchDevice()) inputRef.current?.focus();
   }, [busy]);
 
   // Autosize the composer.
@@ -149,6 +154,8 @@ export function PlayPage() {
     if (!content || busy) return;
     setDraft('');
     anchorOnSend.current = true;
+    // Put the on-screen keyboard away so the story has the screen while it's written.
+    if (isTouchDevice()) inputRef.current?.blur();
     setPending({ player: content, narration: '', activity: [], changes: [], error: null, done: false, turnNumber: null });
     const update = (fn: (p: PendingTurn) => PendingTurn) => setPending((p) => (p ? fn(p) : p));
 
