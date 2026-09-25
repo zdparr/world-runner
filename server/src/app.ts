@@ -122,7 +122,9 @@ export async function buildApp({ config, db, pingDb, serveWeb = true }: AppDeps)
   app.setNotFoundHandler((request, reply) => {
     const path = pathOf(request.url);
     // SPA fallback: unknown non-API GETs get index.html so client-side routes survive a reload.
-    if (webAvailable && request.method === 'GET' && !path.startsWith('/api/')) {
+    // Paths that look like files (e.g. a stale /assets/index-abc.js) get a real 404, not HTML.
+    const looksLikeFile = /\.[a-z0-9]+$/i.test(path);
+    if (webAvailable && request.method === 'GET' && !path.startsWith('/api/') && !looksLikeFile) {
       return reply.header('Cache-Control', 'no-cache').sendFile('index.html');
     }
     return reply.code(404).send({ error: 'Not found' });

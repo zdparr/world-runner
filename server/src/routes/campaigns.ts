@@ -4,8 +4,8 @@ import { z } from 'zod';
 import {
   CampaignCreate,
   CampaignUpdate,
-  CharacterUpdate,
-  CharacterUpsert,
+  CampaignFromTemplate,
+  type CampaignTemplate,
   ItemCreate,
   ItemUpdate,
   LocationCreate,
@@ -37,9 +37,11 @@ import {
   stateEvents,
   turnDebug,
 } from '../db/schema';
-import { assertNoLocationCycle, assertRefsInCampaign } from '../db/refs';
+import { assertNoLocationCycle } from '../db/refs';
+import { TEMPLATES } from '../db/seed/templates';
 import { normalizeObjectives } from '../game/missions';
 import { badRequest, notFound, parseId, parseWith } from '../http/errors';
+import { registerCharacterRoutes } from './character';
 import { registerCollection } from './crud';
 
 declare module 'fastify' {
@@ -83,6 +85,19 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(201).send(row);
   });
 
+  app.get('/templates', async (): Promise<CampaignTemplate[]> =>
+    TEMPLATES.map(({ id, name, description }) => ({ id, name, description })),
+  );
+
+  app.post('/from-template', async (request, reply) => {
+    const { templateId, name, includeCharacter } = parseWith(CampaignFromTemplate, request.body);
+    const template = TEMPLATES.find((t) => t.id === templateId);
+    if (!template) throw notFound('Template');
+    const id = await template.create(db, { name, includeCharacter });
+    const [row] = await db.select().from(campaigns).where(eq(campaigns.id, id));
+    return reply.code(201).send(row);
+  });
+
   // ------------------------------------------------------------ everything scoped to one campaign
 
   await app.register(async (scope) => {
@@ -112,38 +127,7 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
           return reply.code(204).send();
         });
 
-        // ---------------------------------------------------- player character (one per campaign)
-
-        c.get('/character', async (request) => {
-          const [row] = await db.select().from(playerCharacter).where(eq(playerCharacter.campaignId, request.campaignId));
-          if (!row) throw notFound('Character');
-          return row;
-        });
-
-        c.put('/character', async (request) => {
-          const { campaignId } = request;
-          const data = parseWith(CharacterUpsert, request.body);
-          await assertRefsInCampaign(db, campaignId, data);
-          const [row] = await db
-            .insert(playerCharacter)
-            .values({ ...data, campaignId })
-            .onConflictDoUpdate({ target: playerCharacter.campaignId, set: data })
-            .returning();
-          return row;
-        });
-
-        c.patch('/character', async (request) => {
-          const { campaignId } = request;
-          const data = parseWith(CharacterUpdate, request.body);
-          await assertRefsInCampaign(db, campaignId, data);
-          const [row] = await db
-            .update(playerCharacter)
-            .set(data)
-            .where(eq(playerCharacter.campaignId, campaignId))
-            .returning();
-          if (!row) throw notFound('Character');
-          return row;
-        });
+        registerCharacterRoutes(c);
 
         // ---------------------------------------------------- world and state collections
 

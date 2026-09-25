@@ -334,3 +334,63 @@ export interface Page<T> {
   /** Pass as `before` to fetch the next (older) page; null when exhausted. */
   nextBefore: number | null;
 }
+
+// ---------------------------------------------------------------- character sheet (builder)
+
+/** Skills and items in a sheet save: rows with an id are updated, rows without are created, missing rows are deleted. */
+export const SheetSkill = SkillCreate.extend({ id: Id.optional() });
+export const SheetItem = ItemCreate.extend({ id: Id.optional() });
+
+function duplicateNames(rows: { name: string }[]): string[] {
+  const seen = new Set<string>();
+  const dups = new Set<string>();
+  for (const { name } of rows) {
+    const key = name.toLowerCase();
+    if (seen.has(key)) dups.add(name);
+    seen.add(key);
+  }
+  return [...dups];
+}
+
+export const CharacterSheetSave = z
+  .object({
+    character: CharacterUpsert,
+    skills: z.array(SheetSkill).max(50),
+    items: z.array(SheetItem).max(200),
+  })
+  .strict()
+  .superRefine((sheet, ctx) => {
+    for (const [key, label] of [
+      ['skills', 'skill'],
+      ['items', 'item'],
+    ] as const) {
+      for (const name of duplicateNames(sheet[key])) {
+        ctx.addIssue({ code: 'custom', path: [key], message: `Two ${label}s are named "${name}"` });
+      }
+    }
+  });
+export type CharacterSheetSave = z.input<typeof CharacterSheetSave>;
+
+export interface CharacterSheet {
+  character: PlayerCharacter | null;
+  skills: Skill[];
+  items: InventoryItem[];
+}
+
+// ---------------------------------------------------------------- templates
+
+export interface CampaignTemplate {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export const CampaignFromTemplate = z
+  .object({
+    templateId: z.string().min(1),
+    name: Name,
+    /** Include the template's pre-made character. Off: you build your own. */
+    includeCharacter: z.boolean().default(false),
+  })
+  .strict();
+export type CampaignFromTemplate = z.input<typeof CampaignFromTemplate>;

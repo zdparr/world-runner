@@ -42,7 +42,10 @@ All routes under `/api` except `/api/auth/*` require the session cookie. Request
 | --- | --- |
 | `/api/campaigns` | GET (list), POST |
 | `/api/campaigns/:cid` | GET, PATCH, DELETE (cascades) |
+| `/api/campaigns/templates` | GET: worlds a campaign can start from |
+| `/api/campaigns/from-template` | POST `{ templateId, name, includeCharacter }` |
 | `/api/campaigns/:cid/character` | GET, PUT (upsert), PATCH |
+| `/api/campaigns/:cid/character/sheet` | GET, PUT: character, skills, and items saved together in one transaction (used by the builder) |
 | `/api/campaigns/:cid/{skills,items,locations,npcs,relationships,lore,missions}` | GET, POST |
 | `/api/campaigns/:cid/{collection}/:id` | GET, PATCH, DELETE |
 | `/api/campaigns/:cid/messages`, `/events` | GET, paginated (`?limit=&before=`) |
