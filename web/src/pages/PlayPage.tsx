@@ -8,6 +8,10 @@ import { Button, ErrorNote, Spinner, cx } from '../components/ui';
 import { Sidebar, type Tab } from '../play/Sidebar';
 import { Narration, PlayerLine, TurnBlock, groupTurns } from '../play/Story';
 
+/** Where a new turn sits after the send scroll, and the story column's bottom padding (py-8). */
+const TOP_GAP = 16;
+const BOTTOM_PAD = 32;
+
 interface PendingTurn {
   player: string;
   narration: string;
@@ -70,7 +74,13 @@ export function PlayPage() {
   const [confirmUndo, setConfirmUndo] = useState(false);
 
   const scroller = useRef<HTMLDivElement>(null);
-  const stickToBottom = useRef(true);
+  // The latest turn (in flight or saved) and the blank space below it; see the reading-position effect.
+  const tail = useRef<HTMLDivElement>(null);
+  const spacer = useRef<HTMLDivElement>(null);
+  const anchorOnSend = useRef(false);
+  const anchored = useRef(false);
+  const initialScrollDone = useRef(false);
+  const [moreBelow, setMoreBelow] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Pages arrive newest-first, each holding messages oldest-first.
@@ -78,11 +88,44 @@ export function PlayPage() {
   const turns = groupTurns(messages);
   const busy = pending !== null && !pending.error && !pending.done;
 
-  // Follow the story as it grows, unless the player has scrolled up to reread.
+  // Reading position. On open, jump to the end of the story. On send, scroll once so the new turn
+  // starts near the top of the pane; the narration then writes downward without moving the page.
+  // A spacer below the latest turn keeps room for that and shrinks as the text fills it, so the
+  // page height (and the scroll position) stays put while the text streams in.
+  const fitSpacer = () => {
+    const el = scroller.current;
+    const last = tail.current;
+    const gap = spacer.current;
+    if (!el || !gap) return;
+    if (anchored.current) {
+      const room = last ? el.clientHeight - TOP_GAP - last.offsetHeight - BOTTOM_PAD : 0;
+      gap.style.height = `${Math.max(0, room)}px`;
+    }
+    setMoreBelow(Boolean(last) && last!.offsetTop + last!.offsetHeight > el.scrollTop + el.clientHeight + 24);
+  };
+
   useLayoutEffect(() => {
     const el = scroller.current;
-    if (el && stickToBottom.current) el.scrollTop = el.scrollHeight;
-  }, [messages.length, pending?.narration, pending?.activity.length, pending?.error]);
+    if (!el) return;
+    if (!initialScrollDone.current && messages.length > 0) {
+      initialScrollDone.current = true;
+      el.scrollTop = el.scrollHeight;
+    }
+    if (anchorOnSend.current && tail.current) {
+      anchorOnSend.current = false;
+      anchored.current = true;
+      fitSpacer();
+      el.scrollTo({ top: tail.current.offsetTop - TOP_GAP, behavior: 'smooth' });
+    }
+  });
+
+  // Keep the spacer matched to the latest turn as it grows (streaming, markdown reflow, resizes).
+  useEffect(() => {
+    const observer = new ResizeObserver(() => fitSpacer());
+    if (scroller.current) observer.observe(scroller.current);
+    if (tail.current) observer.observe(tail.current);
+    return () => observer.disconnect();
+  });
 
   useEffect(() => {
     if (!busy) inputRef.current?.focus();
@@ -105,7 +148,7 @@ export function PlayPage() {
     const content = text.trim();
     if (!content || busy) return;
     setDraft('');
-    stickToBottom.current = true;
+    anchorOnSend.current = true;
     setPending({ player: content, narration: '', activity: [], changes: [], error: null, done: false, turnNumber: null });
     const update = (fn: (p: PendingTurn) => PendingTurn) => setPending((p) => (p ? fn(p) : p));
 
@@ -190,6 +233,7 @@ export function PlayPage() {
   // Once history includes the finished turn, the in-flight copy steps aside.
   const live = pending && !(pending.done && turns.some((t) => t.turn === pending.turnNumber)) ? pending : null;
   const empty = turns.length === 0 && !live;
+  const latest = turns[turns.length - 1];
 
   const sidebar = <Sidebar campaignId={campaignId} state={s} tab={tab} onTab={setTab} />;
 
@@ -241,11 +285,8 @@ export function PlayPage() {
 
         <div
           ref={scroller}
-          onScroll={(e) => {
-            const el = e.currentTarget;
-            stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
-          }}
-          className="scroll-thin min-h-0 flex-1 overflow-y-auto"
+          onScroll={fitSpacer}
+          className="scroll-thin relative min-h-0 flex-1 overflow-y-auto"
         >
           <div className="mx-auto max-w-2xl space-y-10 px-4 py-8 sm:px-6">
             {history.hasNextPage && (
@@ -268,43 +309,62 @@ export function PlayPage() {
               </div>
             )}
 
-            {turns.map((t) => (
+            {(live ? turns : turns.slice(0, -1)).map((t) => (
               <TurnBlock key={t.turn} campaignId={campaignId} turn={t.turn} player={t.player} narrator={t.narrator} />
             ))}
 
-            {live && (
-              <article className="space-y-5" aria-live="polite">
-                <PlayerLine text={live.player} faded={Boolean(live.error)} />
-                {live.activity.length > 0 && !live.error && (
-                  <ul className="space-y-0.5 text-xs text-parchment-faint italic">
-                    {live.activity.map((a, i) => (
-                      <li key={i}>· {a}</li>
-                    ))}
-                  </ul>
-                )}
-                {live.error ? (
-                  <div className="space-y-3">
-                    <ErrorNote>{live.error.message}</ErrorNote>
-                    <div className="flex gap-2">
-                      {live.error.retryable && (
-                        <Button variant="primary" onClick={() => void send(live.player)}>
-                          Try again
+            {/* The latest turn: the one being written, or else the last saved one. Browser scroll
+                anchoring is off here, or it would follow the text as it grows. */}
+            <div ref={tail} className="[overflow-anchor:none]">
+              {!live && latest && (
+                <TurnBlock key={latest.turn} campaignId={campaignId} turn={latest.turn} player={latest.player} narrator={latest.narrator} />
+              )}
+              {live && (
+                <article className="space-y-5" aria-live="polite">
+                  <PlayerLine text={live.player} faded={Boolean(live.error)} />
+                  {live.activity.length > 0 && !live.error && (
+                    <ul className="space-y-0.5 text-xs text-parchment-faint italic">
+                      {live.activity.map((a, i) => (
+                        <li key={i}>· {a}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {live.error ? (
+                    <div className="space-y-3">
+                      <ErrorNote>{live.error.message}</ErrorNote>
+                      <div className="flex gap-2">
+                        {live.error.retryable && (
+                          <Button variant="primary" onClick={() => void send(live.player)}>
+                            Try again
+                          </Button>
+                        )}
+                        <Button variant="subtle" onClick={() => setPending(null)}>
+                          Dismiss
                         </Button>
-                      )}
-                      <Button variant="subtle" onClick={() => setPending(null)}>
-                        Dismiss
-                      </Button>
+                      </div>
                     </div>
-                  </div>
-                ) : live.narration ? (
-                  <Narration text={live.narration} streaming={!live.done} />
-                ) : (
-                  <p className="font-story text-parchment-faint italic">The narrator considers…</p>
-                )}
-              </article>
-            )}
+                  ) : live.narration ? (
+                    <Narration text={live.narration} streaming={!live.done} />
+                  ) : (
+                    <p className="font-story text-parchment-faint italic">The narrator considers…</p>
+                  )}
+                </article>
+              )}
+            </div>
           </div>
+          <div ref={spacer} aria-hidden className="[overflow-anchor:none]" />
         </div>
+        {moreBelow && busy && (
+          <div className="pointer-events-none relative">
+            <button
+              type="button"
+              onClick={() => scroller.current?.scrollBy({ top: scroller.current.clientHeight * 0.8, behavior: 'smooth' })}
+              className="pointer-events-auto absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-ink-600 bg-ink-900/95 px-3.5 py-1.5 text-xs text-parchment-dim shadow-lg shadow-black/40 transition hover:border-brass/60 hover:text-parchment"
+            >
+              More below ↓
+            </button>
+          </div>
+        )}
 
         {/* ---------------------------------------------- composer */}
         <form
