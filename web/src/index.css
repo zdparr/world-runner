@@ -1,0 +1,42 @@
+@import 'tailwindcss';
+
+/* Ink-and-candlelight palette: warm near-black surfaces, parchment text, brass accent. */
+@theme {
+  --color-ink-950: #0f0c09;
+  --color-ink-900: #16120e;
+  --color-ink-800: #1f1a14;
+  --color-ink-700: #2c251c;
+  --color-ink-600: #3d3427;
+  --color-parchment: #e9dfcb;
+  --color-parchment-dim: #b5a88f;
+  --color-parchment-faint: #7d7260;
+  --color-brass: #d6a756;
+  --color-brass-bright: #ecc57a;
+  --color-ember: #c8553d;
+  --color-verdigris: #5fa38d;
+
+  --font-story: 'Literata', Georgia, 'Times New Roman', serif;
+  --font-ui: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Cinzel', 'Literata', Georgia, serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-ink-950 text-parchment font-ui antialiased;
+    min-height: 100dvh;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgb(214 167 86 / 0.08), transparent 70%),
+      radial-gradient(ellipse 60% 50% at 50% 110%, rgb(200 85 61 / 0.05), transparent 70%);
+    background-attachment: fixed;
+  }
+  ::selection {
+    background: rgb(214 167 86 / 0.35);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brass);
+    outline-offset: 2px;
+  }
+}
