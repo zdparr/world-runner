@@ -229,6 +229,14 @@ function CampaignCard({ campaign }: { campaign: CampaignListItem }) {
           </>
         ) : (
           <>
+            {campaign.characterName && (
+              <Link
+                to={`/campaigns/${campaign.id}/play`}
+                className="rounded-md bg-brass px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-brass-bright"
+              >
+                {campaign.turnCount === 0 ? 'Begin' : 'Continue'}
+              </Link>
+            )}
             <Link
               to={`/campaigns/${campaign.id}/character`}
               className={cx(
@@ -238,11 +246,8 @@ function CampaignCard({ campaign }: { campaign: CampaignListItem }) {
                   : 'bg-brass font-semibold text-ink-950 hover:bg-brass-bright',
               )}
             >
-              {campaign.characterName ? 'Edit character' : 'Build character'}
+              {campaign.characterName ? 'Character' : 'Build character'}
             </Link>
-            <Button disabled title="The play screen arrives with the turn engine">
-              Play
-            </Button>
             <span className="flex-1" />
             {mode === 'view' && (
               <>

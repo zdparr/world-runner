@@ -43,6 +43,7 @@ import { normalizeObjectives } from '../game/missions';
 import { badRequest, notFound, parseId, parseWith } from '../http/errors';
 import { registerCharacterRoutes } from './character';
 import { registerCollection } from './crud';
+import { registerStateRoutes } from './state';
 import { registerTurnRoutes } from './turns';
 
 declare module 'fastify' {
@@ -129,6 +130,7 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
 
         registerCharacterRoutes(c);
         registerTurnRoutes(c, app.engine);
+        registerStateRoutes(c);
 
         // ---------------------------------------------------- world and state collections
 

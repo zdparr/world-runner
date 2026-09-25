@@ -20,7 +20,8 @@
     "db:generate": "npm run db:generate -w @narrator/server",
     "db:migrate": "node server/dist/migrate.js",
     "db:migrate:dev": "npm run db:migrate:dev -w @narrator/server",
-    "seed": "tsx server/src/db/seed/run.ts"
+    "seed": "tsx server/src/db/seed/run.ts",
+    "dev:demo": "concurrently -k -n demo,web -c yellow,magenta \"npm run dev:demo -w @narrator/server\" \"npm run dev -w @narrator/web\""
   },
   "devDependencies": {
     "concurrently": "^10.0.5"

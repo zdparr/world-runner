@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import type Anthropic from '@anthropic-ai/sdk';
+import type { ContextManifest, ContextSlice } from '@narrator/shared';
 import type { Db } from '../db/client';
 import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships } from '../db/schema';
 import { repoRoot } from '../paths';
@@ -10,21 +11,6 @@ import type { CampaignRow, CharacterRow } from './game';
 const NARRATOR_PROMPT = readFileSync(join(repoRoot, 'server/src/engine/prompts/narrator.md'), 'utf8').trim();
 
 // ---------------------------------------------------------------- manifest
-
-/** One piece of context and why it was included. Stored in turn_debug and shown in the debug drawer. */
-export interface ContextSlice {
-  slice: string;
-  reason: string;
-  approxTokens: number;
-  detail?: unknown;
-}
-
-export interface ContextManifest {
-  core: ContextSlice[];
-  prefetched: ContextSlice[];
-  /** State categories deliberately left out of context (available via tools). */
-  notIncluded: string[];
-}
 
 export interface TurnContext {
   system: Anthropic.TextBlockParam[];

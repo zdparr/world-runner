@@ -394,3 +394,16 @@ export const CampaignFromTemplate = z
   })
   .strict();
 export type CampaignFromTemplate = z.input<typeof CampaignFromTemplate>;
+
+// ---------------------------------------------------------------- play screen snapshot
+
+/** Everything the play screen's sidebar shows, in one request. */
+export interface CampaignState {
+  campaign: Pick<Campaign, 'id' | 'name' | 'currencyName' | 'turnCount'>;
+  character: PlayerCharacter | null;
+  location: Pick<Location, 'id' | 'name' | 'description'> | null;
+  skills: Skill[];
+  items: InventoryItem[];
+  relationships: (Relationship & { npcName: string; npcAlive: boolean })[];
+  missions: (Mission & { giverName: string | null })[];
+}

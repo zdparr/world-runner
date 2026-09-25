@@ -28,6 +28,8 @@ Open http://localhost:5173.
 
 Other scripts:
 
+- `npm run dev:demo`: like `npm run dev`, but the narrator is a scripted fake ([demo-server.ts](server/scripts/demo-server.ts)) that calls real tools. Use it to work on the UI without an API key or API costs.
+
 - `npm test`: server tests (vitest). Database tests run against PGlite (in-process Postgres), so Docker is not needed for tests.
 - `npm run seed -- --world brinecross` seeds a different world, `--all` seeds every world, and `--reset` deletes and recreates the demo campaign(s). Other campaigns are untouched.
 - Worlds are plain data in [server/src/db/seed/worlds/](server/src/db/seed/worlds/). To add one, write a file there and list it in [templates.ts](server/src/db/seed/templates.ts); it appears as a template in the New Campaign form.

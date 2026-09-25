@@ -40,3 +40,92 @@
     outline-offset: 2px;
   }
 }
+
+/* ------------------------------------------------------------------ play screen */
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@utility animate-toast {
+  animation: toast-in 180ms ease-out;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@utility animate-caret {
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+/* Narration rendered from markdown. */
+.story {
+  font-family: var(--font-story);
+  font-size: 1.075rem;
+  line-height: 1.75;
+  color: var(--color-parchment);
+}
+.story > * + * {
+  margin-top: 0.9em;
+}
+.story em {
+  color: var(--color-parchment);
+  font-style: italic;
+}
+.story strong {
+  color: var(--color-brass-bright);
+  font-weight: 600;
+}
+.story ul,
+.story ol {
+  padding-left: 1.4em;
+}
+.story ul {
+  list-style: disc;
+}
+.story ol {
+  list-style: decimal;
+}
+.story li + li {
+  margin-top: 0.25em;
+}
+.story li::marker {
+  color: var(--color-brass);
+}
+.story blockquote {
+  border-left: 2px solid rgb(214 167 86 / 0.5);
+  padding-left: 1em;
+  color: var(--color-parchment-dim);
+  font-style: italic;
+}
+.story hr {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgb(214 167 86 / 0.4), transparent);
+}
+.story h1,
+.story h2,
+.story h3 {
+  font-family: var(--font-display);
+  color: var(--color-brass);
+  letter-spacing: 0.08em;
+}
+.story code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  color: var(--color-parchment-dim);
+}
+
+/* Thin, dark scrollbars inside panels. */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-600) transparent;
+}

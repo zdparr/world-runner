@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:dev": "tsx src/db/migrate.ts"
+    "db:migrate:dev": "tsx src/db/migrate.ts",
+    "dev:demo": "tsx watch --clear-screen=false scripts/demo-server.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

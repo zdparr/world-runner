@@ -40,3 +40,44 @@ export interface UndoResult {
   undoneTurn: number;
   revertedChanges: StateChange[];
 }
+
+// ---------------------------------------------------------------- debug records (turn_debug)
+
+/** One piece of context and why it was included. */
+export interface ContextSlice {
+  slice: string;
+  reason: string;
+  approxTokens: number;
+  detail?: unknown;
+}
+
+export interface ContextManifest {
+  core: ContextSlice[];
+  prefetched: ContextSlice[];
+  /** State categories deliberately left out of context (available via tools). */
+  notIncluded: string[];
+}
+
+export interface RoundUsage {
+  round: number;
+  stopReason: string | null;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+}
+
+export interface ToolCallRecord {
+  round: number;
+  name: string;
+  input: unknown;
+  ok: boolean;
+  result: string;
+  ms: number;
+}
+
+/** What turn_debug.context_manifest holds: the context manifest plus what the tools loaded. */
+export interface TurnDebugManifest extends ContextManifest {
+  loadedByTools: { tool: string; input: unknown }[];
+  rounds: RoundUsage[];
+}

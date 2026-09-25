@@ -119,3 +119,27 @@ describe('character sheet', () => {
     expect((await t.api('GET', url)).json()).toEqual({ character: null, skills: [], items: [] });
   });
 });
+
+describe('play state snapshot', () => {
+  it('returns the sidebar data with names resolved', async () => {
+    const created = await t.api('POST', '/api/campaigns/from-template', { templateId: 'varenhold', name: 'State test', includeCharacter: true });
+    const state = (await t.api('GET', `/api/campaigns/${created.json().id}/state`)).json();
+    expect(state.campaign).toMatchObject({ name: 'State test', currencyName: 'gold', turnCount: 0 });
+    expect(state.character).toMatchObject({ name: 'Rowan Ashford', money: 35 });
+    expect(state.location).toMatchObject({ name: 'The Bastion' });
+    expect(state.skills[0]).toMatchObject({ name: 'Swordplay', level: 3 });
+    expect(state.items.slice(0, 3).every((i: { equipped: boolean }) => i.equipped)).toBe(true);
+    expect(state.relationships.map((r: { npcName: string }) => r.npcName).sort()).toEqual([
+      'Brakka Ironbrew',
+      'Commander Aveline Thorne',
+      'Inquisitor Malrec Soren',
+    ]);
+    expect(state.missions[0]).toMatchObject({ title: 'The Silent Watchtower', giverName: 'Commander Aveline Thorne' });
+  });
+
+  it('works before a character exists', async () => {
+    const { id } = await newCampaign();
+    const state = (await t.api('GET', `/api/campaigns/${id}/state`)).json();
+    expect(state).toMatchObject({ character: null, location: null, skills: [], items: [], relationships: [], missions: [] });
+  });
+});

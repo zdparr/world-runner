@@ -526,9 +526,18 @@ function Builder({
               Discard
             </Button>
           )}
-          <Button variant="primary" disabled={!dirty || problems.length > 0 || save.isPending} onClick={() => save.mutate()}>
-            {save.isPending ? 'Saving…' : isNew && !savedAt ? 'Create character' : 'Save'}
-          </Button>
+          {!dirty && !isNew ? (
+            <Link
+              to={`/campaigns/${campaignId}/play`}
+              className="rounded-md bg-brass px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-brass-bright"
+            >
+              Play →
+            </Link>
+          ) : (
+            <Button variant="primary" disabled={!dirty || problems.length > 0 || save.isPending} onClick={() => save.mutate()}>
+              {save.isPending ? 'Saving…' : isNew && !savedAt ? 'Create character' : 'Save'}
+            </Button>
+          )}
         </div>
       </div>
     </div>

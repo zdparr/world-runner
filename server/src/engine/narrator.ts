@@ -1,4 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
+import type { RoundUsage, ToolCallRecord } from '@narrator/shared';
+
+export type { RoundUsage, ToolCallRecord };
 
 /** The slice of the SDK's MessageStream the loop uses; lets tests script the model. */
 export interface ModelStream {
@@ -10,24 +13,6 @@ export type StreamFn = (params: Anthropic.MessageStreamParams) => ModelStream;
 export interface ToolOutcome {
   content: string;
   isError: boolean;
-}
-
-export interface ToolCallRecord {
-  round: number;
-  name: string;
-  input: unknown;
-  ok: boolean;
-  result: string;
-  ms: number;
-}
-
-export interface RoundUsage {
-  round: number;
-  stopReason: string | null;
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheCreationTokens: number;
 }
 
 export interface NarratorResult {
