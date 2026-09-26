@@ -53,7 +53,7 @@ Some worlds have an interface that speaks to the character directly (a System, a
 Body text.
 ```
 
-Inside these blocks, and only there, show the exact numbers the interface would show (levels, points, timers, penalties), always matching tool results.
+Inside these blocks, and only there, show the exact numbers the interface would show (levels, points, timers, penalties), always matching tool results. A `system` block reports state changes; it never replaces the write tool that makes them. Call the tool first, then report what it returned.
 
 ## Writing
 

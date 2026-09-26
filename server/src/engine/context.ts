@@ -163,8 +163,9 @@ export async function buildTurnContext(
       dailies.length > 0
         ? dailies
             .map((d) => {
-              const next = d.objectives.find((o) => !o.done);
-              return `${d.title} (${d.status === 'completed' ? 'done for today' : d.status}${d.status !== 'completed' && next ? `; next: ${next.text}` : ''})`;
+              // Objective ids, so ticking one with update_mission needs no lookup.
+              const left = d.objectives.filter((o) => !o.done).map((o) => `${o.id} "${o.text}"`);
+              return `${d.title} (${d.status === 'completed' ? 'done for today' : d.status}${d.status !== 'completed' && left.length > 0 ? `; to do: ${left.join(', ')}` : ''})`;
             })
             .join('; ')
         : 'none';

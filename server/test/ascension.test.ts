@@ -65,7 +65,9 @@ describe('ascension rule set', () => {
     expect(staticBlock).toContain('# Rule set: Ascension');
     expect(dynamicBlock).toContain('Attributes: Strength 5, Agility 6, Vitality 5, Perception 7, Will 8 (unspent stat points: 0)');
     expect(dynamicBlock).toContain('In-game day: 1');
-    expect(dynamicBlock).toMatch(/Daily quests: Daily Quest: Baseline \(active; next: Carry 500 pounds/);
+    expect(dynamicBlock).toContain(
+      'Daily quests: Daily Quest: Baseline (active; to do: o1 "Carry 500 pounds of debris or equipment over the course of the day", o2 "Cover 5 miles on foot before nightfall")',
+    );
     // The daily quest doesn't crowd out the story mission.
     expect(dynamicBlock).not.toContain('Active mission: Daily Quest');
 
@@ -144,6 +146,23 @@ describe('ascension rule set', () => {
 
     await play(id, 'I finish it again.', [{ tools: [complete] }, { text: 'Done.' }]);
     expect((await character(id)).xp).toBe(80);
+  });
+
+  it('completes a daily quest, with its rewards, when its last objective is ticked', async () => {
+    const id = await newCampaign();
+    const tick = (oid: string) => ({ name: 'update_mission', input: { title: 'Daily Quest: Baseline', objective_updates: [{ id: oid, done: true }] } });
+    await play(id, 'I haul debris all morning.', [{ tools: [tick('o1')] }, { text: 'Heavy.' }]);
+    expect(await daily(id)).toMatchObject({ status: 'active', rewardsGranted: false });
+
+    const { calls } = await play(id, 'I walk the last miles.', [{ tools: [tick('o2')] }, { text: 'Done.' }]);
+    expect(JSON.parse(result(calls[1]!).content as string)).toMatchObject({ status: 'completed', rewardsGranted: [{ xp: 40 }] });
+    expect(await daily(id)).toMatchObject({ status: 'completed', rewardsGranted: true });
+    expect((await character(id)).xp).toBe(40);
+
+    // Day end: completed, so no penalty.
+    const hp = (await character(id)).hp;
+    await play(id, 'I sleep.', [{ tools: [{ name: 'advance_day', input: { reason: 'slept' } }] }, { text: 'Dawn.' }]);
+    expect((await character(id)).hp).toBe(hp);
   });
 
   it('lets the narrator issue new daily quests', async () => {

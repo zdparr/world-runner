@@ -729,7 +729,10 @@ const writeTools: ToolDef[] = [
       }
       if (input.add_objectives?.length) objectives = normalizeObjectives([...objectives, ...input.add_objectives.map((text) => ({ text }))]);
 
-      const status = input.status ?? m.status;
+      // A daily quest is done when its last objective is: complete it even if the narrator forgets to say so.
+      const autoCompleted =
+        !input.status && m.recurrence === 'daily' && m.status === 'active' && objectives.length > 0 && objectives.every((o) => o.done);
+      const status = autoCompleted ? 'completed' : (input.status ?? m.status);
       const completing = status === 'completed' && !m.rewardsGranted;
       await ctx.mutator.update('missions', { id: m.id }, { objectives, status, ...(completing ? { rewardsGranted: true } : {}) });
       const ticked = (input.objective_updates ?? []).filter((u) => u.done).map((u) => objectives.find((o) => o.id === u.id)!.text);
@@ -754,7 +757,13 @@ const writeTools: ToolDef[] = [
           granted.push(await applyRelationship(ctx, rel.npc, rel.affinity, rel.trust, `Completed "${m.title}"`).catch((e: unknown) => ({ skipped: rel.npc, reason: e instanceof Error ? e.message : String(e) })));
         }
       }
-      return { title: m.title, status, objectives, ...(completing ? { rewardsGranted: granted } : {}) };
+      return {
+        title: m.title,
+        status,
+        objectives,
+        ...(autoCompleted ? { note: 'Every objective is done, so this daily quest is now complete.' } : {}),
+        ...(completing ? { rewardsGranted: granted } : {}),
+      };
     },
   }),
 
