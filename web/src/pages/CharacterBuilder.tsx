@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CharacterSheet, CharacterSheetSave, Location, StatusEffect } from '@narrator/shared';
+import { ATTRIBUTES, type Attributes, type CharacterSheet, type CharacterSheetSave, type Location, type Ruleset, type StatusEffect } from '@narrator/shared';
 import { ApiRequestError, api } from '../api';
 import { Button, ErrorNote, Input, Label, NumberInput, Panel, Select, Spinner, Textarea, cx } from '../components/ui';
 
@@ -18,6 +18,8 @@ interface DraftCharacter {
   hp: number;
   maxHp: number;
   statusEffects: StatusEffect[];
+  attributes: Attributes;
+  unspentStatPoints: number;
 }
 
 interface DraftSkill {
@@ -51,7 +53,10 @@ const ARCHETYPES = ['rogue', 'fighter', 'sailor', 'scholar', 'priest', 'bard', '
 let keySeq = 0;
 const newKey = () => `k${++keySeq}`;
 
-function draftFrom(sheet: CharacterSheet, locations: Location[]): Draft {
+/** A new character's starting attributes under the ascension rule set. */
+const STARTING_ATTRIBUTES: Attributes = Object.fromEntries(ATTRIBUTES.map((a) => [a, 5]));
+
+function draftFrom(sheet: CharacterSheet, locations: Location[], ruleset: Ruleset): Draft {
   const c = sheet.character;
   return {
     character: c
@@ -66,6 +71,8 @@ function draftFrom(sheet: CharacterSheet, locations: Location[]): Draft {
           hp: c.hp,
           maxHp: c.maxHp,
           statusEffects: c.statusEffects,
+          attributes: c.attributes,
+          unspentStatPoints: c.unspentStatPoints,
         }
       : {
           name: '',
@@ -78,6 +85,8 @@ function draftFrom(sheet: CharacterSheet, locations: Location[]): Draft {
           hp: 10,
           maxHp: 10,
           statusEffects: [],
+          attributes: ruleset === 'ascension' ? STARTING_ATTRIBUTES : {},
+          unspentStatPoints: 0,
         },
     skills: sheet.skills.map((s) => ({ key: s.id, id: s.id, name: s.name, level: s.level, xp: s.xp, description: s.description })),
     items: sheet.items.map((i) => ({
@@ -107,6 +116,8 @@ function toPayload(d: Draft): CharacterSheetSave {
       xp: int(c.xp, 0),
       hp: int(c.hp, 1),
       maxHp: int(c.maxHp, 1),
+      attributes: Object.fromEntries(Object.entries(c.attributes).map(([a, v]) => [a, int(v, 0)])),
+      unspentStatPoints: int(c.unspentStatPoints, 0),
     },
     skills: d.skills.map(({ id, name, level, xp, description }) => ({
       ...(id ? { id } : {}),
@@ -173,6 +184,7 @@ export function CharacterBuilder() {
       campaignId={campaignId}
       campaignName={campaign.data.name}
       currency={campaign.data.currencyName}
+      ruleset={campaign.data.ruleset}
       locations={locations.data}
       sheet={sheet.data}
     />
@@ -197,17 +209,19 @@ function Builder({
   campaignId,
   campaignName,
   currency,
+  ruleset,
   locations,
   sheet,
 }: {
   campaignId: string;
   campaignName: string;
   currency: string;
+  ruleset: Ruleset;
   locations: Location[];
   sheet: CharacterSheet;
 }) {
   const queryClient = useQueryClient();
-  const initial = useMemo(() => draftFrom(sheet, locations), [sheet, locations]);
+  const initial = useMemo(() => draftFrom(sheet, locations, ruleset), [sheet, locations, ruleset]);
   const [draft, setDraft] = useState<Draft>(initial);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const isNew = sheet.character === null;
@@ -226,7 +240,7 @@ function Builder({
   const save = useMutation({
     mutationFn: () => api.saveSheet(campaignId, toPayload(draft)),
     onSuccess: (saved) => {
-      const next = draftFrom(saved, locations);
+      const next = draftFrom(saved, locations, ruleset);
       baseline.current = JSON.stringify(toPayload(next));
       setDraft(next);
       setSavedAt(Date.now());
@@ -366,6 +380,38 @@ function Builder({
               </div>
             </div>
           </Panel>
+
+          {ruleset === 'ascension' && (
+            <Panel title="Attributes">
+              <div className="grid grid-cols-3 gap-4">
+                {ATTRIBUTES.map((a) => (
+                  <div key={a}>
+                    <Label htmlFor={`pc-attr-${a}`}>{a[0]!.toUpperCase() + a.slice(1)}</Label>
+                    <NumberInput
+                      id={`pc-attr-${a}`}
+                      min={0}
+                      max={999}
+                      value={c.attributes[a] ?? 0}
+                      onChange={(v) => setCharacter({ attributes: { ...c.attributes, [a]: v } })}
+                    />
+                  </div>
+                ))}
+                <div>
+                  <Label htmlFor="pc-stat-points">Unspent points</Label>
+                  <NumberInput
+                    id="pc-stat-points"
+                    min={0}
+                    max={10_000}
+                    value={c.unspentStatPoints}
+                    onChange={(unspentStatPoints) => setCharacter({ unspentStatPoints })}
+                  />
+                </div>
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-parchment-faint">
+                Attributes grow only through stat points, granted on each level-up. Each 5 points adds +1 to checks that lean on it.
+              </p>
+            </Panel>
+          )}
 
           <Panel title="How the narrator sees you">
             <p className="rounded-md border border-ink-700 bg-ink-950/70 px-3 py-2.5 font-mono text-xs leading-relaxed text-parchment-dim">
@@ -522,7 +568,7 @@ function Builder({
             )}
           </div>
           {dirty && (
-            <Button variant="subtle" onClick={() => setDraft(draftFrom(sheet, locations))} disabled={save.isPending}>
+            <Button variant="subtle" onClick={() => setDraft(draftFrom(sheet, locations, ruleset))} disabled={save.isPending}>
               Discard
             </Button>
           )}

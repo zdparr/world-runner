@@ -1,10 +1,14 @@
 import { z } from 'zod';
 import {
+  Attributes,
   MissionObjective,
   MissionObjectiveInput,
+  MissionPenalty,
+  MissionRecurrence,
   MissionRewards,
   RELATIONSHIP_MAX,
   RELATIONSHIP_MIN,
+  Ruleset,
   StatusEffect,
   Tags,
 } from './game';
@@ -40,6 +44,7 @@ const campaignShape = {
   currencyName: z.string().trim().min(1).max(40).default('gold'),
   historyWindow: z.number().int().min(2).max(40).default(8),
   summaryInterval: z.number().int().min(2).max(100).default(10),
+  ruleset: Ruleset.default('classic'),
 };
 export const CampaignCreate = z.object(campaignShape).strict();
 export const CampaignUpdate = updateOf({ ...campaignShape, rollingSummary: LongText });
@@ -56,6 +61,9 @@ export interface Campaign {
   turnCount: number;
   historyWindow: number;
   summaryInterval: number;
+  ruleset: Ruleset;
+  /** In-game day, advanced by the narrator (drives daily quests). */
+  gameDay: number;
   rngSeed: number;
   createdAt: string;
   updatedAt: string;
@@ -83,6 +91,9 @@ const characterShape = {
   hp: z.number().int().nonnegative().default(10),
   maxHp: z.number().int().positive().default(10),
   statusEffects: z.array(StatusEffect).max(30).default([]),
+  /** Ascension ruleset only; empty otherwise. */
+  attributes: Attributes.default({}),
+  unspentStatPoints: z.number().int().min(0).max(10_000).default(0),
 };
 export const CharacterUpsert = z
   .object(characterShape)
@@ -105,6 +116,8 @@ export interface PlayerCharacter {
   hp: number;
   maxHp: number;
   statusEffects: StatusEffect[];
+  attributes: Attributes;
+  unspentStatPoints: number;
   updatedAt: string;
 }
 
@@ -271,6 +284,8 @@ const missionShape = {
   status: z.enum(MISSION_STATUSES).default('offered'),
   objectives: z.array(MissionObjectiveInput).max(30).default([]),
   rewards: MissionRewards.default({}),
+  recurrence: MissionRecurrence.nullable().default(null),
+  penalty: MissionPenalty.default({}),
 };
 export const MissionCreate = z.object(missionShape).strict();
 export const MissionUpdate = updateOf(missionShape);
@@ -286,6 +301,9 @@ export interface Mission {
   objectives: MissionObjective[];
   rewards: MissionRewards;
   rewardsGranted: boolean;
+  /** 'daily': resets each in-game day, with `penalty` applied if left incomplete. */
+  recurrence: MissionRecurrence | null;
+  penalty: MissionPenalty;
   createdAt: string;
   updatedAt: string;
 }
@@ -399,7 +417,7 @@ export type CampaignFromTemplate = z.input<typeof CampaignFromTemplate>;
 
 /** Everything the play screen's sidebar shows, in one request. */
 export interface CampaignState {
-  campaign: Pick<Campaign, 'id' | 'name' | 'currencyName' | 'turnCount' | 'rollingSummary' | 'summaryInterval'>;
+  campaign: Pick<Campaign, 'id' | 'name' | 'currencyName' | 'turnCount' | 'rollingSummary' | 'summaryInterval' | 'ruleset' | 'gameDay'>;
   /** Whether post-turn memory upkeep (summary, note condensing) can run: needs an API key. */
   memoryEnabled: boolean;
   character: PlayerCharacter | null;

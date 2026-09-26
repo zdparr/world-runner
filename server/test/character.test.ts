@@ -19,7 +19,7 @@ describe('templates', () => {
   it('lists templates without colliding with campaign ids', async () => {
     const res = await t.api('GET', '/api/campaigns/templates');
     expect(res.statusCode).toBe(200);
-    expect(res.json().map((t: { id: string }) => t.id)).toEqual(['varenhold', 'brinecross']);
+    expect(res.json().map((t: { id: string }) => t.id)).toEqual(['varenhold', 'brinecross', 'harrowmere', 'five-banners', 'threshold']);
     expect(res.json()[0]).toMatchObject({ name: 'Varenhold', description: expect.stringMatching(/fantasy/) });
   });
 

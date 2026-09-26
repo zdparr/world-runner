@@ -3,10 +3,13 @@ import type { Db } from '../client';
 import { campaigns } from '../schema';
 import { insertWorld, type WorldTemplate } from './world';
 import { brinecross } from './worlds/brinecross';
+import { fiveBanners } from './worlds/five-banners';
+import { harrowmere } from './worlds/harrowmere';
+import { threshold } from './worlds/threshold';
 import { varenhold } from './worlds/varenhold';
 
 /** Ready-made worlds a new campaign can start from. The first is the default demo. */
-export const TEMPLATES: WorldTemplate[] = [varenhold, brinecross];
+export const TEMPLATES: WorldTemplate[] = [varenhold, brinecross, harrowmere, fiveBanners, threshold];
 
 export function findTemplate(id: string): WorldTemplate | undefined {
   return TEMPLATES.find((t) => t.id === id);

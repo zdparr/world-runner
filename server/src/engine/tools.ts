@@ -2,16 +2,21 @@ import { and, desc, eq, lt, notLike, sql, type SQL } from 'drizzle-orm';
 import type Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import {
+  AttributeName,
   CHECK_XP,
   DIFFICULTIES,
   MISSION_STATUSES,
+  MissionPenalty,
+  MissionRecurrence,
   MissionRewards,
+  attributeBonus,
   resolveCheck,
   skillXpToNext,
   type MissionObjective,
+  type Ruleset,
   type StatusEffect,
 } from '@narrator/shared';
-import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills, stateEvents } from '../db/schema';
+import { campaigns, inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills, stateEvents } from '../db/schema';
 import { normalizeObjectives } from '../game/missions';
 import {
   addItem,
@@ -36,6 +41,8 @@ export interface ToolDef<S extends z.ZodType = z.ZodType> {
   description: string;
   input: S;
   kind: 'read' | 'write';
+  /** Offered only to campaigns with one of these rule sets; omitted = every rule set. */
+  rulesets?: readonly Ruleset[];
   run: (ctx: EngineContext, input: z.output<S>) => Promise<unknown>;
 }
 
@@ -114,6 +121,115 @@ async function npcName(ctx: EngineContext, id: string | null) {
   const [row] = await ctx.db.select({ name: npcs.name }).from(npcs).where(eq(npcs.id, id));
   return row?.name ?? null;
 }
+
+// ---------------------------------------------------------------- tools that vary by rule set
+
+const createMissionInput = z.object({
+  title: Name,
+  description: z.string().trim().min(1).max(3000),
+  giver_npc_name: Name.optional(),
+  objectives: z.array(z.string().trim().min(1).max(300)).min(1).max(12),
+  rewards: MissionRewards.default({}),
+  status: z.enum(['offered', 'active']).default('offered'),
+});
+
+/** Extra create_mission fields under the ascension rule set. */
+const RECURRING = {
+  recurrence: MissionRecurrence.optional().describe('"daily" for a daily quest: it resets every in-game day (see advance_day)'),
+  penalty: MissionPenalty.optional().describe('Daily quests only: applied automatically if it is left incomplete when the day ends'),
+};
+
+function recurringFields(input: object) {
+  const r = input as { recurrence?: 'daily'; penalty?: MissionPenalty };
+  return r.recurrence ? { recurrence: r.recurrence, penalty: r.penalty ?? {} } : {};
+}
+
+function createMissionTool(ruleset: Ruleset): ToolDef {
+  return tool({
+    name: 'create_mission',
+    kind: 'write',
+    rulesets: [ruleset],
+    description:
+      'Record a mission when an NPC or event in the story actually offers one. Rewards are granted automatically on completion; scale them to difficulty and risk. Use status "active" only if the player has already accepted.',
+    input: ruleset === 'ascension' ? createMissionInput.extend(RECURRING) : createMissionInput,
+    run: async (ctx, input) => {
+      const giver = input.giver_npc_name ? await findNpc(ctx, input.giver_npc_name) : null;
+      const [dup] = await ctx.db
+        .select({ id: missions.id })
+        .from(missions)
+        .where(and(eq(missions.campaignId, ctx.campaign.id), sql`lower(${missions.title}) = lower(${input.title})`));
+      if (dup) throw new ToolError(`A mission titled "${input.title}" already exists. Use update_mission.`);
+      const objectives = normalizeObjectives(input.objectives.map((text) => ({ text })));
+      await ctx.mutator.insert('missions', {
+        title: input.title,
+        description: input.description,
+        giverNpcId: giver?.id ?? null,
+        status: input.status,
+        objectives,
+        rewards: input.rewards,
+        ...recurringFields(input),
+      });
+      await ctx.record({
+        eventType: 'mission_created',
+        humanReadable: `${input.status === 'active' ? 'Mission started' : 'Mission offered'}: ${input.title}`,
+        details: { mission: input.title, status: input.status },
+      });
+      return { created: input.title, status: input.status, objectives };
+    },
+  });
+}
+
+const SKILL_CHECK_DESCRIPTION =
+  "Roll for an uncertain action. The server rolls d20 + the character's skill level against the difficulty and returns success, partial (success at a cost), or fail. You must narrate the returned outcome, including failures. Pick the most relevant skill; an untrained skill rolls at +0.";
+
+const skillCheckInput = z.object({
+  skill_name: Name,
+  difficulty: z.enum(DIFFICULTIES),
+  action: z.string().trim().max(200).default('').describe('What is being attempted, for the log'),
+});
+
+function skillCheckTool(ruleset: Ruleset): ToolDef {
+  return tool({
+    name: 'skill_check',
+    kind: 'write',
+    rulesets: [ruleset],
+    description:
+      ruleset === 'ascension'
+        ? `${SKILL_CHECK_DESCRIPTION} Also name the core attribute the action leans on (Strength to force a door, Agility to dodge, Perception to spot, Will to resist); it adds +1 per 5 points.`
+        : SKILL_CHECK_DESCRIPTION,
+    input: ruleset === 'ascension' ? skillCheckInput.extend({ attribute: AttributeName.optional() }) : skillCheckInput,
+    run: async (ctx, input) => {
+      const skill = await findSkill(ctx, input.skill_name);
+      const attribute = (input as { attribute?: AttributeName }).attribute;
+      const pc = attribute ? await getCharacter(ctx) : null;
+      const bonus = attribute ? attributeBonus(pc!.attributes[attribute] ?? 0) : 0;
+      const modifier = (skill?.level ?? 0) + bonus;
+      const roll = rollD20(ctx.campaign.rngSeed, ctx.turnNumber, ctx.nextRollIndex());
+      const { total, dc, outcome } = resolveCheck(roll, modifier, input.difficulty);
+      const name = skill?.name ?? input.skill_name;
+      await ctx.record({
+        eventType: 'skill_check',
+        humanReadable: `${name} check (${input.difficulty}): ${outcome}${input.action ? `: ${input.action}` : ''}`,
+        details: { skill: name, difficulty: input.difficulty, roll, modifier, total, dc, outcome, trained: Boolean(skill), ...(attribute ? { attribute, attributeBonus: bonus } : {}) },
+        always: true,
+      });
+      // Practice makes perfect: attempting a check with a trained skill earns a little XP.
+      const practice = skill ? await applySkillXp(ctx, skill.name, CHECK_XP[outcome], 'practice') : null;
+      return {
+        outcome,
+        roll,
+        modifier,
+        ...(attribute ? { attribute, attributeBonus: bonus } : {}),
+        total,
+        dc,
+        ...(skill ? {} : { note: 'Untrained: rolled at +0.' }),
+        ...(practice && practice.level > practice.levelBefore ? { levelUp: `${practice.skill} is now level ${practice.level}` } : {}),
+      };
+    },
+  });
+}
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 // ---------------------------------------------------------------- read tools
 
@@ -588,43 +704,8 @@ const writeTools: ToolDef[] = [
     },
   }),
 
-  tool({
-    name: 'create_mission',
-    kind: 'write',
-    description:
-      'Record a mission when an NPC or event in the story actually offers one. Rewards are granted automatically on completion; scale them to difficulty and risk. Use status "active" only if the player has already accepted.',
-    input: z.object({
-      title: Name,
-      description: z.string().trim().min(1).max(3000),
-      giver_npc_name: Name.optional(),
-      objectives: z.array(z.string().trim().min(1).max(300)).min(1).max(12),
-      rewards: MissionRewards.default({}),
-      status: z.enum(['offered', 'active']).default('offered'),
-    }),
-    run: async (ctx, input) => {
-      const giver = input.giver_npc_name ? await findNpc(ctx, input.giver_npc_name) : null;
-      const [dup] = await ctx.db
-        .select({ id: missions.id })
-        .from(missions)
-        .where(and(eq(missions.campaignId, ctx.campaign.id), sql`lower(${missions.title}) = lower(${input.title})`));
-      if (dup) throw new ToolError(`A mission titled "${input.title}" already exists. Use update_mission.`);
-      const objectives = normalizeObjectives(input.objectives.map((text) => ({ text })));
-      await ctx.mutator.insert('missions', {
-        title: input.title,
-        description: input.description,
-        giverNpcId: giver?.id ?? null,
-        status: input.status,
-        objectives,
-        rewards: input.rewards,
-      });
-      await ctx.record({
-        eventType: 'mission_created',
-        humanReadable: `${input.status === 'active' ? 'Mission started' : 'Mission offered'}: ${input.title}`,
-        details: { mission: input.title, status: input.status },
-      });
-      return { created: input.title, status: input.status, objectives };
-    },
-  }),
+  createMissionTool('classic'),
+  createMissionTool('ascension'),
 
   tool({
     name: 'update_mission',
@@ -677,39 +758,107 @@ const writeTools: ToolDef[] = [
     },
   }),
 
+  skillCheckTool('classic'),
+  skillCheckTool('ascension'),
+
+  // ------------------------------------------------ ascension rule set only
+
   tool({
-    name: 'skill_check',
+    name: 'allocate_stat_point',
     kind: 'write',
+    rulesets: ['ascension'],
     description:
-      "Roll for an uncertain action. The server rolls d20 + the character's skill level against the difficulty and returns success, partial (success at a cost), or fail. You must narrate the returned outcome, including failures. Pick the most relevant skill; an untrained skill rolls at +0.",
+      "Spend the character's unspent stat points on a core attribute. Only when the player chooses how to allocate them (in or out of character); never decide for them.",
+    input: z.object({ attribute: AttributeName, points: z.number().int().min(1).max(100).default(1), reason: Reason }),
+    run: async (ctx, input) => {
+      const pc = await getCharacter(ctx);
+      if (input.points > pc.unspentStatPoints) {
+        throw new ToolError(`Not enough stat points: the character has ${pc.unspentStatPoints} unspent. Nothing was allocated.`);
+      }
+      const before = pc.attributes[input.attribute] ?? 0;
+      const after = before + input.points;
+      const unspentStatPoints = pc.unspentStatPoints - input.points;
+      await ctx.mutator.update(
+        'player_character',
+        { campaignId: ctx.campaign.id },
+        { attributes: { ...pc.attributes, [input.attribute]: after }, unspentStatPoints },
+      );
+      await ctx.record({
+        eventType: 'attribute',
+        humanReadable: `${capitalize(input.attribute)} ${before} → ${after}${input.reason ? ` (${input.reason})` : ''}`,
+        details: { attribute: input.attribute, before, after, points: input.points, unspentStatPoints },
+      });
+      return { attribute: input.attribute, before, after, unspentStatPoints };
+    },
+  }),
+
+  tool({
+    name: 'advance_day',
+    kind: 'write',
+    rulesets: ['ascension'],
+    description:
+      'End the in-game day and begin the next (the character sleeps, or a night passes). Every daily quest left incomplete (active or failed) has its penalty applied automatically, then every daily quest resets for the new day. Optionally give daily quests fresh objectives. Never apply daily penalties by hand.',
     input: z.object({
-      skill_name: Name,
-      difficulty: z.enum(DIFFICULTIES),
-      action: z.string().trim().max(200).default('').describe('What is being attempted, for the log'),
+      reason: Reason,
+      daily_objectives: z
+        .array(z.object({ title: Name, objectives: z.array(z.string().trim().min(1).max(300)).min(1).max(12) }))
+        .max(10)
+        .optional()
+        .describe('New objectives for named daily quests; the others keep their objectives, unticked'),
     }),
     run: async (ctx, input) => {
-      const skill = await findSkill(ctx, input.skill_name);
-      const modifier = skill?.level ?? 0;
-      const roll = rollD20(ctx.campaign.rngSeed, ctx.turnNumber, ctx.nextRollIndex());
-      const { total, dc, outcome } = resolveCheck(roll, modifier, input.difficulty);
-      const name = skill?.name ?? input.skill_name;
-      await ctx.record({
-        eventType: 'skill_check',
-        humanReadable: `${name} check (${input.difficulty}): ${outcome}${input.action ? `: ${input.action}` : ''}`,
-        details: { skill: name, difficulty: input.difficulty, roll, modifier, total, dc, outcome, trained: Boolean(skill) },
-        always: true,
-      });
-      // Practice makes perfect: attempting a check with a trained skill earns a little XP.
-      const practice = skill ? await applySkillXp(ctx, skill.name, CHECK_XP[outcome], 'practice') : null;
-      return {
-        outcome,
-        roll,
-        modifier,
-        total,
-        dc,
-        ...(skill ? {} : { note: 'Untrained: rolled at +0.' }),
-        ...(practice && practice.level > practice.levelBefore ? { levelUp: `${practice.skill} is now level ${practice.level}` } : {}),
-      };
+      const [campaign] = await ctx.db.select({ gameDay: campaigns.gameDay }).from(campaigns).where(eq(campaigns.id, ctx.campaign.id));
+      const dailies = await ctx.db
+        .select()
+        .from(missions)
+        .where(and(eq(missions.campaignId, ctx.campaign.id), eq(missions.recurrence, 'daily')));
+      const fresh = new Map((input.daily_objectives ?? []).map((d) => [d.title.toLowerCase(), d.objectives]));
+      for (const title of fresh.keys()) {
+        if (!dailies.some((m) => m.title.toLowerCase() === title)) {
+          throw new ToolError(`No daily quest titled "${title}". Daily quests: ${dailies.map((m) => m.title).join(', ') || 'none'}. Nothing changed.`);
+        }
+      }
+
+      const day = campaign!.gameDay + 1;
+      await ctx.mutator.update('campaigns', { id: ctx.campaign.id }, { gameDay: day });
+      await ctx.record({ eventType: 'day', humanReadable: `Day ${day} begins${input.reason ? ` (${input.reason})` : ''}`, details: { day } });
+
+      const results = [];
+      for (const m of dailies) {
+        // 'offered' means it was never issued, so there is nothing to miss.
+        const missed = m.status === 'active' || m.status === 'failed';
+        const penalties: string[] = [];
+        if (missed && m.penalty.hpLoss) {
+          const pc = await getCharacter(ctx);
+          const hp = clamp(pc.hp - m.penalty.hpLoss, 0, pc.maxHp);
+          await ctx.mutator.update('player_character', { campaignId: ctx.campaign.id }, { hp });
+          await ctx.record({
+            eventType: 'hp',
+            humanReadable: `HP ${hp - pc.hp} (${pc.hp} → ${hp}): missed ${m.title}`,
+            details: { delta: hp - pc.hp, hp, maxHp: pc.maxHp },
+          });
+          penalties.push(`HP ${pc.hp} → ${hp}${hp === 0 ? ' (down)' : ''}`);
+        }
+        if (missed && m.penalty.statusEffect) {
+          const pc = await getCharacter(ctx);
+          const effect = m.penalty.statusEffect;
+          const statusEffects = [...pc.statusEffects.filter((e) => e.name.toLowerCase() !== effect.name.toLowerCase()), effect];
+          await ctx.mutator.update('player_character', { campaignId: ctx.campaign.id }, { statusEffects });
+          await ctx.record({ eventType: 'status', humanReadable: `Now ${effect.name}: missed ${m.title}`, details: { action: 'add', name: effect.name } });
+          penalties.push(effect.name);
+        }
+        const texts = fresh.get(m.title.toLowerCase());
+        const objectives = texts ? normalizeObjectives(texts.map((text) => ({ text }))) : m.objectives.map((o) => ({ ...o, done: false }));
+        const status = m.status === 'offered' ? 'offered' : 'active';
+        await ctx.mutator.update('missions', { id: m.id }, { objectives, status, rewardsGranted: false });
+        await ctx.record({
+          eventType: 'mission',
+          humanReadable: `${missed ? 'Daily failed' : 'Daily reset'}: ${m.title}`,
+          details: { mission: m.title, status, objectivesDone: 0, objectivesTotal: objectives.length },
+        });
+        results.push({ title: m.title, missed, penalties, status, objectives });
+      }
+      return { day, dailies: results };
     },
   }),
 ];
@@ -725,10 +874,28 @@ async function findExactNpc(ctx: EngineContext, name: string) {
 // ---------------------------------------------------------------- registry
 
 export const TOOLS: ToolDef[] = [...readTools, ...writeTools];
-export const TOOLS_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
-/** API tool definitions. Built once, in a fixed order, so the tools prefix stays cacheable. */
-export const API_TOOLS: Anthropic.Tool[] = TOOLS.map((t) => {
-  const { $schema: _ignored, ...schema } = z.toJSONSchema(t.input, { io: 'input' }) as Record<string, unknown>;
-  return { name: t.name, description: t.description, input_schema: schema as Anthropic.Tool.InputSchema };
-});
+export interface Toolset {
+  byName: Map<string, ToolDef>;
+  /** API tool definitions, in a fixed order so the tools prefix stays cacheable. */
+  api: Anthropic.Tool[];
+}
+
+const toolsets = new Map<Ruleset, Toolset>();
+
+/** The tools offered to campaigns with this rule set. Built once per rule set. */
+export function toolset(ruleset: Ruleset): Toolset {
+  let set = toolsets.get(ruleset);
+  if (!set) {
+    const defs = TOOLS.filter((t) => !t.rulesets || t.rulesets.includes(ruleset));
+    set = {
+      byName: new Map(defs.map((t) => [t.name, t])),
+      api: defs.map((t) => {
+        const { $schema: _ignored, ...schema } = z.toJSONSchema(t.input, { io: 'input' }) as Record<string, unknown>;
+        return { name: t.name, description: t.description, input_schema: schema as Anthropic.Tool.InputSchema };
+      }),
+    };
+    toolsets.set(ruleset, set);
+  }
+  return set;
+}

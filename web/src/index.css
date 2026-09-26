@@ -14,6 +14,11 @@
   --color-brass-bright: #ecc57a;
   --color-ember: #c8553d;
   --color-verdigris: #5fa38d;
+  /* In-world interface panels (```system blocks). */
+  --color-system: #bfdbfe;
+  --color-system-bright: #7dd3fc;
+  --color-system-edge: #3b82f6;
+  --color-system-bg: #08121e;
 
   --font-story: 'Literata', Georgia, 'Times New Roman', serif;
   --font-ui: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -122,6 +127,29 @@
   font-family: ui-monospace, monospace;
   font-size: 0.9em;
   color: var(--color-parchment-dim);
+}
+
+/* In-world interface messages: fenced ```system blocks, rendered as a glowing panel. */
+.story .system-panel {
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--color-system);
+  background: linear-gradient(180deg, var(--color-system-bg), rgb(11 26 43));
+  border: 1px solid rgb(59 130 246 / 0.5);
+  border-radius: 0.5rem;
+  padding: 0.8rem 1rem;
+  box-shadow:
+    0 0 18px rgb(59 130 246 / 0.22),
+    inset 0 0 24px rgb(59 130 246 / 0.08);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.story .system-panel .system-header {
+  color: var(--color-system-bright);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 8px rgb(125 211 252 / 0.55);
 }
 
 /* Thin, dark scrollbars inside panels. */

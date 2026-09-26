@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { characterXpToNext, skillXpToNext, type CampaignState, type StateEvent } from '@narrator/shared';
+import { ATTRIBUTES, characterXpToNext, skillXpToNext, type CampaignState, type StateEvent } from '@narrator/shared';
 import { api } from '../api';
 import { Button, cx } from '../components/ui';
 import { MapTab } from './MapView';
@@ -198,6 +198,7 @@ function CharacterTab({ state }: { state: CampaignState }) {
           {pc.archetype && <> · {pc.archetype}</>}
         </p>
         {state.location && <p className="mt-1 text-xs text-parchment-faint">at {state.location.name}</p>}
+        {state.campaign.ruleset === 'ascension' && <p className="mt-1 text-xs text-parchment-faint">Day {state.campaign.gameDay}</p>}
       </div>
 
       <Section title="Vitals">
@@ -228,6 +229,30 @@ function CharacterTab({ state }: { state: CampaignState }) {
           </div>
         </div>
       </Section>
+
+      {state.campaign.ruleset === 'ascension' && (
+        <Section
+          title="Attributes"
+          right={
+            pc.unspentStatPoints > 0 ? (
+              <Chip tone="border-sky-400/60 text-sky-300">
+                {pc.unspentStatPoints} unspent point{pc.unspentStatPoints === 1 ? '' : 's'}
+              </Chip>
+            ) : undefined
+          }
+        >
+          <dl className="grid grid-cols-5 gap-1.5 text-center">
+            {ATTRIBUTES.map((a) => (
+              <div key={a} className="rounded-md border border-ink-700 bg-ink-950/40 px-1 py-1.5">
+                <dt className="text-[0.6rem] tracking-[0.12em] text-parchment-faint uppercase">{a.slice(0, 3)}</dt>
+                <dd className="font-semibold tabular-nums text-parchment" title={a[0]!.toUpperCase() + a.slice(1)}>
+                  {pc.attributes[a] ?? 0}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Section>
+      )}
 
       {pc.statusEffects.length > 0 && (
         <Section title="Conditions">
@@ -346,7 +371,14 @@ function MissionsTab({ state }: { state: CampaignState }) {
             <ul className="space-y-3">
               {missions.map((m) => (
                 <li key={m.id} className={cx('rounded-md border p-3', status === 'active' ? 'border-brass/40 bg-brass/5' : 'border-ink-700 bg-ink-950/40')}>
-                  <p className={cx('font-story', status === 'failed' ? 'text-parchment-faint line-through' : 'text-parchment')}>{m.title}</p>
+                  <p className={cx('font-story', status === 'failed' ? 'text-parchment-faint line-through' : 'text-parchment')}>
+                    {m.title}
+                    {m.recurrence === 'daily' && (
+                      <span className="ml-2 align-middle">
+                        <Chip tone="border-sky-400/50 text-sky-300">{status === 'completed' ? 'Daily · done today' : 'Daily'}</Chip>
+                      </span>
+                    )}
+                  </p>
                   {m.giverName && <p className="text-xs text-parchment-faint">from {m.giverName}</p>}
                   {(status === 'active' || status === 'offered') && m.description && (
                     <p className="mt-2 text-sm leading-relaxed text-parchment-dim">{m.description}</p>

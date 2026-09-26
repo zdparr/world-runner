@@ -1,5 +1,5 @@
 import { eq, sql } from 'drizzle-orm';
-import type { CampaignTemplate, MissionRewards, StatusEffect } from '@narrator/shared';
+import type { Attributes, CampaignTemplate, MissionPenalty, MissionRewards, Ruleset, StatusEffect } from '@narrator/shared';
 import type { Db } from '../client';
 import { campaigns, inventoryItems, locations, loreEntries, missions, npcs, playerCharacter, relationships, skills } from '../schema';
 import { normalizeObjectives } from '../../game/missions';
@@ -14,10 +14,23 @@ export interface WorldTemplate extends CampaignTemplate {
   worldBible: string;
   narratorStyle: string;
   currencyName: string;
+  /** Defaults to 'classic'. */
+  ruleset?: Ruleset;
   locations: { name: string; description: string; tags: string[] }[];
   npcs: { name: string; shortDescription: string; faction: string; location: string; notes: string }[];
   lore: { title: string; keywords: string[]; body: string; alwaysInclude?: boolean }[];
-  missions: { title: string; giver: string; description: string; objectives: string[]; rewards: MissionRewards }[];
+  missions: {
+    title: string;
+    /** Omitted for missions no NPC gives (e.g. issued by an in-world System). */
+    giver?: string;
+    description: string;
+    objectives: string[];
+    rewards: MissionRewards;
+    /** Defaults to 'offered'. */
+    status?: 'offered' | 'active';
+    recurrence?: 'daily';
+    penalty?: MissionPenalty;
+  }[];
   /** The pre-made character and everything that belongs to them. */
   character: {
     name: string;
@@ -30,6 +43,9 @@ export interface WorldTemplate extends CampaignTemplate {
     hp: number;
     maxHp: number;
     statusEffects?: StatusEffect[];
+    /** Ascension ruleset only. */
+    attributes?: Attributes;
+    unspentStatPoints?: number;
     skills: { name: string; level: number; xp: number; description: string }[];
     items: { name: string; description: string; quantity?: number; tags: string[]; equipped?: boolean; properties?: Record<string, unknown> }[];
     /** Shared history with NPCs. Only inserted with the pre-made character. */
@@ -53,7 +69,13 @@ export async function insertWorld(
 ): Promise<string> {
   const [campaign] = await tx
     .insert(campaigns)
-    .values({ name, worldBible: world.worldBible, narratorStyle: world.narratorStyle, currencyName: world.currencyName })
+    .values({
+      name,
+      worldBible: world.worldBible,
+      narratorStyle: world.narratorStyle,
+      currencyName: world.currencyName,
+      ruleset: world.ruleset ?? 'classic',
+    })
     .returning({ id: campaigns.id });
   const campaignId = campaign!.id;
 
@@ -79,11 +101,13 @@ export async function insertWorld(
     world.missions.map((m) => ({
       campaignId,
       title: m.title,
-      giverNpcId: npcId(m.giver),
-      status: 'offered' as const,
+      giverNpcId: m.giver ? npcId(m.giver) : null,
+      status: m.status ?? 'offered',
       description: m.description,
       objectives: normalizeObjectives(m.objectives.map((text) => ({ text }))),
       rewards: m.rewards,
+      recurrence: m.recurrence ?? null,
+      penalty: m.penalty ?? {},
     })),
   );
 

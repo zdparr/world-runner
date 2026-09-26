@@ -19,6 +19,8 @@ export function registerStateRoutes(app: FastifyInstance): void {
         turnCount: campaigns.turnCount,
         rollingSummary: campaigns.rollingSummary,
         summaryInterval: campaigns.summaryInterval,
+        ruleset: campaigns.ruleset,
+        gameDay: campaigns.gameDay,
       })
       .from(campaigns)
       .where(eq(campaigns.id, cid));

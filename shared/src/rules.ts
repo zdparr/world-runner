@@ -45,3 +45,11 @@ export function resolveCheck(roll: number, modifier: number, difficulty: Difficu
   else outcome = 'fail';
   return { total, dc, outcome };
 }
+
+/** Unspent stat points granted per character level-up (ascension ruleset). */
+export const STAT_POINTS_PER_LEVEL = 3;
+
+/** Bonus an attribute adds to a skill check (ascension ruleset): +1 per 5 points. */
+export function attributeBonus(score: number): number {
+  return Math.floor(score / 5);
+}

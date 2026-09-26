@@ -1,14 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import type Anthropic from '@anthropic-ai/sdk';
-import type { ContextManifest, ContextSlice } from '@narrator/shared';
+import { ATTRIBUTES, type ContextManifest, type ContextSlice, type Ruleset } from '@narrator/shared';
 import type { Db } from '../db/client';
 import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills } from '../db/schema';
 import { repoRoot } from '../paths';
 import type { CampaignRow, CharacterRow } from './game';
 
-const NARRATOR_PROMPT = readFileSync(join(repoRoot, 'server/src/engine/prompts/narrator.md'), 'utf8').trim();
+const prompt = (name: string) => readFileSync(join(repoRoot, `server/src/engine/prompts/${name}.md`), 'utf8').trim();
+const NARRATOR_PROMPT = prompt('narrator');
+/** Extra rules for campaigns on a rule set other than classic. */
+const RULESET_PROMPTS: Partial<Record<Ruleset, string>> = { ascension: prompt('ascension') };
 
 // ---------------------------------------------------------------- manifest
 
@@ -91,8 +94,10 @@ export async function buildTurnContext(
   const prefetched: ContextSlice[] = [];
 
   // ---------------------------------------------- static block (cached): prompt + world bible + style
+  const rulesetPrompt = RULESET_PROMPTS[campaign.ruleset] ?? '';
   const staticText = [
     NARRATOR_PROMPT,
+    rulesetPrompt,
     `# World bible\n\n${campaign.worldBible.trim() || '(No world bible yet. Improvise a coherent setting and keep it consistent.)'}`,
     campaign.narratorStyle.trim() ? `# Narrator style\n\n${campaign.narratorStyle.trim()}` : '',
     `Currency: ${campaign.currencyName}. Amounts are whole units.`,
@@ -100,10 +105,13 @@ export async function buildTurnContext(
     .filter(Boolean)
     .join('\n\n');
   core.push({ slice: 'system_prompt', reason: 'always (cached)', approxTokens: approxTokens(NARRATOR_PROMPT) });
+  if (rulesetPrompt) {
+    core.push({ slice: 'ruleset_rules', reason: `${campaign.ruleset} rule set (cached)`, approxTokens: approxTokens(rulesetPrompt) });
+  }
   core.push({
     slice: 'world_bible_and_style',
     reason: 'always (cached)',
-    approxTokens: approxTokens(staticText) - approxTokens(NARRATOR_PROMPT),
+    approxTokens: approxTokens(staticText) - approxTokens(NARRATOR_PROMPT) - approxTokens(rulesetPrompt),
   });
 
   // ---------------------------------------------- dynamic block: current state
@@ -115,7 +123,8 @@ export async function buildTurnContext(
   const [mission] = await db
     .select()
     .from(missions)
-    .where(and(eq(missions.campaignId, cid), eq(missions.status, 'active')))
+    // Daily quests are listed on their own line (ascension rule set).
+    .where(and(eq(missions.campaignId, cid), eq(missions.status, 'active'), isNull(missions.recurrence)))
     .orderBy(desc(missions.updatedAt))
     .limit(1);
   const nextObjective = mission?.objectives.find((o) => !o.done);
@@ -143,6 +152,26 @@ export async function buildTurnContext(
       ? `Active mission: ${mission.title}${nextObjective ? ` (next: ${nextObjective.text})` : ' (all objectives done)'}`
       : 'Active mission: none',
   ];
+  if (campaign.ruleset === 'ascension') {
+    const attributeLine = `${ATTRIBUTES.map((a) => `${a[0]!.toUpperCase()}${a.slice(1)} ${pc.attributes[a] ?? 0}`).join(', ')} (unspent stat points: ${pc.unspentStatPoints})`;
+    const dailies = await db
+      .select({ title: missions.title, status: missions.status, objectives: missions.objectives })
+      .from(missions)
+      .where(and(eq(missions.campaignId, cid), eq(missions.recurrence, 'daily')))
+      .orderBy(asc(missions.title));
+    const dailyLine =
+      dailies.length > 0
+        ? dailies
+            .map((d) => {
+              const next = d.objectives.find((o) => !o.done);
+              return `${d.title} (${d.status === 'completed' ? 'done for today' : d.status}${d.status !== 'completed' && next ? `; next: ${next.text}` : ''})`;
+            })
+            .join('; ')
+        : 'none';
+    stateLines.splice(3, 0, `Attributes: ${attributeLine}`, `In-game day: ${campaign.gameDay}`, `Daily quests: ${dailyLine}`);
+    core.push({ slice: 'attributes', reason: 'ascension rule set', approxTokens: approxTokens(attributeLine), detail: pc.unspentStatPoints });
+    core.push({ slice: 'daily_quests', reason: 'ascension rule set', approxTokens: approxTokens(dailyLine), detail: dailies.length });
+  }
   core.push({ slice: 'character_header', reason: 'always', approxTokens: approxTokens(header), detail: header });
   core.push({ slice: 'skill_names', reason: 'always (names and levels only)', approxTokens: approxTokens(skillLine), detail: skillRows.length });
   if (location) core.push({ slice: 'location', reason: 'current location', approxTokens: approxTokens(location.description), detail: location.name });

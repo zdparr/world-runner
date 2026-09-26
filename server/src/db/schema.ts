@@ -15,7 +15,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { MissionObjective, MissionRewards, StatusEffect } from '@narrator/shared';
+import type { Attributes, MissionObjective, MissionPenalty, MissionRecurrence, MissionRewards, Ruleset, StatusEffect } from '@narrator/shared';
 
 // Column names are derived as snake_case (see `casing` in client.ts and drizzle.config.ts).
 // Raw SQL fragments below (checks, expression indexes, generated columns) use the snake_case names.
@@ -39,25 +39,36 @@ const tags = () => text().array().notNull().default(sql`'{}'::text[]`);
 export const messageRole = pgEnum('message_role', ['player', 'narrator']);
 export const missionStatus = pgEnum('mission_status', ['offered', 'active', 'completed', 'failed']);
 
-export const campaigns = pgTable('campaigns', {
-  id: pk(),
-  name: text().notNull(),
-  worldBible: text().notNull().default(''),
-  narratorStyle: text().notNull().default(''),
-  rollingSummary: text().notNull().default(''),
-  currencyName: text().notNull().default('gold'),
-  turnCount: integer().notNull().default(0),
-  /** Recent messages included verbatim in each turn's context (N). */
-  historyWindow: integer().notNull().default(8),
-  /** Fold older messages into the rolling summary every K turns. */
-  summaryInterval: integer().notNull().default(10),
-  /** Base seed for server-side dice; combined with the turn number per roll. */
-  rngSeed: integer()
-    .notNull()
-    .default(sql`floor(random() * 2147483647)::int`),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-});
+export const campaigns = pgTable(
+  'campaigns',
+  {
+    id: pk(),
+    name: text().notNull(),
+    worldBible: text().notNull().default(''),
+    narratorStyle: text().notNull().default(''),
+    rollingSummary: text().notNull().default(''),
+    currencyName: text().notNull().default('gold'),
+    turnCount: integer().notNull().default(0),
+    /** Recent messages included verbatim in each turn's context (N). */
+    historyWindow: integer().notNull().default(8),
+    /** Fold older messages into the rolling summary every K turns. */
+    summaryInterval: integer().notNull().default(10),
+    /** Rule set: 'classic' (skills only) or 'ascension' (attributes, stat points, daily quests). */
+    ruleset: text().$type<Ruleset>().notNull().default('classic'),
+    /** In-game day; the narrator advances it, which resets daily quests. */
+    gameDay: integer().notNull().default(1),
+    /** Base seed for server-side dice; combined with the turn number per roll. */
+    rngSeed: integer()
+      .notNull()
+      .default(sql`floor(random() * 2147483647)::int`),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  () => [
+    check('campaigns_ruleset_valid', sql`ruleset IN ('classic', 'ascension')`),
+    check('campaigns_game_day_positive', sql`game_day >= 1`),
+  ],
+);
 
 export const locations = pgTable(
   'locations',
@@ -92,6 +103,9 @@ export const playerCharacter = pgTable(
     hp: integer().notNull().default(10),
     maxHp: integer().notNull().default(10),
     statusEffects: jsonb().$type<StatusEffect[]>().notNull().default([]),
+    /** Core attributes (ascension ruleset); empty otherwise. */
+    attributes: jsonb().$type<Attributes>().notNull().default({}),
+    unspentStatPoints: integer().notNull().default(0),
     updatedAt: updatedAt(),
   },
   () => [
@@ -99,6 +113,7 @@ export const playerCharacter = pgTable(
     check('player_level_positive', sql`level >= 1`),
     check('player_xp_nonnegative', sql`xp >= 0`),
     check('player_hp_range', sql`hp >= 0 AND max_hp > 0 AND hp <= max_hp`),
+    check('player_stat_points_nonnegative', sql`unspent_stat_points >= 0`),
   ],
 );
 
@@ -221,10 +236,16 @@ export const missions = pgTable(
     rewards: jsonb().$type<MissionRewards>().notNull().default({}),
     /** Set once completion rewards are applied, so they are never applied twice. */
     rewardsGranted: boolean().notNull().default(false),
+    /** 'daily': reset when the in-game day advances, applying `penalty` if it was left incomplete. */
+    recurrence: text().$type<MissionRecurrence>(),
+    penalty: jsonb().$type<MissionPenalty>().notNull().default({}),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex('missions_campaign_title_uq').on(t.campaignId, sql`lower(title)`)],
+  (t) => [
+    uniqueIndex('missions_campaign_title_uq').on(t.campaignId, sql`lower(title)`),
+    check('missions_recurrence_valid', sql`recurrence IS NULL OR recurrence IN ('daily')`),
+  ],
 );
 
 export const messages = pgTable(

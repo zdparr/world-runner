@@ -4,6 +4,7 @@ import {
   MAX_CHARACTER_LEVEL,
   MAX_SKILL_LEVEL,
   RELATIONSHIP_MAX,
+  STAT_POINTS_PER_LEVEL,
   RELATIONSHIP_MIN,
   characterXpToNext,
   skillXpToNext,
@@ -97,10 +98,18 @@ export async function applyCharacterXp(ctx: EngineContext, amount: number, reaso
   const next = addXp(pc.level, pc.xp, amount, characterXpToNext, MAX_CHARACTER_LEVEL);
   const levelsGained = next.level - pc.level;
   const hpGain = levelsGained * HP_PER_LEVEL;
+  // Under the ascension ruleset each level also grants stat points for the player to allocate.
+  const statPoints = ctx.campaign.ruleset === 'ascension' ? levelsGained * STAT_POINTS_PER_LEVEL : 0;
   await ctx.mutator.update(
     'player_character',
     { campaignId: ctx.campaign.id },
-    { level: next.level, xp: next.xp, maxHp: pc.maxHp + hpGain, hp: pc.hp + hpGain },
+    {
+      level: next.level,
+      xp: next.xp,
+      maxHp: pc.maxHp + hpGain,
+      hp: pc.hp + hpGain,
+      ...(statPoints > 0 ? { unspentStatPoints: pc.unspentStatPoints + statPoints } : {}),
+    },
   );
   await ctx.record({
     eventType: levelsGained > 0 ? 'level_up' : 'xp',
@@ -108,9 +117,16 @@ export async function applyCharacterXp(ctx: EngineContext, amount: number, reaso
       levelsGained > 0
         ? `Level ${pc.level} → ${next.level} (+${amount} xp${reason ? `, ${reason}` : ''})`
         : `+${amount} xp${reason ? ` (${reason})` : ''}`,
-    details: { amount, level: next.level, xp: next.xp, xpToNext: characterXpToNext(next.level), levelsGained },
+    details: { amount, level: next.level, xp: next.xp, xpToNext: characterXpToNext(next.level), levelsGained, ...(statPoints > 0 ? { statPoints } : {}) },
   });
-  return { level: next.level, xp: next.xp, xpToNext: characterXpToNext(next.level), levelsGained, maxHp: pc.maxHp + hpGain };
+  return {
+    level: next.level,
+    xp: next.xp,
+    xpToNext: characterXpToNext(next.level),
+    levelsGained,
+    maxHp: pc.maxHp + hpGain,
+    ...(statPoints > 0 ? { statPointsGained: statPoints, unspentStatPoints: pc.unspentStatPoints + statPoints } : {}),
+  };
 }
 
 export async function applySkillXp(ctx: EngineContext, skillName: string, amount: number, reason: string) {

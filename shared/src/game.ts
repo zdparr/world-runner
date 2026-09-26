@@ -54,3 +54,32 @@ export const MissionRewards = z.object({
 export type MissionRewards = z.infer<typeof MissionRewards>;
 
 export { Tags };
+
+// ---------------------------------------------------------------- rulesets
+
+/**
+ * A campaign's rule set. `classic` is skills-only. `ascension` adds core attributes, stat points
+ * granted on level-up, and daily quests (a game-like System only the player character can see).
+ */
+export const RULESETS = ['classic', 'ascension'] as const;
+export const Ruleset = z.enum(RULESETS);
+export type Ruleset = z.infer<typeof Ruleset>;
+
+export const ATTRIBUTES = ['strength', 'agility', 'vitality', 'perception', 'will'] as const;
+export const AttributeName = z.enum(ATTRIBUTES);
+export type AttributeName = z.infer<typeof AttributeName>;
+
+/** Core attribute scores (ascension ruleset). Missing attributes count as 0. */
+export const Attributes = z.partialRecord(AttributeName, z.number().int().min(0).max(999));
+export type Attributes = z.infer<typeof Attributes>;
+
+export const MISSION_RECURRENCES = ['daily'] as const;
+export const MissionRecurrence = z.enum(MISSION_RECURRENCES);
+export type MissionRecurrence = z.infer<typeof MissionRecurrence>;
+
+/** Applied automatically to a recurring mission left incomplete when the day ends. */
+export const MissionPenalty = z.object({
+  hpLoss: z.number().int().positive().max(10_000).optional(),
+  statusEffect: StatusEffect.optional(),
+});
+export type MissionPenalty = z.infer<typeof MissionPenalty>;

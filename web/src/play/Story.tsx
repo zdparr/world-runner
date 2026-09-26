@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Message } from '@narrator/shared';
 import { cx } from '../components/ui';
@@ -7,10 +7,42 @@ import { DebugDrawer } from './DebugDrawer';
 
 export const isOoc = (text: string) => /^\s*(ooc:|\()/i.test(text);
 
+type HastNode = { type: string; value?: string; tagName?: string; properties?: { className?: unknown }; children?: HastNode[] };
+
+const textOf = (node: HastNode): string => node.value ?? (node.children ?? []).map(textOf).join('');
+
+/**
+ * An in-world interface message: a fenced block tagged `system` (any world may use one; the narrator
+ * prompt explains when). Lines like "[ LEVEL UP ]" are styled as headers.
+ */
+function SystemPanel({ text }: { text: string }) {
+  const lines = text.replace(/\n$/, '').split('\n');
+  return (
+    <div className="system-panel" role="note" aria-label="System message">
+      {lines.map((line, i) => (
+        <div key={i} className={/^\s*\[.*\]\s*$/.test(line) ? 'system-header' : undefined}>
+          {line || ' '}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const markdownComponents: Components = {
+  pre({ node, children, ...rest }) {
+    const code = (node as HastNode | undefined)?.children?.[0];
+    const classes = code?.tagName === 'code' ? code.properties?.className : undefined;
+    if (Array.isArray(classes) && classes.includes('language-system')) return <SystemPanel text={textOf(code!)} />;
+    return <pre {...rest}>{children}</pre>;
+  },
+};
+
 export function Narration({ text, streaming = false }: { text: string; streaming?: boolean }) {
   return (
     <div className="story">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        {text}
+      </ReactMarkdown>
       {streaming && <span aria-hidden className="animate-caret ml-0.5 inline-block h-5 w-0.5 translate-y-1 bg-brass" />}
     </div>
   );

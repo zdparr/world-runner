@@ -10,7 +10,7 @@ import type { CampaignRow, EngineContext } from './game';
 import { ToolError } from './lookup';
 import { Mutator, type RecordedEvent } from './mutator';
 import { NarratorRefusal, NarratorTruncated, runNarrator, type RoundUsage, type StreamFn, type ToolOutcome } from './narrator';
-import { API_TOOLS, TOOLS_BY_NAME } from './tools';
+import { toolset } from './tools';
 
 export const MAX_TOOL_ROUNDS = 6;
 const MAX_RESULT_CHARS_IN_DEBUG = 4_000;
@@ -82,6 +82,7 @@ export async function runTurn(
       const [pc] = await tx.select().from(playerCharacter).where(eq(playerCharacter.campaignId, campaignId));
       if (!pc) throw new HttpError(409, 'Build a character before you start playing');
       const turnNumber = campaign.turnCount + 1;
+      const tools = toolset(campaign.ruleset);
 
       // Built before the player's message is stored, which the context appends itself.
       const context = await buildTurnContext(tx, campaign, pc, content, turnNumber);
@@ -90,7 +91,7 @@ export async function runTurn(
 
       let rolls = 0;
       const executeTool = async (name: string, input: unknown): Promise<ToolOutcome> => {
-        const def = TOOLS_BY_NAME.get(name);
+        const def = tools.byName.get(name);
         if (!def) return { content: `Unknown tool "${name}".`, isError: true };
         const parsed = def.input.safeParse(input ?? {});
         if (!parsed.success) {
@@ -137,7 +138,7 @@ export async function runTurn(
         effort: deps.effort,
         system: context.system,
         messages: context.messages,
-        tools: API_TOOLS,
+        tools: tools.api,
         maxToolRounds: MAX_TOOL_ROUNDS,
         executeTool,
         onText: (delta) => emit({ type: 'text', delta }),
@@ -161,7 +162,7 @@ export async function runTurn(
         model: deps.model,
         contextManifest: {
           ...context.manifest,
-          loadedByTools: narrator.toolCalls.filter((c) => TOOLS_BY_NAME.get(c.name)?.kind === 'read').map((c) => ({ tool: c.name, input: c.input })),
+          loadedByTools: narrator.toolCalls.filter((c) => tools.byName.get(c.name)?.kind === 'read').map((c) => ({ tool: c.name, input: c.input })),
           rounds: narrator.rounds,
         },
         toolCalls: narrator.toolCalls.map((c) => ({

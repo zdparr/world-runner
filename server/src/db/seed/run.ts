@@ -4,7 +4,7 @@ import { createDb } from '../client';
 import { TEMPLATES, findTemplate, seedDemoCampaign } from './templates';
 
 // `npm run seed` creates the default demo campaign (Varenhold).
-//   --world <id>   seed a different world (varenhold, brinecross)
+//   --world <id>   seed a different world (varenhold, brinecross, harrowmere, five-banners, threshold)
 //   --all          seed every world
 //   --reset        delete and recreate the demo campaign(s); other campaigns are untouched
 async function main() {
