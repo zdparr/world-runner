@@ -234,7 +234,7 @@ describe('context builder', () => {
     const system = ctx.system.map((b) => b.text).join('\n');
 
     expect(ctx.manifest.prefetched).toEqual([]);
-    expect(ctx.manifest.notIncluded).toEqual(expect.arrayContaining(['inventory', 'money', 'relationships', 'skills']));
+    expect(ctx.manifest.notIncluded).toEqual(expect.arrayContaining(['inventory', 'money', 'relationships', 'skill descriptions and XP']));
     for (const item of await t.db.select().from(inventoryItems).where(eq(inventoryItems.campaignId, id))) {
       expect(system).not.toContain(item.name);
     }
@@ -245,6 +245,8 @@ describe('context builder', () => {
     // What is there: the one-line header, location, and active mission (none yet).
     expect(system).toContain('Character: Kael — Lv 2 rogue — HP 16/18 — Loc: Dockside Market');
     expect(system).toContain('Active mission: none');
+    // Skill names and levels are always present so the narrator reuses them rather than inventing duplicates.
+    expect(state).toMatch(/^Skills: Lockpicking 3, .*Stealth 2/m);
   });
 
   it('pre-fetches only the NPC (and relationship) the player talks to', async () => {

@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import type Anthropic from '@anthropic-ai/sdk';
 import type { ContextManifest, ContextSlice } from '@narrator/shared';
 import type { Db } from '../db/client';
-import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships } from '../db/schema';
+import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills } from '../db/schema';
 import { repoRoot } from '../paths';
 import type { CampaignRow, CharacterRow } from './game';
 
@@ -120,6 +120,15 @@ export async function buildTurnContext(
     .limit(1);
   const nextObjective = mission?.objectives.find((o) => !o.done);
 
+  // Names and levels only (descriptions via get_skills), so the narrator reuses existing skills
+  // instead of inventing near-duplicates ("Swordsmanship" next to "Swordfighting").
+  const skillRows = await db
+    .select({ name: skills.name, level: skills.level })
+    .from(skills)
+    .where(eq(skills.campaignId, cid))
+    .orderBy(desc(skills.level), asc(skills.name));
+  const skillLine = skillRows.length > 0 ? skillRows.map((s) => `${s.name} ${s.level}`).join(', ') : 'none yet';
+
   const alwaysLore = await db
     .select({ id: loreEntries.id, title: loreEntries.title, body: loreEntries.body })
     .from(loreEntries)
@@ -128,12 +137,14 @@ export async function buildTurnContext(
   const stateLines = [
     `# Current state (turn ${turnNumber})`,
     `Character: ${header}`,
+    `Skills: ${skillLine}`,
     location ? `Location: ${location.name}\n${location.description}` : 'Location: unknown (the character has not been placed anywhere yet)',
     mission
       ? `Active mission: ${mission.title}${nextObjective ? ` (next: ${nextObjective.text})` : ' (all objectives done)'}`
       : 'Active mission: none',
   ];
   core.push({ slice: 'character_header', reason: 'always', approxTokens: approxTokens(header), detail: header });
+  core.push({ slice: 'skill_names', reason: 'always (names and levels only)', approxTokens: approxTokens(skillLine), detail: skillRows.length });
   if (location) core.push({ slice: 'location', reason: 'current location', approxTokens: approxTokens(location.description), detail: location.name });
   if (mission) core.push({ slice: 'active_mission', reason: 'title and next objective only', approxTokens: 20, detail: mission.title });
 
@@ -260,7 +271,7 @@ export async function buildTurnContext(
   const notIncluded = [
     itemHits.length > 0 ? 'rest of inventory' : 'inventory',
     'money',
-    'skills',
+    'skill descriptions and XP',
     prefetchedNpcs.size > 0 ? 'other relationships' : 'relationships',
     prefetchedNpcs.size > 0 ? 'other NPCs' : 'NPCs',
     'missions other than the active one',
