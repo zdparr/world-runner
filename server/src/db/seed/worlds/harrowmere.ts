@@ -80,31 +80,65 @@ Mateo Ferreira, a second-year Collegium student, has not come to class in nine n
       name: 'Saltmarch Collegium',
       description:
         "A decommissioned subway station, Vesperhall, sealed off from the Daylit since 1978. The entrance is a locked service door beside a boarded-up newsstand; a brass transit token opens it for students. Below, the old platforms have become classrooms, with chalk sigils on the tiled walls, desks set out along the tracks, and a lending library in a stalled 1960s subway car. Trains on the live line next door shake dust from the ceiling every twelve minutes. The instructors' offices are in the old ticket hall.",
+      purpose:
+        "Home base and the mission's start and end (objectives 1 and 5). Ottoline gives the job; Suvi, Mateo's closest friend, is here, carrying her own guilt. The lending library car holds old student theses, with one folder missing where Ottoline and Kaske's unpublished paper on merelight transfer used to be: the thread that could close the school. The Collegium is chartered, so the Wardens can walk in any night.",
       tags: ['collegium', 'school', 'safe', 'underground'],
     },
     {
       name: 'The Undermarket',
       description:
-        "A night market that sets up on the lowest four levels of the Ardwick Street parking garage between midnight and dawn. Stalls are built from car trunks and folding tables, lit by string lights and glowing jars. Vendors sell charms, warding chalk, rare herbs, secondhand grimoires, Tidebound carvings, and less legal things behind curtains. A glamour makes the Daylit attendant in the booth see empty concrete. Wardens come here out of uniform, and everyone knows who they are.",
+        'A night market that sets up on the lowest four levels of the Ardwick Street parking garage between midnight and dawn. Stalls are built from car trunks and folding tables, lit by string lights and glowing jars. Vendors sell charms, warding chalk, rare herbs, secondhand grimoires, Tidebound carvings, and less legal things behind curtains. A glamour makes the Daylit attendant in the booth see empty concrete. Wardens come here out of uniform, and everyone knows who they are.',
+      purpose:
+        "Where the trail begins (objective 2) and where the stolen shedcoat is for sale. Oriel Sachs sold the sea-green vial and keeps a ledger of every tint she has bought from Halcyon's courier, Mr. Tuesday, who meets her Tuesdays at 2 a.m. Dagny Holmqvist hunts here out of uniform and already suspects the player. The market's rules (no workings against buyers, every deal final) make it neutral ground and shape how any confrontation can go.",
       tags: ['market', 'neutral', 'crowded', 'black-market', 'night'],
     },
     {
       name: 'The Skerrows',
       description:
-        "A strip of old wharves and warehouses on the north harbor, leased by Tidebound families for a century. Fishing boats, a smokehouse, a boxing gym, and a bar with no sign. Seals haul out on the rotting pilings at dusk and crows line the power cables. Outsiders are watched from the moment they cross the rail tracks. At the end of the longest pier stands the Moot House, rebuilt after 1911, where the elders meet.",
+        'A strip of old wharves and warehouses on the north harbor, leased by Tidebound families for a century. Fishing boats, a smokehouse, a boxing gym, and a bar with no sign. Seals haul out on the rotting pilings at dusk and crows line the power cables. Outsiders are watched from the moment they cross the rail tracks. At the end of the longest pier stands the Moot House, rebuilt after 1911, where the elders meet.',
+      purpose:
+        'Tidebound territory and where The Stolen Coat begins. Brannagh knows Mateo is Roan-blooded, which is why Halcyon kept him, and three Tidebound youths are missing too. Earn her trust and the Skerrows become allies; break it and the Brineledger falls, and the harbor becomes a war zone. The Moot House at the end of the pier is where the elders would vote to void the treaty.',
       tags: ['tidebound', 'harbor', 'territory', 'restricted'],
     },
     {
       name: 'The Halcyon',
       description:
         "Halcyon Vault's headquarters: a forty-storey tower of green-tinted glass downtown, lit from within at all hours. The lobby has a living moss wall, a juice bar, and security guards with earpieces. Floors 1 to 30 are open-plan offices and wellness labs full of cheerful young staff. Floors 31 to 34 need a separate keycard and are never on the tour.",
+      purpose:
+        "The villain's public face. Leander Okafor recruits here, and can become an inside ally if he learns what happens to unwilling donors. Floors 31 to 34 are the extraction labs, reachable only with a separate keycard. Shipping manifests at the loading dock point to Pellham Cold Storage on the south bay, where Mateo is held (the lead for objective 4).",
       tags: ['halcyon', 'corporate', 'downtown', 'guarded'],
     },
     {
       name: "Mirabel's",
       description:
-        "A 24-hour diner across from the Vesperhall service door, with red vinyl booths, bottomless coffee, and rain streaming down the plate-glass windows. Mirabel herself is Daylit and has decided not to ask why so many customers show up at 3 a.m. with chalk on their hands. Collegium students treat the back booth as a common room.",
+        'A 24-hour diner across from the Vesperhall service door, with red vinyl booths, bottomless coffee, and rain streaming down the plate-glass windows. Mirabel herself is Daylit and has decided not to ask why so many customers show up at 3 a.m. with chalk on their hands. Collegium students treat the back booth as a common room.',
+      purpose:
+        'Neutral, Daylit, and safe: the place to regroup, meet a nervous informant, or talk where the Wardens cannot easily listen. Mirabel notices more than she lets on, and has seen a black Halcyon car idling outside the Vesperhall door three nights running: Halcyon is watching the Collegium. The back booth is for quiet character scenes between investigations, and a place Suvi might finally confess.',
       tags: ['diner', 'safe', 'public', 'daylit'],
+    },
+    {
+      name: 'Tollgate Row',
+      description:
+        "The Charter Wardens' headquarters: a squat granite building on Tollgate Row with a faded municipal water board sign over the door. Inside are fluorescent lights, file cabinets, a holding cell with iron bars, and the original 1911 Charter in a glass case in the lobby, the Tidebound signatures scorched at the edges.",
+      purpose:
+        "The law, and its weak point. The registry lists every kindled person in the city, including Mateo's file (father's name left blank, a clue to his Roan blood) and the player's own registration interview with Dagny's notes. Getting hauled in here is the consequence of a public working gone wrong, and a binding hearing is the worst the Wardens can do. Dagny's desk drawer hides Aurelle ampoules: proof she was hollowed and is compromised.",
+      tags: ['wardens', 'charter', 'government', 'restricted'],
+    },
+    {
+      name: 'Pellham Cold Storage',
+      description:
+        "A converted cold-storage warehouse on the south bay, behind the container cranes, with a new Halcyon Logistics sign over an old fishery's rusted loading doors. Refrigeration units hum all night. The security cameras are brand new, and so are the guards.",
+      purpose:
+        "Where Mateo is held (objective 4). Halcyon's unwilling donors are kept here in medical bays, sedated and partially hollowed: Mateo and the three missing Tidebound youths, one of them trapped mid-shift. This is the mission's climax and the proof that could break Halcyon, the Charter, or both. Iron shelving throughout slows workings, and the harbor-side doors open onto running water, which unravels glamours.",
+      tags: ['halcyon', 'south-bay', 'warehouse', 'dangerous'],
+    },
+    {
+      name: 'The Calling-Stones',
+      description:
+        'A line of barnacled standing stones on a mudflat north of the Skerrows, underwater except at the lowest tides. When the water draws back they stand in the fog like a row of patient people, and seals watch from the shallows.',
+      purpose:
+        'The reward of The Stolen Coat and the heart of the hearthkin thread. Brannagh brings the player here at low tide, where Tidebound folklore says the unbonded sometimes meet their hearthkin. It is the natural place for the bond to finally happen, or be refused, and for whatever has been watching the player (the gull, the cat, the crow) to show itself. The returning tide puts a hard time limit on any scene here.',
+      tags: ['tidebound', 'harbor', 'hearthkin', 'tidal'],
     },
   ],
 

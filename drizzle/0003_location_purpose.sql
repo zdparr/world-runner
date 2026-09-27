@@ -1,0 +1,1 @@
+ALTER TABLE "locations" ADD COLUMN "purpose" text DEFAULT '' NOT NULL;

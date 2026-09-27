@@ -4,6 +4,7 @@ import { createTestApp } from './helpers';
 import { campaigns, messages, npcs } from '../src/db/schema';
 import { TEMPLATES, seedDemoCampaign } from '../src/db/seed/templates';
 import { varenhold } from '../src/db/seed/worlds/varenhold';
+import { MIN_WORLD_LOCATIONS } from '@narrator/shared';
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
 beforeAll(async () => {
@@ -227,7 +228,7 @@ describe('seed', () => {
 
     const count = async (path: string) => ((await t.api('GET', `/api/campaigns/${id}/${path}`)).json() as unknown[]).length;
     expect(await count('npcs')).toBe(4);
-    expect(await count('locations')).toBe(3);
+    expect(await count('locations')).toBe(6);
     expect(await count('lore')).toBe(5);
     expect(await count('missions')).toBe(1);
     expect(await count('relationships')).toBe(3);
@@ -256,5 +257,16 @@ describe('seed', () => {
       expect(npcs.every((n) => n.locationId), world.id).toBe(true);
       expect((await t.api('GET', `/api/campaigns/${id}/character`)).json().currentLocationId, world.id).toBeTruthy();
     }
+  });
+
+  it('gives every world at least six locations, each with a purpose, and nests them as written', async () => {
+    for (const world of TEMPLATES) {
+      expect(world.locations.length, world.id).toBeGreaterThanOrEqual(MIN_WORLD_LOCATIONS);
+      for (const l of world.locations) expect(l.purpose.trim().length, `${world.id}: ${l.name}`).toBeGreaterThan(40);
+    }
+    const id = await seedDemoCampaign(t.db, { templateId: 'five-banners', reset: true });
+    const rows = (await t.api('GET', `/api/campaigns/${id}/locations`)).json() as { id: string; name: string; parentLocationId: string | null }[];
+    const verge = rows.find((l) => l.name === 'Verge of Liraun')!;
+    expect(rows.find((l) => l.name === 'The Ommerstones')!.parentLocationId).toBe(verge.id);
   });
 });

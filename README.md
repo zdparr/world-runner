@@ -66,7 +66,7 @@ The engine lives in `server/src/engine/`. Each turn:
 
 1. **Context** ([context.ts](server/src/engine/context.ts)): a cached static block (narrator prompt, world bible, style) plus a small per-turn block: the one-line character header, current location, active mission and next objective, rolling summary, always-include lore, and records whose names appear in the player's message (NPC plus relationship, items, locations, lore). Everything else stays out, and the narrator fetches it with read tools. The `turn_debug.context_manifest` records what was included and why.
 2. **Narrator loop** ([narrator.ts](server/src/engine/narrator.ts)): streams text, runs tool calls between rounds, and caps tool use at 6 rounds before forcing narration.
-3. **Tools** ([tools.ts](server/src/engine/tools.ts)): 9 read tools and 18 write tools, validated with zod. Invalid input goes back to the model as an error it can correct.
+3. **Tools** ([tools.ts](server/src/engine/tools.ts)): 9 read tools and 19 write tools, validated with zod. Invalid input goes back to the model as an error it can correct.
 4. **Writes** ([mutator.ts](server/src/engine/mutator.ts)): each tool call runs in a savepoint and records row-level before/after diffs in `state_events`, which is what makes undo exact.
 5. **Atomicity**: the whole turn is one transaction. If the model call fails, nothing is saved.
 
@@ -83,6 +83,7 @@ The numbers live in [rules.ts](shared/src/rules.ts), shared by the engine and th
 ### Story depth
 
 - **Story notes.** `update_story_notes` keeps the narrator's private planning notes (open threads, secrets, planted clues, what NPCs are doing offscreen) in `campaigns.story_notes`. They appear in every turn's context and never in the player's UI (except the debug drawer).
+- **Locations with a purpose.** Every location has a GM-only `purpose` (what it's for in the story: a mission step, a secret it holds, whose base it is). The narrator sees the current location's purpose and every place's name each turn; the player's map shows only descriptions. `create_location` requires a purpose, and `update_location` revises one. Every seeded world has at least 6 locations (`MIN_WORLD_LOCATIONS`); a campaign with fewer is told to create the missing ones that turn.
 - **Narration length.** `campaigns.narration_length` (`brief` / `standard` / `rich`, set in the sidebar's Log tab) is restated every turn.
 
 Dice are server-side and seeded by (campaign seed, turn, roll index), so undoing a turn and replaying it gives the same rolls.

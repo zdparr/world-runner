@@ -177,7 +177,7 @@ export function PlayPage() {
           }
           case 'state_change':
             // Checks show as chips under the narration; the narrator's private notes stay private.
-            if (event.change.eventType !== 'skill_check' && event.change.eventType !== 'story_notes') toast(event.change.humanReadable, toneFor(event.change.eventType));
+            if (!['skill_check', 'story_notes', 'location_notes'].includes(event.change.eventType)) toast(event.change.humanReadable, toneFor(event.change.eventType));
             update((p) => ({ ...p, changes: [...p.changes, event.change] }));
             break;
           case 'done':

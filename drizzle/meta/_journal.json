@@ -22,6 +22,13 @@
       "when": 1790468254888,
       "tag": "0002_story_depth",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790470162258,
+      "tag": "0003_location_purpose",
+      "breakpoints": true
     }
   ]
 }

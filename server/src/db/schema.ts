@@ -82,6 +82,8 @@ export const locations = pgTable(
     campaignId: campaignRef(),
     name: text().notNull(),
     description: text().notNull().default(''),
+    /** GM-only: what this place is for in the story (a mission step, a secret, a threat, a refuge). Never shown to the player. */
+    purpose: text().notNull().default(''),
     parentLocationId: uuid().references((): AnyPgColumn => locations.id, { onDelete: 'set null' }),
     tags: tags(),
     createdAt: createdAt(),

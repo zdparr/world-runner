@@ -100,31 +100,57 @@ Do not reveal any of this early. The Protocol never explains its origin, purpose
       name: 'Corbel Depot',
       description:
         "Corbel Remediation's yard in the industrial flats of Vireo: a chain-link lot of box trucks and slough tanks behind a cinderblock office. A whiteboard of Bureau dispatches covers one wall, next to a shrine of hard hats for the crew lost at Tolliver. The break room coffee is always burnt, and the lockers smell of solvent.",
+      purpose:
+        "Home base, where the character starts, and where both missions begin: Imelda has the Ostrander dispatch (objective 1) and Teo asks for Augie's tag. The dispatch whiteboard is a steady source of new Breaches. The shrine of hard hats keeps the Tolliver dead present. Imelda's secret (she signed the Tolliver staging order) and Teo's (Glasswick and his debt) both surface here in quiet moments.",
       tags: ['corbel', 'workplace', 'vireo', 'safe', 'crew'],
     },
     {
       name: 'Harlow Annex',
       description:
         'The Bureau of Breach Affairs field office for Solano City: a converted federal courthouse with blast film on the windows and a Talent-grading lab in the old jury room. Metal detectors, a waiting room of nervous kindled teenagers, and interview rooms with humming scanners bolted to the tables.',
+      purpose:
+        "The Bureau's pressure point (objective 2). Achterberg interviews the player here and keeps the Lintel File in his desk: four earlier anomalous survivors, all vanished within a year. Bureau scanners read the player as a Null, which is useful cover and unsettling, since the reading is too blank. The grading lab is where the player's growth would be discovered if they were scanned at the wrong moment.",
       tags: ['bureau', 'government', 'downtown', 'interrogation'],
     },
     {
       name: 'Ostrander Parkade',
       description:
-        "A half-demolished parking structure in Vireo, abandoned since the Ninebridge Spill. Bureau tape blocks the ramps and a Kestrel Works claim notice is zip-tied to the gate. On level three, between rusted pillars, a Grade I Breach hangs in the air: a vertical seam of wet, green-black light that hums in your back teeth.",
+        'A half-demolished parking structure in Vireo, abandoned since the Ninebridge Spill. Bureau tape blocks the ramps and a Kestrel Works claim notice is zip-tied to the gate. On level three, between rusted pillars, a Grade I Breach hangs in the air: a vertical seam of wet, green-black light that hums in your back teeth.',
+      purpose:
+        "The first Breach and the first real test (objectives 3 to 5): the Protocol wants it cleared alone, before Kestrel's claim window opens in about 36 hours. Saoirse Lindqvist's team is staging nearby and will be very curious about anyone who got in first. The crux calyx carries the Protocol's geometric mark, which Florian Kuzma's anonymous buyer pays triple for.",
       tags: ['breach-site', 'vireo', 'dangerous', 'restricted'],
     },
     {
       name: 'Kuzma Aquatics',
       description:
-        'A tropical-fish store in a Palisandro strip mall, lit blue by a hundred bubbling tanks. The fish are real and Florian loves them. Behind the reef tanks, a steel door opens on the back room where unlicensed calyxes change hands over a jeweler\'s scale, and nobody gives a real name.',
+        "A tropical-fish store in a Palisandro strip mall, lit blue by a hundred bubbling tanks. The fish are real and Florian loves them. Behind the reef tanks, a steel door opens on the back room where unlicensed calyxes change hands over a jeweler's scale, and nobody gives a real name.",
+      purpose:
+        "The black market and the money trail. The player can sell calyxes here without paperwork; Teo owes Florian 3,000 dollars; and the Glasswick supply chain and the ripening racket meet in the back room. Florian's standing order for patterned calyxes is the first outside sign that someone knows about the Protocol.",
       tags: ['black-market', 'palisandro', 'shop', 'calyx'],
     },
     {
       name: 'The Tolliver Cordon',
       description:
         'The site of the Tolliver Street collapse: two blocks behind Bureau fencing, floodlit all night. Cars lie crushed under a skin of grey slough, a taqueria stands with its front torn off, and something still scratches in the storm drains. Bureau drones circle. This is where you crawled out.',
+      purpose:
+        "The origin wound and the setting of Augie's Tag. Augie's crew tag lies near the old staging area, and something still hunts in the storm drains. The ruined site trailer holds the staging order with Imelda's signature and a Kestrel scheduling note: the first hard evidence that the collapse was a delayed clearance, not bad luck. Bureau drones and floodlights make getting in a stealth challenge.",
       tags: ['bureau', 'collapse-site', 'restricted', 'dangerous'],
+    },
+    {
+      name: 'Ninebridge',
+      description:
+        'The riverside district gutted by the Ninebridge Spill three years ago: blocks of empty apartments with plywood windows, a memorial wall of 212 names under a freeway overpass, and a few stubborn families who never left. At night, generator light leaks from buildings that are supposed to be empty.',
+      purpose:
+        'Where Glasswick is made. The cooks work out of a condemned apartment block, grinding calyxes Florian supplies from deliberately ripened Breaches, which ties the Glasswick and ripening-racket threads together. Teo buys here, so following him leads the player in. The memorial wall shows what a missed clearance costs. One of the four earlier anomalous survivors in the Lintel File lived here; neighbors remember her, and that she talked about words in the air before she vanished.',
+      tags: ['ninebridge', 'ruins', 'glasswick', 'dangerous'],
+    },
+    {
+      name: 'Kestrel Tower',
+      description:
+        "Kestrel Works' Solano headquarters downtown: a black glass tower with an orange stripe of light running up one corner, a lobby of champagne-colored stone, and a trophy wall of framed calyxes. Recruits in orange jackets pose for photos by the door.",
+      purpose:
+        "The corporate threat and the source of the ripening racket. The scheduling office on the 22nd floor buys Bureau clearance data and marks which Breaches to let ripen; the Tolliver delay is in its records. Saoirse Lindqvist has an office here and will want to sign the player once their strength shows. A meeting here is the courtship war made concrete: contracts, perks, and a clause giving Kestrel 'medical access' to its assets.",
+      tags: ['kestrel', 'corporate', 'downtown', 'guarded'],
     },
   ],
 

@@ -54,19 +54,49 @@ Greywatch, the nearest of the seven watchtowers, has not lit its signal fire in 
       name: 'The Bastion',
       description:
         "The fortress at the top of Varenhold, carved into the cliff itself. Stormguard soldiers drill in the torchlit courtyard while the great beacon burns overhead. Stairs climb to the north wall and its view across the Stormgate Pass; the war room, with its map table of the seven watchtowers, sits behind the commander's door.",
+      purpose:
+        "Seat of authority and mission hub: Commander Thorne gives the job and takes the report here (objective 4). On the war room's map table, two more watchtowers are marked 'dim' in Thorne's hand, a clue that the failure is wider than Greywatch. Inquisitor Soren keeps quarters here too, so the player's secret (unlicensed magic) is always one slip from exposure. Ash falling on the north wall is the first sign the dead are close.",
       tags: ['stormguard', 'military', 'fortress', 'north-wall'],
     },
     {
       name: 'The Gilded Griffin',
       description:
         'A sprawling inn in the lower city, loud with off-duty soldiers, dwarven traders, and travelers waiting for the pass to reopen. A carved griffin with gilded wings hangs over a hearth big enough to roast an ox. Brakka keeps a table by the fire for veterans, and a cellar door she never talks about.',
+      purpose:
+        "Safe haven and rumor mill. Brakka is the player's friend and hears everything: off-duty soldiers talk here about the lost patrol, and a dwarven trader swears he saw a figure in white and gold on the pass road a week ago. Brakka's cellar hides two young mage-born refugees; finding them reveals that Brakka shares the player's secret, and gives the player allies with every reason to keep the Dawnwardens out.",
       tags: ['lower-city', 'inn', 'safe', 'rumors'],
     },
     {
       name: 'The Silver Spire',
       description:
         'The Conclave chapter house: a slender tower of pale stone, half its upper floors dark and shuttered since the war. The library smells of old vellum and ozone. Warding circles are inlaid in the floor, glowing faintly, and a humming model of the seven watchtowers turns slowly in the air of the central hall.',
+      purpose:
+        "Knowledge and temptation (objective 1). Magister Vael explains Greywatch's ward here and believes it was broken on purpose. The turning model of the seven towers shows which wards are weakening. Vael will sense the player's gift, which opens the secret-apprenticeship thread, at the risk of the Dawnwardens who watch who comes and goes.",
       tags: ['conclave', 'magic', 'library', 'wards'],
+    },
+    {
+      name: "Shepherd's Rest",
+      description:
+        'A stone waystation halfway up the Stormgate Pass road, built for patrols caught by storms: one room, a hearth, a rack for spears, and a view straight down the cliffs to Varenhold. Ash dusts the path outside like grey snow. The door has been barred from the inside.',
+      purpose:
+        "The climb's midpoint and the first witness. Private Jory Tamm, last survivor of Thorne's lost patrol, is barricaded inside, feverish, with a bite that will not close. He saw the patrol die at Greywatch, and before that he saw a man in white and gold at the ward-stone: the first clue pointing at the Church. Dead things followed him down the road, so this is where the player first fights the Ashen Legion, and has to decide whether to carry Jory home or press on.",
+      tags: ['stormgate-pass', 'waystation', 'shelter', 'dangerous'],
+    },
+    {
+      name: 'Greywatch',
+      description:
+        "The nearest of the seven Stormgate watchtowers: a squat granite tower on a crag above the pass. Its signal brazier is cold. The gate stands open, snow drifts in the stairwell, and at the tower's heart the ward-stone, taller than a man, has gone dark and cold to the touch. Ash lies thick on everything, and nothing moves. At first.",
+      purpose:
+        "The mission's destination (objectives 2 and 3). The lost patrol is here, risen as the dead and guarding the tower. The ward-stone was cracked from outside by a relic of the Dawn: the break is ringed with scorched sunburst marks, and a fragment of the relic's gold casing lies in the snow, engraved with the seal of the Sunward Chapel. Relighting the brazier buys the city time; reporting the broken stone to Thorne starts the larger war. Beyond the tower, the pass lies open to the Ashen Wastes.",
+      tags: ['watchtower', 'stormgate-pass', 'wards', 'dangerous'],
+    },
+    {
+      name: 'The Sunward Chapel',
+      description:
+        "The Church of the Radiant Dawn's chapter house in Varenhold: gold-domed and blazing with candles, with hymns for the dead sung every evening. Dawnwarden novices in white sweep the steps. Below the nave, a reliquary vault holds the Church's holy relics behind gilded bars.",
+      purpose:
+        "The truth behind Greywatch, and the most dangerous place in the city for the player. Brother Hesk, Soren's aide, keeps his cell here; the reliquary vault has one empty cradle, the relic he used to break the ward, and the vault register shows he signed it out. Proving this can turn Soren from enemy to shaken ally, since he never knew. Relics here snuff out spells, and the Dawnwardens notice anyone whose presence makes the candles flare.",
+      tags: ['church', 'radiant-dawn', 'dawnwardens', 'dangerous'],
     },
   ],
 

@@ -107,6 +107,8 @@ async function locationView(ctx: EngineContext, loc: LocationRow) {
   return {
     name: loc.name,
     description: loc.description,
+    // GM-only, like an NPC's notes: shape the story with it, never read it out.
+    ...(loc.purpose ? { purpose: loc.purpose } : {}),
     tags: loc.tags,
     ...(parent ? { insideOf: parent.name } : {}),
     ...(children.length > 0 ? { contains: children.map((c) => c.name) } : {}),
@@ -358,7 +360,8 @@ const readTools: ToolDef[] = [
   tool({
     name: 'get_location',
     kind: 'read',
-    description: 'Look up a location: description, what it is inside of or contains, and which NPCs are there.',
+    description:
+      "Look up a location: description, its purpose in the story (GM-only: what it is for, what it hides; don't reveal it directly), what it is inside of or contains, and which NPCs are there.",
     input: z.object({ name: Name }),
     run: async (ctx, input) => locationView(ctx, await findLocation(ctx, input.name)),
   }),
@@ -706,10 +709,17 @@ const writeTools: ToolDef[] = [
   tool({
     name: 'create_location',
     kind: 'write',
-    description: 'Add a location to the world so it persists (a new district, building, room, or wilderness spot).',
+    description:
+      "Add a location to the world so it persists (a new district, building, room, or wilderness spot). Every location needs a purpose: why it matters to the story. Write the description for the player (what they see) and the purpose for yourself (GM-only).",
     input: z.object({
       name: Name,
-      description: z.string().trim().min(1).max(3000),
+      description: z.string().trim().min(1).max(3000).describe('What the character sees and senses there'),
+      purpose: z
+        .string()
+        .trim()
+        .min(1)
+        .max(2000)
+        .describe('GM-only: what this place is for in the story (a mission step, a clue or secret it holds, an NPC base, a threat, a refuge) and what can happen here'),
       parent_location_name: Name.optional().describe('The larger place this is inside of'),
       tags: Tags.default([]),
     }),
@@ -722,17 +732,48 @@ const writeTools: ToolDef[] = [
         label: 'location',
       }).catch(() => null);
       if (existing && existing.name.toLowerCase() === input.name.toLowerCase()) {
-        throw new ToolError(`A location named "${existing.name}" already exists.`);
+        throw new ToolError(`A location named "${existing.name}" already exists. Use update_location to change it.`);
       }
       const parent = input.parent_location_name ? await findLocation(ctx, input.parent_location_name) : null;
       await ctx.mutator.insert('locations', {
         name: input.name,
         description: input.description,
+        purpose: input.purpose,
         parentLocationId: parent?.id ?? null,
         tags: input.tags,
       });
       await ctx.record({ eventType: 'location_created', humanReadable: `Discovered ${input.name}`, details: { location: input.name } });
       return { created: input.name, insideOf: parent?.name ?? null };
+    },
+  }),
+
+  tool({
+    name: 'update_location',
+    kind: 'write',
+    description:
+      'Change a location: give it a purpose if it lacks one, revise its purpose as the story moves (a hideout is discovered, a safe place becomes dangerous), update its description after something changes it (a fire, a siege), or change its tags.',
+    input: z.object({
+      name: Name,
+      description: z.string().trim().min(1).max(3000).optional(),
+      purpose: z.string().trim().min(1).max(2000).optional().describe('GM-only: replaces the current purpose'),
+      tags: Tags.optional(),
+    }),
+    run: async (ctx, input) => {
+      const loc = await findLocation(ctx, input.name);
+      const patch: Record<string, unknown> = {};
+      if (input.description) patch.description = input.description;
+      if (input.purpose) patch.purpose = input.purpose;
+      if (input.tags) patch.tags = input.tags;
+      if (Object.keys(patch).length === 0) throw new ToolError('Nothing to update.');
+      await ctx.mutator.update('locations', { id: loc.id }, patch);
+      // Purpose changes are GM-only, so they stay out of the player's change log.
+      const visible = input.description !== undefined || input.tags !== undefined;
+      await ctx.record({
+        eventType: visible ? 'location_updated' : 'location_notes',
+        humanReadable: visible ? `${loc.name} changed` : 'The narrator made private notes',
+        details: { location: loc.name },
+      });
+      return { updated: loc.name };
     },
   }),
 

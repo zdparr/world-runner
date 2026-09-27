@@ -78,31 +78,66 @@ Mythic and melancholy. The world is old and beautiful and something in it is end
       name: 'The Quincunx',
       description:
         "Dunmarrow's great market, a five-sided square where the five roads meet. Haddari horse-traders, dwarven money-changers, Lirauni sellers of pale wood and old songs, goblin lock-merchants, and Cendrali grain factors shout over one another beneath striped awnings. An Ovanth standing stone, black and older than the city, stands at the center; children dare each other to touch it. Tollward wardens in slate-blue coats watch from the fountain steps, and no blade may be drawn here on market days.",
+      purpose:
+        "Where the story starts (objective 1): the player meets Yeshkara Tulmai and a hostile Borukh here. The no-blades-on-market-day law makes it the one place the envoy is safe, which is why the killers wait further along the route. Every people's quarter meets here, so it is the best place to hear rumors from all five banners. The black Ovanth stone at its center hums now and then when no one is speaking, a first hint of the Ovanth thread that leads to the Ommerstones.",
       tags: ['dunmarrow', 'market', 'crowded', 'public', 'crossroads'],
     },
     {
       name: 'The Vexillary',
       description:
         "The Hall of Banners: a round domed hall of five colors of stone on the site where the Quinthane was sworn. Five great banners hang from the dome: Cendral's gold wheat-sheaf, the silver tree of Liraun, the Haddari red horse, the Karrow anvil and key, and the Pettifold's ink-black quill. The council floor is ringed by five carved seats; the gold one stands empty with a black ribbon across it. Galleries, clerks' offices, and guest apartments for envoys circle the upper floors.",
+      purpose:
+        "The escort's goal and the stage for the endgame (objective 2, and the Bannermoot itself). Tulmai means to present the Testimony on this council floor, so whoever wants her dead needs her never to arrive. Sabeline Voss works the galleries and will steer the player toward Duke Roake. The empty gold seat is the prize of the Cendral succession. The envoys' guest apartments upstairs are where they are most exposed at night.",
       tags: ['dunmarrow', 'council', 'politics', 'treaty', 'guarded'],
     },
     {
       name: 'Verge of Liraun',
       description:
-        "The southern edge of the elven forest, half a day north of Dunmarrow. The trees are colossal and silver-barked, but their leaves have gone the color of ash and hang motionless, refusing to fall. The air smells of dry paper. Lirauni stillhouses, graceful halls of living wood, stand among the roots where gray-haired elves wait in silence. Deeper in, a ring of Ovanth stones called the Ommerstones hums under the gray canopy.",
+        'The southern edge of the elven forest, half a day north of Dunmarrow. The trees are colossal and silver-barked, but their leaves have gone the color of ash and hang motionless, refusing to fall. The air smells of dry paper. Lirauni stillhouses, graceful halls of living wood, stand among the roots where gray-haired elves wait in silence. Deeper in, a ring of Ovanth stones called the Ommerstones hums under the gray canopy.',
+      purpose:
+        "The Hesterfall made visible, and where The Words of Surety begins (objective 1). Ismerai Tholle waits here, refusing to enter a stillhouse until the Bannermoot. The stillhouses show what the Lirauni are losing, and the forest's grief is the campaign's emotional heart. The way to the Ommerstones starts here, and so does the deepest mystery: the Lirauni pledged their undying years as the Quinthane's surety.",
       tags: ['liraun', 'forest', 'elven', 'melancholy', 'ruins'],
     },
     {
       name: 'Scrivelow',
       description:
-        'The goblin guild-warren beneath Dunmarrow\'s western quarter. Lamplit tunnels open into a vaulted undercourt stacked with archive shelves, clockwork lifts, and the offices of forty rival advocates. The air tastes of lamp oil, iron gall, and blood-ink. Brass speaking-tubes carry arguments between floors, and every door has a better lock than the one before it. Nothing here is free, and everything is on record.',
+        "The goblin guild-warren beneath Dunmarrow's western quarter. Lamplit tunnels open into a vaulted undercourt stacked with archive shelves, clockwork lifts, and the offices of forty rival advocates. The air tastes of lamp oil, iron gall, and blood-ink. Brass speaking-tubes carry arguments between floors, and every door has a better lock than the one before it. Nothing here is free, and everything is on record.",
+      purpose:
+        "Following the money (objective 4). Tizzick drafted the killers' silence-quillbind and cannot say so, but his fee ledger (paid in fresh single-run Grethmoor marks) and his pointed silences can. He can also point out that a quillbind of silence does not forbid the six from writing. Borukh meets Tizzick here in secret to draft a blood-price claim, a red herring that can make the bodyguard look guilty. Every document here is a clue or a trap.",
       tags: ['pettifold', 'goblin', 'underground', 'law', 'archives'],
     },
     {
       name: 'Grethmoor',
       description:
-        'The Karrowdeep counting-house on Dunmarrow\'s south road: a squat fortress of basalt with a bronze door ten feet high. Inside, clerks with braided beards weigh coin on balance-scales under lamplight, and a ledger-hall holds the sealed records of every oath witnessed in Dunmarrow for three centuries. The vault below is said to hold a tenth of the coin on the continent. Nobody lies inside Grethmoor, by custom.',
+        "The Karrowdeep counting-house on Dunmarrow's south road: a squat fortress of basalt with a bronze door ten feet high. Inside, clerks with braided beards weigh coin on balance-scales under lamplight, and a ledger-hall holds the sealed records of every oath witnessed in Dunmarrow for three centuries. The vault below is said to hold a tenth of the coin on the continent. Nobody lies inside Grethmoor, by custom.",
+      purpose:
+        "The mission giver's house, and the hidden culprit's. Brannoc hands out the escort job here, and the trail of new single-run marks ends here: this month's mint-run went only to Grethmoor. The ledger-hall holds the sealed record of the Ondrel Cession with Brannoc's seal as oathwright, the proof that he sealed a lie (objective 5). By custom no one lies inside Grethmoor, so a direct question asked here is dangerous for him, and a player with oath-sense will feel a cold prickle when he swears to his innocence.",
       tags: ['karrowdeep', 'bank', 'oaths', 'dwarven', 'records'],
+    },
+    {
+      name: "The Weavers' Stair",
+      description:
+        "A steep, narrow street of dyers' and weavers' shops climbing from the Quincunx toward the Vexillary. Wet cloth hangs from lines strung between the balconies, dripping blue and red onto the cobbles. It is the shortest way across the city, and the only one where the rooftops nearly touch overhead.",
+      purpose:
+        "The ambush (objective 3). Six Cendrali deserters wait on the rooftops and in a dye-house, wearing Princess Idrienne's colors and carrying Cendral-fletched crossbows. What they leave behind starts the trail: bolt-heads with a Karrow foundry stamp and purses of new single-run Grethmoor marks. A captured assassin physically cannot name his employer (the silence-quillbind) but can be led to write it. The hanging cloth hides shooters, blocks sightlines, and can be cut down for cover.",
+      tags: ['dunmarrow', 'street', 'ambush', 'dangerous'],
+    },
+    {
+      name: 'The Tollward Gatehouse',
+      description:
+        "The Tollward's headquarters at Dunmarrow's east gate: a squat tower of slate-blue stone with a magistrate's court on the ground floor and a records room of route permits and escort rosters above. Brass toll-keys hang on hooks by the door, one for every warden on duty.",
+      purpose:
+        "The player's own chain of command, and the leak. The clerk who sold the envoy's arrival date and route (for Sabeline Voss, to a buyer paying in Grethmoor coin) works in the records room, and the escort roster shows who could have known the route. The magistrate's court is where any quarrel between peoples must be tried, so it is where an arrested assassin, or an accused Borukh, would end up, and where evidence can be made public under Dunmarrow law.",
+      tags: ['dunmarrow', 'tollward', 'law', 'records'],
+    },
+    {
+      name: 'The Ommerstones',
+      description:
+        "A ring of black Ovanth standing stones in a clearing deep in the gray forest, each three times a man's height and carved with glyphs no one can read with certainty. The gray leaves overhead have fallen here, and only here, in a perfect circle. The stones hum steadily, as if someone were speaking names into them.",
+      purpose:
+        "The destination of The Words of Surety (objectives 2 and 3). The inscription records the Quinthane's original pledges, including the Lirauni surety of undying years; read correctly, it explains the Hesterfall and ties it to a hollow sub-oath. The stones humming on their own is the unbannered thread: someone, somewhere, is speaking names into the old network. A hushname spoken here carries farther than it should, which is both a resource and a danger.",
+      tags: ['liraun', 'ovanth', 'ruins', 'magic'],
+      parent: 'Verge of Liraun',
     },
   ],
 

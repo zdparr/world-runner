@@ -99,6 +99,11 @@ export function trainingMadeTheDifference(
   return OUTCOME_RANK[outcome] > OUTCOME_RANK[untrained];
 }
 
+// ---------------------------------------------------------------- world
+
+/** Every world should have at least this many locations, each with a purpose in the story. */
+export const MIN_WORLD_LOCATIONS = 6;
+
 // ---------------------------------------------------------------- skill tiers
 
 export const SKILL_TIERS = [

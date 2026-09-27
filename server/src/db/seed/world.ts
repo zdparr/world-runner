@@ -16,7 +16,11 @@ export interface WorldTemplate extends CampaignTemplate {
   currencyName: string;
   /** Defaults to 'classic'. */
   ruleset?: Ruleset;
-  locations: { name: string; description: string; tags: string[] }[];
+  /**
+   * At least MIN_WORLD_LOCATIONS, each with a purpose: why it exists in the story (GM-only).
+   * `parent` names the larger place this one sits inside.
+   */
+  locations: { name: string; description: string; purpose: string; tags: string[]; parent?: string }[];
   npcs: { name: string; shortDescription: string; faction: string; location: string; notes: string }[];
   lore: { title: string; keywords: string[]; body: string; alwaysInclude?: boolean }[];
   missions: {
@@ -82,10 +86,13 @@ export async function insertWorld(
   const locId = lookup(
     await tx
       .insert(locations)
-      .values(world.locations.map((l) => ({ campaignId, ...l })))
+      .values(world.locations.map(({ parent: _parent, ...l }) => ({ campaignId, ...l })))
       .returning({ id: locations.id, name: locations.name }),
     'location',
   );
+  for (const l of world.locations) {
+    if (l.parent) await tx.update(locations).set({ parentLocationId: locId(l.parent) }).where(eq(locations.id, locId(l.name)));
+  }
 
   const npcId = lookup(
     await tx

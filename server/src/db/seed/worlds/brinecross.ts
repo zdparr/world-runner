@@ -4,7 +4,7 @@ export const brinecross: WorldTemplate = {
   id: 'brinecross',
   name: 'Brinecross',
   description:
-    'A smuggler-ridden free port in a low-magic, age-of-sail world. Three locations, four NPCs, five lore entries, and a job: find a stolen crate of contraband lamp oil.',
+    'A smuggler-ridden free port in a low-magic, age-of-sail world. Six locations, four NPCs, five lore entries, and a job: find a stolen crate of contraband lamp oil.',
   demoCampaignName: 'Brinecross: The Lantern and the Tide',
   currencyName: 'crowns',
 
@@ -46,19 +46,49 @@ Sunstone oil, a glowing lamp fuel from the south, has been declared contraband b
       name: 'Dockside Market',
       description:
         'A roaring square of stalls between the fish piers and the customs house. Canvas awnings snap in the wind, hawkers shout prices in five languages, and Harbor Authority officers in faded blue coats drift through looking for bribes. Alleys lead east toward the Saltworks.',
+      purpose:
+        "The opening crossroads and rumor mill (objective 1: ask around about the crate). Harbormaster Thane and Sister Ilse both work this square, so the player meets the corrupt official and the honest priestess in the same scene. The dockhands were paid to see nothing; one of them, pressed or bribed, remembers men in Authority blue wheeling a crate east toward the Saltworks at night. The customs house here is the Authority's public face, and Thane's weak point is his vanity in front of a crowd.",
       tags: ['dockside', 'market', 'public', 'crowded'],
     },
     {
       name: 'The Drowned Lantern',
       description:
         'A low-beamed tavern built into the hull of a beached carrack, just off the market. Green glass floats hang from the ceiling and catch the lamplight. It smells of ale, pipe smoke, and the sea. The back room is for people Mara trusts.',
+      purpose:
+        "Home base and mission hub: Mara gives the job and takes the report here (objectives 1 and 4). The back room is the safest place in the city to plan, heal, or lie low. It also holds Mara's own secret: she has quietly restarted the sunstone trade, and a sharp-eyed player can spot empty straw nests waiting for the stolen flasks. The cellar has a bricked-up door to the Drowned Streets that Mara swears she never uses; it is a back way into the tunnels if the player earns her trust.",
       tags: ['dockside', 'tavern', 'safe', 'information'],
     },
     {
       name: 'The Saltworks',
       description:
         'Collapsed warehouses and flooded evaporation pans crusted white with salt. Planks laid across the water make paths only the Gutter Gulls know well. Somewhere below, stairwells descend into the tunnels of Old Brinecross.',
+      purpose:
+        "Gutter Gull territory and the way down (objective 2: find where the crate went). Rook is here and knows exactly where it is stored, because the Gulls moved it for Thane's men without knowing whose it was. Getting her help means dealing with the Gulls' code (no killing, no stealing from the Chapel, every debt collected) and possibly with the favor Mara owes them, which they may call in through the player. The stairwells here are the main entrance to the Drowned Streets.",
       tags: ['saltworks', 'dangerous', 'gang-territory', 'ruins'],
+    },
+    {
+      name: 'The Drowned Streets',
+      description:
+        'The streets of Old Brinecross, drowned eighty years ago and roofed over by the new city. Barnacled shopfronts line half-flooded lanes, and street signs point to squares that no longer exist. Water slaps against the vaults overhead. Twice a day the tide comes in fast. Gull chalk marks on the walls show the safe ways; everything else is a guess.',
+      purpose:
+        "Where the stolen crate is hidden (objective 3): in a dry chapel crypt the Gulls use as a warehouse, watched by two of Thane's hired dockhands waiting to move it to the North Pier. The tide is the ticking clock: passages flood twice a day, and without Sister Ilse's tide tables or a Gull guide the player risks being trapped. The tunnels connect to Mara's bricked-up cellar and to a grate beneath the North Pier Warehouses, so exploring them opens back ways into both.",
+      tags: ['old-brinecross', 'tunnels', 'dangerous', 'flooding'],
+    },
+    {
+      name: 'The North Pier Warehouses',
+      description:
+        'A row of Harbor Authority bonded warehouses on the north pier, where seized cargo is supposed to be burned. The chimneys rarely smoke. Blue-coated guards play dice by the gate, wagons come and go after dark, and the merchant house of Castellan & Sons keeps an office suspiciously close by.',
+      purpose:
+        "Proof of who ordered the theft (the other half of objective 3). Seized contraband is not burned here; it is resold through Castellan & Sons, who pay Thane to seize their rivals' sunstone. The seizure ledger in the pier office lists Mara's crate by its markings, dated the day before it was stolen. This is where the crate ends up if the player is slow. Exposing the ledger makes Thane a dangerous enemy, Castellan & Sons a new one, and the Chapel a willing ally.",
+      tags: ['north-pier', 'harbor-authority', 'guarded', 'evidence'],
+    },
+    {
+      name: 'The Chapel of the Tide Mother',
+      description:
+        'A white stone chapel on the cliffs of Upper Brinecross, its doors carved with spiral shells. Tide tables are chalked on slate boards beside the altar, votive boats hang from the rafters, and the sick lie on cots in the side aisles. The bells ring every turning of the tide.',
+      purpose:
+        "Refuge and neutral ground. Even the Gulls will not steal here, so it is a place to hide, heal, or meet a Gull safely. Sister Ilse's tide tables are what make the Drowned Streets survivable; she will share them, but she will ask what the player wants down there, and she will not help anyone hurt the Gulls' children. The Chapel is quietly at odds with the Authority over the Tithe: evidence against Thane has a powerful ally here, and a sermon from its steps could turn the docks against him.",
+      tags: ['upper-brinecross', 'chapel', 'safe', 'healing'],
     },
   ],
 

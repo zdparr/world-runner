@@ -181,6 +181,8 @@ export interface InventoryItem {
 const locationShape = {
   name: Name,
   description: LongText.default(''),
+  /** GM-only: what this place is for in the story. */
+  purpose: z.string().max(2000).default(''),
   parentLocationId: Id.nullable().default(null),
   tags: Tags.default([]),
 };
@@ -193,6 +195,8 @@ export interface Location {
   campaignId: string;
   name: string;
   description: string;
+  /** GM-only: what this place is for in the story. */
+  purpose: string;
   parentLocationId: string | null;
   tags: string[];
   createdAt: string;

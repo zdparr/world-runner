@@ -277,6 +277,32 @@ describe('write tools', () => {
     expect(dynamic).toContain('Narration length: Standard');
   });
 
+  it('requires a purpose for new locations, and lets the narrator revise one privately', async () => {
+    const id = await newCampaign();
+    const { calls, events } = await play(id, 'I explore.', [
+      {
+        tools: [
+          { name: 'create_location', input: { name: 'Gull Rock', description: 'A bare rock in the Sound.' } },
+          { name: 'create_location', input: { name: 'Gull Rock', description: 'A bare rock in the Sound.', purpose: 'Where the Gulls hide their loot.' } },
+          { name: 'update_location', input: { name: 'The Saltworks', purpose: 'Now watched by Thane’s men.' } },
+        ],
+      },
+      { tools: [{ name: 'get_location', input: { name: 'Gull Rock' } }] },
+      { text: 'Waves.' },
+    ]);
+    const [missing, created, updated] = toolResultsIn(calls[1]!);
+    expect(missing).toMatchObject({ is_error: true });
+    expect(missing!.content).toMatch(/purpose/);
+    expect(created!.is_error).toBeUndefined();
+    expect(updated!.is_error).toBeUndefined();
+    expect(JSON.parse(toolResultsIn(calls[2]!)[0]!.content as string)).toMatchObject({ name: 'Gull Rock', purpose: 'Where the Gulls hide their loot.' });
+    const saltworks = (await t.db.select().from(locations).where(eq(locations.campaignId, id))).find((l) => l.name === 'The Saltworks')!;
+    expect(saltworks.purpose).toBe('Now watched by Thane’s men.');
+    // The player's change log never spells out a purpose.
+    const logged = doneEvent(events).stateChanges.map((c) => c.humanReadable);
+    expect(logged).toEqual(['Discovered Gull Rock', 'The narrator made private notes']);
+  });
+
   it('forces narration after six tool rounds', async () => {
     const id = await newCampaign();
     const loop: Step = { tools: [{ name: 'get_money', input: {} }] };
@@ -331,6 +357,28 @@ describe('context builder', () => {
     expect(system).toContain('Active mission: none');
     // Skill names and levels are always present so the narrator reuses them rather than inventing duplicates.
     expect(state).toMatch(/^Skills: Lockpicking 3 \(Apprentice\), .*Stealth 2 \(Novice\)/m);
+  });
+
+  it("shows the current location's purpose and names every place in the world", async () => {
+    const id = await newCampaign();
+    const state = (await contextFor(id, 'I look around.')).system[1]!.text;
+    expect(state).toMatch(/^Purpose \(GM-only, don't reveal it directly\): The opening crossroads and rumor mill/m);
+    expect(state).toContain(
+      'Places in this world (6): Dockside Market; The Chapel of the Tide Mother; The Drowned Lantern; The Drowned Streets; The North Pier Warehouses; The Saltworks.',
+    );
+    // A full world needs no building out.
+    expect(state).not.toContain('The world needs at least');
+    expect(state).not.toContain('Places with no purpose yet');
+  });
+
+  it('asks the narrator to build out a world with fewer than six locations, and to give places a purpose', async () => {
+    const [campaign] = await t.db.insert(campaigns).values({ name: `Sparse world ${++seq}`, worldBible: 'A lonely lighthouse coast.' }).returning();
+    const [light] = await t.db.insert(locations).values({ campaignId: campaign!.id, name: 'The Lighthouse', description: 'Tall and white.' }).returning();
+    await t.db.insert(playerCharacter).values({ campaignId: campaign!.id, name: 'Wren', currentLocationId: light!.id });
+    const state = (await contextFor(campaign!.id, 'I climb the stairs.')).system[1]!.text;
+    expect(state).toContain('The world needs at least 6 locations, and has 1. This turn, call create_location for the 5 missing ones');
+    expect(state).toContain('Places with no purpose yet: The Lighthouse.');
+    expect(state).toContain('Purpose (GM-only, don\'t reveal it directly): none yet; give it one with update_location');
   });
 
   it('pre-fetches only the NPC (and relationship) the player talks to', async () => {
@@ -397,7 +445,7 @@ describe('undo', () => {
           { name: 'adjust_hp', input: { delta: -6, reason: 'fall' } },
           { name: 'update_status_effect', input: { action: 'add', name: 'Soaked' } },
           { name: 'adjust_relationship', input: { npc_name: 'Sister Ilse', trust_delta: 10, note: 'Helped at the stall' } }, // new relationship
-          { name: 'create_location', input: { name: 'Gallows Pier', description: 'A pier with a grim history.', parent_location_name: 'Dockside Market' } },
+          { name: 'create_location', input: { name: 'Gallows Pier', description: 'A pier with a grim history.', purpose: 'Where the watch hangs smugglers.', parent_location_name: 'Dockside Market' } },
           { name: 'create_npc', input: { name: 'Old Brannoc', short_description: 'A net-mender', location_name: 'Gallows Pier' } },
           { name: 'update_npc', input: { name: 'Rook', alive: false } },
           { name: 'move_player', input: { location_name: 'Gallows Pier' } },
@@ -445,7 +493,7 @@ describe('map snapshot', () => {
       {
         tools: [
           { name: 'move_player', input: { location_name: 'Drowned Lantern' } },
-          { name: 'create_location', input: { name: 'Lantern Cellar', description: 'Barrels and damp.', parent_location_name: 'Drowned Lantern' } },
+          { name: 'create_location', input: { name: 'Lantern Cellar', description: 'Barrels and damp.', purpose: 'Mara keeps her sunstone here.', parent_location_name: 'Drowned Lantern' } },
           { name: 'move_player', input: { location_name: 'Lantern Cellar' } },
           { name: 'move_player', input: { location_name: 'Drowned Lantern' } },
           { name: 'move_player', input: { location_name: 'Dockside Market' } },
@@ -455,7 +503,15 @@ describe('map snapshot', () => {
     ]);
     const { map } = (await t.api('GET', `/api/campaigns/${id}/state`)).json() as import('@narrator/shared').CampaignState;
     const byName = Object.fromEntries(map.locations.map((l) => [l.name, l]));
-    expect(Object.keys(byName)).toEqual(['Dockside Market', 'The Drowned Lantern', 'The Saltworks', 'Lantern Cellar']);
+    expect(Object.keys(byName)).toEqual([
+      'Dockside Market',
+      'The Chapel of the Tide Mother',
+      'The Drowned Lantern',
+      'The Drowned Streets',
+      'The North Pier Warehouses',
+      'The Saltworks',
+      'Lantern Cellar',
+    ]);
     expect(byName['Lantern Cellar']).toMatchObject({ parentLocationId: byName['The Drowned Lantern']!.id, visited: true });
     expect(byName['The Saltworks']!.visited).toBe(false);
     // Kael knows Mara (at the Lantern) and Rook (Saltworks); the market's harbormaster and priest are strangers.

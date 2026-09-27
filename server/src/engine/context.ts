@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import type Anthropic from '@anthropic-ai/sdk';
-import { ATTRIBUTES, levelBonus, skillTier, type ContextManifest, type ContextSlice, type NarrationLength, type Ruleset } from '@narrator/shared';
+import { ATTRIBUTES, MIN_WORLD_LOCATIONS, levelBonus, skillTier, type ContextManifest, type ContextSlice, type NarrationLength, type Ruleset } from '@narrator/shared';
 import type { Db } from '../db/client';
 import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills } from '../db/schema';
 import { repoRoot } from '../paths';
@@ -87,6 +87,8 @@ function escapeRegex(s: string) {
 }
 
 const LIMITS = { npcs: 3, items: 5, locations: 2, lore: 3 };
+/** Location names listed every turn; bigger worlds are summarized with a count. */
+const MAX_PLACES_LISTED = 40;
 
 // ---------------------------------------------------------------- builder
 
@@ -147,6 +149,28 @@ export async function buildTurnContext(
   // Tiers let the narration show competence: a Journeyman handles what a Novice fumbles.
   const skillLine = skillRows.length > 0 ? skillRows.map((s) => `${s.name} ${s.level} (${skillTier(s.level)})`).join(', ') : 'none yet';
 
+  // Every place in the world, by name, so the narrator can use (and route the story through) them.
+  const worldLocations = await db
+    .select({ id: locations.id, name: locations.name, purpose: locations.purpose })
+    .from(locations)
+    .where(eq(locations.campaignId, cid))
+    .orderBy(asc(locations.createdAt), asc(locations.name));
+  const shownPlaces = worldLocations.slice(0, MAX_PLACES_LISTED);
+  const placesLine = [
+    `Places in this world (${worldLocations.length}): ${shownPlaces.length > 0 ? shownPlaces.map((l) => l.name).join('; ') : 'none yet'}${worldLocations.length > shownPlaces.length ? `; and ${worldLocations.length - shownPlaces.length} more` : ''}. Use get_location for any of them.`,
+    worldLocations.length < MIN_WORLD_LOCATIONS
+      ? `The world needs at least ${MIN_WORLD_LOCATIONS} locations, and has ${worldLocations.length}. This turn, call create_location for the ${MIN_WORLD_LOCATIONS - worldLocations.length} missing ones, grounded in the world bible and story so far, each with a purpose that ties it to a mission, a thread, an NPC, or a secret. They need not be visited yet.`
+      : '',
+    (() => {
+      const missing = worldLocations.filter((l) => !l.purpose.trim()).map((l) => l.name);
+      return missing.length > 0
+        ? `Places with no purpose yet: ${missing.join('; ')}. Give each one a purpose with update_location, starting with any the story touches this turn.`
+        : '';
+    })(),
+  ]
+    .filter(Boolean)
+    .join('\n');
+
   const alwaysLore = await db
     .select({ id: loreEntries.id, title: loreEntries.title, body: loreEntries.body })
     .from(loreEntries)
@@ -156,7 +180,10 @@ export async function buildTurnContext(
     `# Current state (turn ${turnNumber})`,
     `Character: ${header}`,
     `Skills: ${skillLine}`,
-    location ? `Location: ${location.name}\n${location.description}` : 'Location: unknown (the character has not been placed anywhere yet)',
+    location
+      ? `Location: ${location.name}\n${location.description}\nPurpose (GM-only, don't reveal it directly): ${location.purpose.trim() || 'none yet; give it one with update_location'}`
+      : 'Location: unknown (the character has not been placed anywhere yet)',
+    placesLine,
     mission
       ? `Active mission: ${mission.title}${nextObjective ? ` (next: ${nextObjective.text})` : ' (all objectives done)'}`
       : 'Active mission: none',
@@ -184,7 +211,8 @@ export async function buildTurnContext(
   }
   core.push({ slice: 'character_header', reason: 'always', approxTokens: approxTokens(header), detail: header });
   core.push({ slice: 'skill_names', reason: 'always (names and levels only)', approxTokens: approxTokens(skillLine), detail: skillRows.length });
-  if (location) core.push({ slice: 'location', reason: 'current location', approxTokens: approxTokens(location.description), detail: location.name });
+  if (location) core.push({ slice: 'location', reason: 'current location (with purpose)', approxTokens: approxTokens(location.description + location.purpose), detail: location.name });
+  core.push({ slice: 'places', reason: 'always (names only)', approxTokens: approxTokens(placesLine), detail: worldLocations.length });
   if (mission) core.push({ slice: 'active_mission', reason: 'title and next objective only', approxTokens: 20, detail: mission.title });
 
   stateLines.push(`Narration length: ${NARRATION_LENGTH[campaign.narrationLength]}`);
@@ -258,7 +286,7 @@ export async function buildTurnContext(
     .filter((x) => x.hit)
     .slice(0, LIMITS.locations);
   for (const { l, hit } of locHits) {
-    records.push(`## Location: ${l.name}\n${l.description}`);
+    records.push(`## Location: ${l.name}\n${l.description}${l.purpose.trim() ? `\nPurpose (GM-only): ${l.purpose}` : ''}`);
     prefetched.push({ slice: 'location', reason: `mentioned ("${hit}")`, approxTokens: approxTokens(l.description), detail: l.name });
   }
 
