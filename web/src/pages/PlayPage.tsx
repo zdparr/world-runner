@@ -6,7 +6,8 @@ import { ApiRequestError, api } from '../api';
 import { toneFor, useToast } from '../components/Toasts';
 import { Button, ErrorNote, Spinner, cx } from '../components/ui';
 import { HamburgerIcon, Sidebar, type Tab } from '../play/Sidebar';
-import { Narration, PlayerLine, TurnBlock, groupTurns } from '../play/Story';
+import { Highlights, Narration, PlayerLine, TurnBlock, groupTurns } from '../play/Story';
+import { TimeSkipDialog } from '../play/TimeSkip';
 
 /** Where a new turn sits after the send scroll, and the story column's bottom padding (py-8). */
 const TOP_GAP = 16;
@@ -31,15 +32,11 @@ interface PendingTurn {
 function activityFor(event: Extract<TurnStreamEvent, { type: 'tool' }>): string | null {
   const input = (event.input ?? {}) as Record<string, string>;
   switch (event.name) {
-    case 'skill_check': {
-      if (!event.ok) return null;
-      try {
-        const r = JSON.parse(event.summary) as { outcome: string };
-        return `${input.skill_name} check (${input.difficulty}): ${r.outcome}`;
-      } catch {
-        return `${input.skill_name} check`;
-      }
-    }
+    // Checks show as highlight chips with the full roll; this is just the running commentary.
+    case 'skill_check':
+      return event.ok ? `Rolling ${input.skill_name}` : null;
+    case 'pass_time':
+      return event.ok ? 'Time passes' : null;
     case 'get_inventory':
       return 'Checking your pack';
     case 'get_money':
@@ -75,6 +72,7 @@ export function PlayPage() {
   const [tab, setTab] = useState<Tab>('Character');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmUndo, setConfirmUndo] = useState(false);
+  const [skipOpen, setSkipOpen] = useState(false);
 
   const scroller = useRef<HTMLDivElement>(null);
   // The latest turn (in flight or saved) and the blank space below it; see the reading-position effect.
@@ -178,7 +176,8 @@ export function PlayPage() {
             break;
           }
           case 'state_change':
-            if (event.change.eventType !== 'skill_check') toast(event.change.humanReadable, toneFor(event.change.eventType));
+            // Checks show as chips under the narration; the narrator's private notes stay private.
+            if (event.change.eventType !== 'skill_check' && event.change.eventType !== 'story_notes') toast(event.change.humanReadable, toneFor(event.change.eventType));
             update((p) => ({ ...p, changes: [...p.changes, event.change] }));
             break;
           case 'done':
@@ -355,6 +354,7 @@ export function PlayPage() {
                   ) : (
                     <p className="font-story text-parchment-faint italic">The narrator considers…</p>
                   )}
+                  {!live.error && <Highlights items={live.changes} />}
                 </article>
               )}
             </div>
@@ -393,14 +393,25 @@ export function PlayPage() {
               aria-label="Your action"
               className="scroll-thin min-h-11 flex-1 resize-none rounded-lg border border-ink-600 bg-ink-900 px-3.5 py-2.5 font-story text-parchment placeholder:text-parchment-faint/70 focus:border-brass focus:outline-none disabled:opacity-60"
             />
+            <Button
+              variant="ghost"
+              className="h-11 px-3"
+              disabled={busy}
+              onClick={() => setSkipOpen(true)}
+              title="Time skip: train or pass quiet time, then continue the story"
+              aria-label="Time skip"
+            >
+              ⏩
+            </Button>
             <Button type="submit" variant="primary" className="h-11" disabled={busy || !draft.trim()}>
               Send
             </Button>
           </div>
           <p className="mx-auto mt-1.5 hidden max-w-2xl text-[0.68rem] text-parchment-faint sm:block">
-            Enter to send · Shift+Enter for a new line · Start with <span className="font-mono">OOC:</span> to talk to the narrator
+            Enter to send · Shift+Enter for a new line · Start with <span className="font-mono">OOC:</span> to talk to the narrator · ⏩ to skip ahead and train
           </p>
         </form>
+        <TimeSkipDialog open={skipOpen} skills={s.skills} onClose={() => setSkipOpen(false)} onSubmit={(text) => void send(text)} />
       </div>
 
       {/* ------------------------------------------------ sidebar (desktop) */}

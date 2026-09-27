@@ -6,6 +6,7 @@ import {
   MissionPenalty,
   MissionRecurrence,
   MissionRewards,
+  NarrationLength,
   RELATIONSHIP_MAX,
   RELATIONSHIP_MIN,
   Ruleset,
@@ -45,9 +46,10 @@ const campaignShape = {
   historyWindow: z.number().int().min(2).max(40).default(8),
   summaryInterval: z.number().int().min(2).max(100).default(10),
   ruleset: Ruleset.default('classic'),
+  narrationLength: NarrationLength.default('standard'),
 };
 export const CampaignCreate = z.object(campaignShape).strict();
-export const CampaignUpdate = updateOf({ ...campaignShape, rollingSummary: LongText });
+export const CampaignUpdate = updateOf({ ...campaignShape, rollingSummary: LongText, storyNotes: LongText });
 export type CampaignCreate = z.input<typeof CampaignCreate>;
 export type CampaignUpdate = z.input<typeof CampaignUpdate>;
 
@@ -57,6 +59,9 @@ export interface Campaign {
   worldBible: string;
   narratorStyle: string;
   rollingSummary: string;
+  /** The narrator's private planning notes (GM-only). */
+  storyNotes: string;
+  narrationLength: NarrationLength;
   currencyName: string;
   turnCount: number;
   historyWindow: number;
@@ -320,7 +325,19 @@ export interface Message {
   content: string;
   summarized: boolean;
   createdAt: string;
+  /** Narrator messages only: the rolls and progress of that turn, shown under the narration. */
+  highlights?: TurnHighlight[];
 }
+
+/** A roll or a step of growth worth showing alongside the story. */
+export interface TurnHighlight {
+  eventType: string;
+  humanReadable: string;
+  details: Record<string, unknown>;
+}
+
+/** Event types shown as highlights under a turn's narration. */
+export const HIGHLIGHT_EVENT_TYPES = ['skill_check', 'skill_level', 'level_up', 'attribute', 'time_skip'] as const;
 
 export interface StateEvent {
   id: number;
@@ -417,7 +434,7 @@ export type CampaignFromTemplate = z.input<typeof CampaignFromTemplate>;
 
 /** Everything the play screen's sidebar shows, in one request. */
 export interface CampaignState {
-  campaign: Pick<Campaign, 'id' | 'name' | 'currencyName' | 'turnCount' | 'rollingSummary' | 'summaryInterval' | 'ruleset' | 'gameDay'>;
+  campaign: Pick<Campaign, 'id' | 'name' | 'currencyName' | 'turnCount' | 'rollingSummary' | 'summaryInterval' | 'ruleset' | 'gameDay' | 'narrationLength'>;
   /** Whether post-turn memory upkeep (summary, note condensing) can run: needs an API key. */
   memoryEnabled: boolean;
   character: PlayerCharacter | null;

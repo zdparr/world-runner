@@ -100,10 +100,10 @@ describe('ascension rule set', () => {
       { text: '...' },
     ]);
     const check = JSON.parse(result(calls[1]!).content as string);
-    // Perception 7 adds +1; Salvage is a starting skill.
-    expect(check).toMatchObject({ attribute: 'perception', attributeBonus: 1 });
+    // Perception 7 adds +2 (one per 3 points); Salvage is a starting skill; level 1 adds no level bonus.
+    expect(check.breakdown).toMatchObject({ attribute: 'perception', attributeBonus: 2, levelBonus: 0 });
     const salvage = (await t.api('GET', `/api/campaigns/${id}/skills`)).json().find((s: { name: string }) => s.name === 'Salvage');
-    expect(check.modifier).toBe(salvage.level + 1);
+    expect(check.modifier).toBe(salvage.level + 2);
   });
 
   it('fails an unfinished daily at day end, applies its penalty, and resets it; undo reverts all of it', async () => {

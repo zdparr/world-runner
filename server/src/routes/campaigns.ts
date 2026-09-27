@@ -1,11 +1,13 @@
-import { and, asc, desc, eq, getTableColumns, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, inArray, lt, sql } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import {
   CampaignCreate,
   CampaignUpdate,
   CampaignFromTemplate,
+  HIGHLIGHT_EVENT_TYPES,
   type CampaignTemplate,
+  type TurnHighlight,
   ItemCreate,
   ItemUpdate,
   LocationCreate,
@@ -221,7 +223,32 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
             .where(and(eq(messages.campaignId, request.campaignId), before ? lt(messages.id, before) : undefined))
             .orderBy(desc(messages.id))
             .limit(limit + 1);
-          return pageOf(rows, limit);
+          const page = pageOf(rows, limit);
+          // Each narrator message carries its turn's rolls and growth, so they stay visible after the turn.
+          const turns = [...new Set(page.items.filter((m) => m.role === 'narrator').map((m) => m.turnNumber))];
+          const events = turns.length
+            ? await db
+                .select({ turnNumber: stateEvents.turnNumber, eventType: stateEvents.eventType, humanReadable: stateEvents.humanReadable, payload: stateEvents.payload })
+                .from(stateEvents)
+                .where(
+                  and(
+                    eq(stateEvents.campaignId, request.campaignId),
+                    inArray(stateEvents.turnNumber, turns),
+                    inArray(stateEvents.eventType, [...HIGHLIGHT_EVENT_TYPES]),
+                  ),
+                )
+                .orderBy(asc(stateEvents.id))
+            : [];
+          const byTurn = new Map<number, TurnHighlight[]>();
+          for (const e of events) {
+            const list = byTurn.get(e.turnNumber) ?? [];
+            list.push({ eventType: e.eventType, humanReadable: e.humanReadable, details: (e.payload as { details?: Record<string, unknown> }).details ?? {} });
+            byTurn.set(e.turnNumber, list);
+          }
+          return {
+            ...page,
+            items: page.items.map((m) => (m.role === 'narrator' && byTurn.has(m.turnNumber) ? { ...m, highlights: byTurn.get(m.turnNumber) } : m)),
+          };
         });
 
         c.get('/events', async (request): Promise<Page<unknown>> => {

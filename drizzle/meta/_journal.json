@@ -15,6 +15,13 @@
       "when": 1790390853989,
       "tag": "0001_ascension_ruleset",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790468254888,
+      "tag": "0002_story_depth",
+      "breakpoints": true
     }
   ]
 }

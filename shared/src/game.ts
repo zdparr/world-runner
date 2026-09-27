@@ -65,6 +65,11 @@ export const RULESETS = ['classic', 'ascension'] as const;
 export const Ruleset = z.enum(RULESETS);
 export type Ruleset = z.infer<typeof Ruleset>;
 
+/** How much the narrator writes per turn. */
+export const NARRATION_LENGTHS = ['brief', 'standard', 'rich'] as const;
+export const NarrationLength = z.enum(NARRATION_LENGTHS);
+export type NarrationLength = z.infer<typeof NarrationLength>;
+
 export const ATTRIBUTES = ['strength', 'agility', 'vitality', 'perception', 'will'] as const;
 export const AttributeName = z.enum(ATTRIBUTES);
 export type AttributeName = z.infer<typeof AttributeName>;

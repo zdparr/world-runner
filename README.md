@@ -66,9 +66,24 @@ The engine lives in `server/src/engine/`. Each turn:
 
 1. **Context** ([context.ts](server/src/engine/context.ts)): a cached static block (narrator prompt, world bible, style) plus a small per-turn block: the one-line character header, current location, active mission and next objective, rolling summary, always-include lore, and records whose names appear in the player's message (NPC plus relationship, items, locations, lore). Everything else stays out, and the narrator fetches it with read tools. The `turn_debug.context_manifest` records what was included and why.
 2. **Narrator loop** ([narrator.ts](server/src/engine/narrator.ts)): streams text, runs tool calls between rounds, and caps tool use at 6 rounds before forcing narration.
-3. **Tools** ([tools.ts](server/src/engine/tools.ts)): 9 read tools and 16 write tools, validated with zod. Invalid input goes back to the model as an error it can correct.
+3. **Tools** ([tools.ts](server/src/engine/tools.ts)): 9 read tools and 18 write tools, validated with zod. Invalid input goes back to the model as an error it can correct.
 4. **Writes** ([mutator.ts](server/src/engine/mutator.ts)): each tool call runs in a savepoint and records row-level before/after diffs in `state_events`, which is what makes undo exact.
 5. **Atomicity**: the whole turn is one transaction. If the model call fails, nothing is saved.
+
+### Progression
+
+The numbers live in [rules.ts](shared/src/rules.ts), shared by the engine and the UI.
+
+- **Checks** roll d20 + skill level + level bonus (+ attribute bonus under ascension) against DC 8/12/16/20. The level bonus is +1 at levels 4, 7, 10, 13, and 16 (capped at +5). From skill level 6, a natural 1 no longer fails automatically.
+- **Skill XP** costs 25 × (level + 1) per level. A check pays 5/10/16/25 XP by difficulty (less on a partial or a failure). Tiers: Novice 0, Apprentice 3, Journeyman 6, Expert 10, Master 15, Grandmaster 20.
+- **Character XP** costs 50 × (level + 1) per level; each level adds 3 max HP (and 3 stat points under ascension, where 3 points = +1).
+- **Visible impact.** A check result says when the character's training changed the outcome (`trainingMadeTheDifference`). The narrator is told to show it in the story, and the turn shows it as a chip ("✦ training decided it"). Each saved turn keeps its rolls and level-ups under the narration (`highlights` on narrator messages).
+- **Time skips.** The ⏩ button sends a time-skip request, and the narrator calls `pass_time`. That tool grants 15 skill XP per training day on the main focus (half for side skills, ×1.5 with a teacher, half without one past level 10), 5 character XP per day, and 25% HP per day of rest, and advances the in-game day (daily quests are kept up, with no rewards or penalties). The narrator plays out the montage, then resumes the story. One skip covers at most 90 days.
+
+### Story depth
+
+- **Story notes.** `update_story_notes` keeps the narrator's private planning notes (open threads, secrets, planted clues, what NPCs are doing offscreen) in `campaigns.story_notes`. They appear in every turn's context and never in the player's UI (except the debug drawer).
+- **Narration length.** `campaigns.narration_length` (`brief` / `standard` / `rich`, set in the sidebar's Log tab) is restated every turn.
 
 Dice are server-side and seeded by (campaign seed, turn, roll index), so undoing a turn and replaying it gives the same rolls.
 

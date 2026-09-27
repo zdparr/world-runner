@@ -1,23 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_SKILL_LEVEL, resolveCheck, skillXpToNext, characterXpToNext, type Difficulty } from '@narrator/shared';
+import {
+  MAX_SKILL_LEVEL,
+  NO_FUMBLE_LEVEL,
+  checkXp,
+  levelBonus,
+  nextLevelBonusAt,
+  resolveCheck,
+  skillTier,
+  skillXpToNext,
+  characterXpToNext,
+  trainingMadeTheDifference,
+  trainingXp,
+  type Difficulty,
+} from '@narrator/shared';
 import { addXp } from '../src/engine/game';
 import { rollD20 } from '../src/engine/rng';
 
 describe('skill level-up thresholds', () => {
-  it('costs 50 × (level + 1) xp per level', () => {
-    expect([0, 1, 2, 3, 9].map(skillXpToNext)).toEqual([50, 100, 150, 200, 500]);
-    expect([1, 2, 5].map(characterXpToNext)).toEqual([100, 200, 500]);
+  it('costs 25 × (level + 1) skill xp and 50 × (level + 1) character xp per level', () => {
+    expect([0, 1, 2, 3, 9].map(skillXpToNext)).toEqual([25, 50, 75, 100, 250]);
+    expect([1, 2, 5].map(characterXpToNext)).toEqual([100, 150, 300]);
   });
 
   it('levels up exactly at the threshold, carrying the remainder', () => {
-    expect(addXp(3, 199, 1, skillXpToNext, MAX_SKILL_LEVEL)).toEqual({ level: 4, xp: 0 });
-    expect(addXp(3, 190, 20, skillXpToNext, MAX_SKILL_LEVEL)).toEqual({ level: 4, xp: 10 });
-    expect(addXp(3, 198, 1, skillXpToNext, MAX_SKILL_LEVEL)).toEqual({ level: 3, xp: 199 });
+    expect(addXp(3, 99, 1, skillXpToNext, MAX_SKILL_LEVEL)).toEqual({ level: 4, xp: 0 });
+    expect(addXp(3, 90, 20, skillXpToNext, MAX_SKILL_LEVEL)).toEqual({ level: 4, xp: 10 });
+    expect(addXp(3, 98, 1, skillXpToNext, MAX_SKILL_LEVEL)).toEqual({ level: 3, xp: 99 });
   });
 
   it('rolls over several levels at once', () => {
-    // 0→1 costs 50, 1→2 costs 100, 2→3 costs 150: 310 xp from level 0 reaches level 3 with 10 left.
-    expect(addXp(0, 0, 310, skillXpToNext, MAX_SKILL_LEVEL)).toEqual({ level: 3, xp: 10 });
+    // 0→1 costs 25, 1→2 costs 50, 2→3 costs 75: 160 xp from level 0 reaches level 3 with 10 left.
+    expect(addXp(0, 0, 160, skillXpToNext, MAX_SKILL_LEVEL)).toEqual({ level: 3, xp: 10 });
   });
 
   it('stops at the max level', () => {
@@ -73,5 +86,48 @@ describe('skill_check dice', () => {
     expect(resolveCheck(9, 0, 'medium').outcome).toBe('partial'); // 9 vs 12
     expect(resolveCheck(8, 0, 'medium').outcome).toBe('fail'); // 8 vs 12
     expect(rate(0, 'medium', 'partial')).toBeCloseTo(0.15, 1);
+  });
+});
+
+describe('progression that pays off', () => {
+  it('adds a capped level bonus to every check', () => {
+    expect([1, 3, 4, 7, 10, 16, 40, 100].map(levelBonus)).toEqual([0, 0, 1, 2, 3, 5, 5, 5]);
+    expect([1, 4, 6, 16].map(nextLevelBonusAt)).toEqual([4, 7, 7, null]);
+  });
+
+  it('teaches more on harder checks, and something even on failure', () => {
+    expect(checkXp('easy', 'success')).toBe(5);
+    expect(checkXp('hard', 'success')).toBe(16);
+    expect(checkXp('extreme', 'fail')).toBe(15);
+    expect(checkXp('medium', 'fail')).toBeLessThan(checkXp('medium', 'partial'));
+  });
+
+  it('names skill tiers', () => {
+    expect([0, 2, 3, 6, 10, 15, 20].map(skillTier)).toEqual(['Novice', 'Novice', 'Apprentice', 'Journeyman', 'Expert', 'Master', 'Grandmaster']);
+  });
+
+  it('stops a natural 1 from fumbling once a skill is well trained', () => {
+    expect(resolveCheck(1, 12, 'medium', NO_FUMBLE_LEVEL - 1).outcome).toBe('fail');
+    expect(resolveCheck(1, 12, 'medium', NO_FUMBLE_LEVEL).outcome).toBe('success');
+    expect(resolveCheck(1, 6, 'hard', NO_FUMBLE_LEVEL).outcome).toBe('fail'); // 7 vs 16 still misses
+  });
+
+  it('knows when training turned a roll', () => {
+    // Roll 10 vs medium (12): untrained is a partial; +3 skill makes it a success.
+    expect(trainingMadeTheDifference(10, 'medium', 'success', 3, 0)).toBe(true);
+    // Roll 15 succeeds either way.
+    expect(trainingMadeTheDifference(15, 'medium', 'success', 3, 0)).toBe(false);
+    expect(trainingMadeTheDifference(10, 'medium', 'partial', 0, 0)).toBe(false);
+  });
+
+  it('makes weeks of training worth levels', () => {
+    // Two weeks of primary training with a teacher: 14 × 15 × 1.5 = 315 xp, enough to take level 3 to level 5.
+    expect(trainingXp(14, 'primary', true, 3)).toBe(315);
+    expect(trainingXp(14, 'secondary', false, 3)).toBe(105);
+    // Past level 10, training alone is half as effective.
+    expect(trainingXp(10, 'primary', false, 12)).toBe(75);
+    expect(trainingXp(10, 'primary', true, 12)).toBe(225);
+    // A short session still counts for something.
+    expect(trainingXp(0.01, 'primary', false, 0)).toBe(1);
   });
 });

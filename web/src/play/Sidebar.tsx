@@ -1,6 +1,18 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ATTRIBUTES, characterXpToNext, skillXpToNext, type CampaignState, type StateEvent } from '@narrator/shared';
+import {
+  ATTRIBUTES,
+  NARRATION_LENGTHS,
+  attributeBonus,
+  characterXpToNext,
+  levelBonus,
+  nextLevelBonusAt,
+  skillTier,
+  skillXpToNext,
+  type CampaignState,
+  type NarrationLength,
+  type StateEvent,
+} from '@narrator/shared';
 import { api } from '../api';
 import { Button, cx } from '../components/ui';
 import { MapTab } from './MapView';
@@ -20,6 +32,7 @@ export function Sidebar({ campaignId, state, tab, onTab }: { campaignId: string;
         {tab === 'Map' && <MapTab map={state.map} currentId={state.character?.currentLocationId ?? null} />}
         {tab === 'Log' && (
           <>
+            <NarrationSetting campaignId={campaignId} value={state.campaign.narrationLength} />
             <StorySoFar campaignId={campaignId} state={state} />
             <LogTab campaignId={campaignId} />
           </>
@@ -197,6 +210,14 @@ function CharacterTab({ state }: { state: CampaignState }) {
           Level {pc.level}
           {pc.archetype && <> · {pc.archetype}</>}
         </p>
+        <p className="mt-1 text-xs text-parchment-faint" title="Your level adds this to every check, trained or not">
+          {levelBonus(pc.level) > 0 ? (
+            <span className="font-semibold text-brass">+{levelBonus(pc.level)} to all checks</span>
+          ) : (
+            'No level bonus yet'
+          )}
+          {nextLevelBonusAt(pc.level) !== null && <> · +{levelBonus(pc.level) + 1} at level {nextLevelBonusAt(pc.level)}</>}
+        </p>
         {state.location && <p className="mt-1 text-xs text-parchment-faint">at {state.location.name}</p>}
         {state.campaign.ruleset === 'ascension' && <p className="mt-1 text-xs text-parchment-faint">Day {state.campaign.gameDay}</p>}
       </div>
@@ -248,6 +269,9 @@ function CharacterTab({ state }: { state: CampaignState }) {
                 <dd className="font-semibold tabular-nums text-parchment" title={a[0]!.toUpperCase() + a.slice(1)}>
                   {pc.attributes[a] ?? 0}
                 </dd>
+                <dd className="text-[0.62rem] tabular-nums text-brass/80" title="Added to checks that lean on this attribute">
+                  +{attributeBonus(pc.attributes[a] ?? 0)}
+                </dd>
               </div>
             ))}
           </dl>
@@ -276,10 +300,16 @@ function CharacterTab({ state }: { state: CampaignState }) {
           <ul className="space-y-3">
             {state.skills.map((s) => (
               <li key={s.id} title={s.description || undefined}>
-                <div className="mb-1 flex items-baseline justify-between text-sm">
-                  <span className="text-parchment">{s.name}</span>
-                  <span className="text-xs text-parchment-faint">
-                    <span className="font-semibold text-brass">Lv {s.level}</span> · {s.xp}/{skillXpToNext(s.level)}
+                <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
+                  <span className="min-w-0 truncate text-parchment">
+                    {s.name}
+                    <span className="ml-1.5 text-[0.68rem] tracking-wide text-parchment-faint">{skillTier(s.level)}</span>
+                  </span>
+                  <span className="shrink-0 text-xs text-parchment-faint">
+                    <span className="font-semibold text-brass" title="Added to checks with this skill">
+                      +{s.level}
+                    </span>{' '}
+                    · {s.xp}/{skillXpToNext(s.level)}
                   </span>
                 </div>
                 <Meter value={s.xp} max={skillXpToNext(s.level)} tone="bg-brass/70" label={`${s.name} progress`} />
@@ -402,6 +432,37 @@ function MissionsTab({ state }: { state: CampaignState }) {
         );
       })}
     </>
+  );
+}
+
+const LENGTH_LABEL: Record<NarrationLength, string> = { brief: 'Brief', standard: 'Standard', rich: 'Rich' };
+
+/** How much the narrator writes each turn. */
+function NarrationSetting({ campaignId, value }: { campaignId: string; value: NarrationLength }) {
+  const queryClient = useQueryClient();
+  const save = useMutation({
+    mutationFn: (narrationLength: NarrationLength) => api.updateCampaign(campaignId, { narrationLength }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['state', campaignId] }),
+  });
+  const current = save.isPending && save.variables ? save.variables : value;
+  return (
+    <Section title="Narration">
+      <div className="flex rounded-md border border-ink-600 p-0.5" role="radiogroup" aria-label="Narration length">
+        {NARRATION_LENGTHS.map((l) => (
+          <button
+            key={l}
+            role="radio"
+            aria-checked={current === l}
+            onClick={() => current !== l && save.mutate(l)}
+            className={cx('flex-1 rounded px-2 py-1 text-xs transition', current === l ? 'bg-brass/20 text-brass-bright' : 'text-parchment-faint hover:text-parchment')}
+          >
+            {LENGTH_LABEL[l]}
+          </button>
+        ))}
+      </div>
+      <p className="mt-1.5 text-xs text-parchment-faint">How much the narrator writes each turn. Takes effect next turn.</p>
+      {save.isError && <p className="mt-1 text-xs text-ember">{save.error.message}</p>}
+    </Section>
   );
 }
 

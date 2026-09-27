@@ -3,15 +3,24 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import {
   AttributeName,
-  CHECK_XP,
   DIFFICULTIES,
+  HEAL_SHARE_PER_DAY,
+  MAX_SKIP_DAYS,
   MISSION_STATUSES,
   MissionPenalty,
   MissionRecurrence,
   MissionRewards,
+  POINTS_PER_ATTRIBUTE_BONUS,
+  TRAINING_CHARACTER_XP_PER_DAY,
+  TRAINING_HOURS_PER_DAY,
   attributeBonus,
+  checkXp,
+  levelBonus,
   resolveCheck,
+  skillTier,
   skillXpToNext,
+  trainingMadeTheDifference,
+  trainingXp,
   type MissionObjective,
   type Ruleset,
   type StatusEffect,
@@ -180,7 +189,7 @@ function createMissionTool(ruleset: Ruleset): ToolDef {
 }
 
 const SKILL_CHECK_DESCRIPTION =
-  "Roll for an uncertain action. The server rolls d20 + the character's skill level against the difficulty and returns success, partial (success at a cost), or fail. You must narrate the returned outcome, including failures. Pick the most relevant skill; an untrained skill rolls at +0.";
+  "Roll for an uncertain action. The server rolls d20 + the character's skill level + their level bonus against the difficulty and returns success, partial (success at a cost), or fail. You must narrate the returned outcome, including failures. Pick the most relevant skill; an untrained skill rolls without its bonus. When the result says trainingMadeTheDifference, the character's skill is what carried it: show that in the story. Harder checks teach more (skill XP is awarded automatically).";
 
 const skillCheckInput = z.object({
   skill_name: Name,
@@ -195,35 +204,58 @@ function skillCheckTool(ruleset: Ruleset): ToolDef {
     rulesets: [ruleset],
     description:
       ruleset === 'ascension'
-        ? `${SKILL_CHECK_DESCRIPTION} Also name the core attribute the action leans on (Strength to force a door, Agility to dodge, Perception to spot, Will to resist); it adds +1 per 5 points.`
+        ? `${SKILL_CHECK_DESCRIPTION} Also name the core attribute the action leans on (Strength to force a door, Agility to dodge, Perception to spot, Will to resist); it adds +1 per ${POINTS_PER_ATTRIBUTE_BONUS} points.`
         : SKILL_CHECK_DESCRIPTION,
     input: ruleset === 'ascension' ? skillCheckInput.extend({ attribute: AttributeName.optional() }) : skillCheckInput,
     run: async (ctx, input) => {
       const skill = await findSkill(ctx, input.skill_name);
       const attribute = (input as { attribute?: AttributeName }).attribute;
-      const pc = attribute ? await getCharacter(ctx) : null;
-      const bonus = attribute ? attributeBonus(pc!.attributes[attribute] ?? 0) : 0;
-      const modifier = (skill?.level ?? 0) + bonus;
+      const pc = await getCharacter(ctx);
+      const skillBonus = skill?.level ?? 0;
+      const attrBonus = attribute ? attributeBonus(pc.attributes[attribute] ?? 0) : 0;
+      const lvlBonus = levelBonus(pc.level);
+      const modifier = skillBonus + attrBonus + lvlBonus;
       const roll = rollD20(ctx.campaign.rngSeed, ctx.turnNumber, ctx.nextRollIndex());
-      const { total, dc, outcome } = resolveCheck(roll, modifier, input.difficulty);
+      const { total, dc, outcome } = resolveCheck(roll, modifier, input.difficulty, skillBonus);
+      // Did the character's training (skill and attribute) turn this roll? The level bonus is kept on both sides.
+      const decisive = trainingMadeTheDifference(roll, input.difficulty, outcome, skillBonus + attrBonus, lvlBonus);
       const name = skill?.name ?? input.skill_name;
+      const tier = skill ? skillTier(skill.level) : null;
       await ctx.record({
         eventType: 'skill_check',
         humanReadable: `${name} check (${input.difficulty}): ${outcome}${input.action ? `: ${input.action}` : ''}`,
-        details: { skill: name, difficulty: input.difficulty, roll, modifier, total, dc, outcome, trained: Boolean(skill), ...(attribute ? { attribute, attributeBonus: bonus } : {}) },
+        details: {
+          skill: name,
+          difficulty: input.difficulty,
+          action: input.action,
+          roll,
+          modifier,
+          skillBonus,
+          levelBonus: lvlBonus,
+          total,
+          dc,
+          outcome,
+          trained: Boolean(skill),
+          ...(tier ? { tier } : {}),
+          ...(decisive ? { decisive: true } : {}),
+          ...(attribute ? { attribute, attributeBonus: attrBonus } : {}),
+        },
         always: true,
       });
-      // Practice makes perfect: attempting a check with a trained skill earns a little XP.
-      const practice = skill ? await applySkillXp(ctx, skill.name, CHECK_XP[outcome], 'practice') : null;
+      // Practice makes perfect: attempting a check with a trained skill earns XP, more for harder tries.
+      const practice = skill ? await applySkillXp(ctx, skill.name, checkXp(input.difficulty, outcome), 'practice') : null;
       return {
         outcome,
         roll,
         modifier,
-        ...(attribute ? { attribute, attributeBonus: bonus } : {}),
+        breakdown: { skill: skillBonus, levelBonus: lvlBonus, ...(attribute ? { attribute, attributeBonus: attrBonus } : {}) },
         total,
         dc,
-        ...(skill ? {} : { note: 'Untrained: rolled at +0.' }),
-        ...(practice && practice.level > practice.levelBefore ? { levelUp: `${practice.skill} is now level ${practice.level}` } : {}),
+        ...(tier ? { skillTier: tier } : { note: 'Untrained: no skill bonus.' }),
+        ...(decisive ? { trainingMadeTheDifference: true } : {}),
+        ...(practice && practice.level > practice.levelBefore
+          ? { levelUp: `${practice.skill} is now level ${practice.level} (${skillTier(practice.level)})` }
+          : {}),
       };
     },
   });
@@ -525,7 +557,7 @@ const writeTools: ToolDef[] = [
     name: 'grant_skill_xp',
     kind: 'write',
     description:
-      'Award skill XP for practice, training, or notable use (skill_check already awards a little XP on its own). Level-ups are handled for you. A skill the character lacks is learned at level 0.',
+      "Award skill XP for notable use outside a check, or a short training session within the scene (skill_check already awards XP on its own; for days or weeks of training use pass_time). Guide: a solid hour or two of drill 5-10, a hard lesson from a real teacher 15-25, a breakthrough moment 30-50. The level curve is 25 × (level + 1), so these amounts move the bar visibly. Level-ups are handled for you. A skill the character lacks is learned at level 0.",
     input: z.object({ skill_name: Name, amount: z.number().int().min(1).max(500), reason: Reason }),
     run: (ctx, input) => applySkillXp(ctx, input.skill_name, input.amount, input.reason),
   }),
@@ -534,7 +566,7 @@ const writeTools: ToolDef[] = [
     name: 'grant_xp',
     kind: 'write',
     description:
-      'Award character XP for overcoming challenges, clever play, or story milestones (typically 10-50; mission rewards grant their own). Level-ups, and the max HP they add, are handled for you.',
+      "Award character XP when a scene's challenge is overcome, for clever play, and at story milestones: 15-30 for a minor obstacle, 40-80 for a real danger or a hard-won negotiation, 100+ for a turning point (mission rewards grant their own). Level N to N+1 costs 50 × (N + 1). Level-ups, the max HP they add, and the level bonus to all checks are handled for you.",
     input: z.object({ amount: z.number().int().min(1).max(5000), reason: Reason }),
     run: (ctx, input) => applyCharacterXp(ctx, input.amount, input.reason),
   }),
@@ -769,6 +801,107 @@ const writeTools: ToolDef[] = [
 
   skillCheckTool('classic'),
   skillCheckTool('ascension'),
+
+  tool({
+    name: 'pass_time',
+    kind: 'write',
+    description:
+      "Skip forward through uneventful time: a training montage, travel, recovery, a season of work. The server works out what the time bought: skill XP for each skill trained (more with a capable teacher; after level 10 a teacher matters), a little character XP, HP recovered, and in-game days passed (daily quests are kept up during a skip, with no rewards or penalties). Narrate the stretch as a montage from the returned results, then resume the story with something that happens now. If something story-worthy would interrupt the skip, pass only the time until it does.",
+    input: z.object({
+      amount: z.number().positive().max(MAX_SKIP_DAYS * 24),
+      unit: z.enum(['hours', 'days', 'weeks']),
+      training: z
+        .array(
+          z.object({
+            skill_name: Name.describe("An existing skill's exact name, or a new discipline in Title Case (learned at level 0)"),
+            focus: z.enum(['primary', 'secondary']).default('primary').describe('Primary skills share the main training time; secondary ones get half as much'),
+            teacher: Name.optional().describe('Who teaches it, if anyone capable does (NPC name or a description like "a retired duelist")'),
+          }),
+        )
+        .max(4)
+        .default([]),
+      summary: z.string().trim().min(1).max(500).describe('What the character does over the span, for the log and memory'),
+    }),
+    run: async (ctx, input) => {
+      const hours = input.unit === 'hours' ? input.amount : input.amount * 24 * (input.unit === 'weeks' ? 7 : 1);
+      const days = hours / 24;
+      if (days > MAX_SKIP_DAYS) throw new ToolError(`A single time skip covers at most ${MAX_SKIP_DAYS} days. Nothing changed.`);
+      // Hours of focused training: a day of it is a full training day; a short skip is a session.
+      const trainingDays = input.unit === 'hours' ? Math.min(hours, 16) / TRAINING_HOURS_PER_DAY : days;
+      const label = `${input.amount} ${input.amount === 1 ? input.unit.slice(0, -1) : input.unit}`;
+      await ctx.record({
+        eventType: 'time_skip',
+        humanReadable: `⏩ ${label} pass: ${input.summary}`,
+        details: { hours, days, summary: input.summary, training: input.training.map((t) => t.skill_name) },
+        always: true,
+      });
+
+      const primaries = Math.max(1, input.training.filter((t) => t.focus === 'primary').length);
+      const trained = [];
+      for (const t of input.training) {
+        const existing = await findSkill(ctx, t.skill_name);
+        const xp = trainingXp(t.focus === 'primary' ? trainingDays / primaries : trainingDays, t.focus, Boolean(t.teacher), existing?.level ?? 0);
+        const r = await applySkillXp(ctx, t.skill_name, xp, `training${t.teacher ? ` with ${t.teacher}` : ''}`);
+        trained.push({
+          skill: r.skill,
+          xpGained: xp,
+          level: r.level,
+          ...(r.level > r.levelBefore ? { levelBefore: r.levelBefore, tier: skillTier(r.level) } : {}),
+          progress: `${r.xp}/${r.xpToNext}`,
+          ...(r.created ? { newSkill: true } : {}),
+          ...(!t.teacher && (existing?.level ?? 0) >= 10 ? { note: 'Self-taught training is slow at this level; a better teacher would help.' } : {}),
+        });
+      }
+
+      const wholeDays = Math.floor(days);
+      const characterXp = input.training.length > 0 ? wholeDays * TRAINING_CHARACTER_XP_PER_DAY : 0;
+      const character = characterXp > 0 ? await applyCharacterXp(ctx, characterXp, 'time spent training') : null;
+
+      const pc = await getCharacter(ctx);
+      const hp = Math.min(pc.maxHp, pc.hp + Math.round(pc.maxHp * HEAL_SHARE_PER_DAY * days));
+      if (hp > pc.hp) {
+        await ctx.mutator.update('player_character', { campaignId: ctx.campaign.id }, { hp });
+        await ctx.record({ eventType: 'hp', humanReadable: `HP +${hp - pc.hp} (${pc.hp} → ${hp}): rest`, details: { delta: hp - pc.hp, hp, maxHp: pc.maxHp } });
+      }
+
+      let day: number | null = null;
+      if (wholeDays > 0) {
+        const [campaign] = await ctx.db.select({ gameDay: campaigns.gameDay }).from(campaigns).where(eq(campaigns.id, ctx.campaign.id));
+        day = campaign!.gameDay + wholeDays;
+        await ctx.mutator.update('campaigns', { id: ctx.campaign.id }, { gameDay: day });
+        // Dailies are kept up during a skip: reset them for today, with no penalty for the days skipped.
+        const dailies = await ctx.db
+          .select()
+          .from(missions)
+          .where(and(eq(missions.campaignId, ctx.campaign.id), eq(missions.recurrence, 'daily'), sql`${missions.status} <> 'offered'`));
+        for (const m of dailies) {
+          await ctx.mutator.update('missions', { id: m.id }, { objectives: m.objectives.map((o) => ({ ...o, done: false })), status: 'active', rewardsGranted: false });
+        }
+        await ctx.record({ eventType: 'day', humanReadable: `Day ${day} begins`, details: { day, skipped: wholeDays } });
+      }
+
+      return {
+        timePassed: label,
+        trained,
+        ...(character ? { characterXp: { gained: characterXp, level: character.level, levelsGained: character.levelsGained, ...(character.statPointsGained ? { statPointsGained: character.statPointsGained } : {}) } } : {}),
+        hp: { now: hp, max: pc.maxHp, recovered: hp - pc.hp },
+        ...(day ? { day } : {}),
+      };
+    },
+  }),
+
+  tool({
+    name: 'update_story_notes',
+    kind: 'write',
+    description:
+      "Rewrite your private planning notes for this campaign (the player never sees them). They are shown to you every turn under \"Your story notes\". Keep them current and under about 400 words: open threads and mysteries, secrets and their truths, clues planted and where they lead, what each important NPC or faction is doing offscreen, looming threats and their timelines, and the next complication you intend. Update them when a thread opens, turns, or closes, or when you plan ahead; not every turn.",
+    input: z.object({ notes: z.string().trim().min(1).max(6000).describe('The complete new notes; this replaces the old ones') }),
+    run: async (ctx, input) => {
+      await ctx.mutator.update('campaigns', { id: ctx.campaign.id }, { storyNotes: input.notes });
+      await ctx.record({ eventType: 'story_notes', humanReadable: 'The narrator made private notes', details: {} });
+      return { saved: true, words: input.notes.split(/\s+/).length };
+    },
+  }),
 
   // ------------------------------------------------ ascension rule set only
 

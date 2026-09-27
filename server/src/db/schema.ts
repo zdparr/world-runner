@@ -15,7 +15,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { Attributes, MissionObjective, MissionPenalty, MissionRecurrence, MissionRewards, Ruleset, StatusEffect } from '@narrator/shared';
+import type { Attributes, MissionObjective, MissionPenalty, MissionRecurrence, MissionRewards, NarrationLength, Ruleset, StatusEffect } from '@narrator/shared';
 
 // Column names are derived as snake_case (see `casing` in client.ts and drizzle.config.ts).
 // Raw SQL fragments below (checks, expression indexes, generated columns) use the snake_case names.
@@ -47,6 +47,10 @@ export const campaigns = pgTable(
     worldBible: text().notNull().default(''),
     narratorStyle: text().notNull().default(''),
     rollingSummary: text().notNull().default(''),
+    /** The narrator's private planning notes: open threads, secrets, foreshadowing, NPC agendas. */
+    storyNotes: text().notNull().default(''),
+    /** How much the narrator writes per turn: 'brief', 'standard', or 'rich'. */
+    narrationLength: text().$type<NarrationLength>().notNull().default('standard'),
     currencyName: text().notNull().default('gold'),
     turnCount: integer().notNull().default(0),
     /** Recent messages included verbatim in each turn's context (N). */
@@ -67,6 +71,7 @@ export const campaigns = pgTable(
   () => [
     check('campaigns_ruleset_valid', sql`ruleset IN ('classic', 'ascension')`),
     check('campaigns_game_day_positive', sql`game_day >= 1`),
+    check('campaigns_narration_length_valid', sql`narration_length IN ('brief', 'standard', 'rich')`),
   ],
 );
 

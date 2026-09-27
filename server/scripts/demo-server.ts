@@ -58,6 +58,17 @@ function script(params: Anthropic.MessageStreamParams): Reply {
   const firstRound = !isToolResults(params.messages.at(-1)!);
 
   if (firstRound) {
+    const skip = /^⏩ time skip: ([^.]+)\.(?: training: ([^.]+?)(?:, with ([^.]+))?\.)?/i.exec(lastUserText(params));
+    if (skip) {
+      const [, span, trainingText, teacher] = skip;
+      const m = /^(\d+) (day|week|month)s?$/.exec(span!.trim().toLowerCase());
+      const [amount, unit] = m ? [Number(m[1]) * (m[2] === 'month' ? 4 : 1), m[2] === 'day' ? 'days' : 'weeks'] : [4, 'hours'];
+      const training = (trainingText ?? '')
+        .split(', ')
+        .filter(Boolean)
+        .map((t) => ({ skill_name: t.replace(/ \((main focus|on the side)\)$/, ''), focus: t.endsWith('(on the side)') ? 'secondary' : 'primary', ...(teacher ? { teacher } : {}) }));
+      return { tools: [{ name: 'pass_time', input: { amount, unit, training, summary: `Training through ${span}` } }] };
+    }
     if (/\b(ooc:|\()/.test(said)) return { text: '*(Out of character)* This is the demo narrator. It answers every question the same way: with enthusiasm and no real knowledge.' };
     const destination = /\b(?:go|head|walk|travel|return)(?:s)? (?:back )?to (?:the )?([^.!?]+)/i.exec(lastUserText(params));
     if (destination) return { tools: [{ name: 'move_player', input: { location_name: destination[1]!.trim() } }] };
@@ -75,6 +86,15 @@ function script(params: Anthropic.MessageStreamParams): Reply {
     };
   }
 
+  const passed = results.find((r) => r.name === 'pass_time')?.content as { timePassed?: string; trained?: { skill: string; level: number; levelBefore?: number }[] } | undefined;
+  if (passed?.timePassed) {
+    const gains = (passed.trained ?? []).map((t) => (t.levelBefore !== undefined ? `your ${t.skill} climbs from ${t.levelBefore} to ${t.level}` : `your ${t.skill} steadies`));
+    return { text: `The days fold into one another: early drills in the cold yard, bruised knuckles, a breakthrough you don't notice until it's already habit.${gains.length ? ` By the end, ${gains.join(' and ')}.` : ''}
+
+${passed.timePassed} later, a knock comes at the door. Brakka, breathless: *"They've found the tunnel."*
+
+What do you do?` };
+  }
   const moved = results.find((r) => r.name === 'move_player');
   if (moved) {
     const place = (moved.content as { nowAt?: { name?: string } })?.nowAt?.name;

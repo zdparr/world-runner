@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import type Anthropic from '@anthropic-ai/sdk';
-import { ATTRIBUTES, type ContextManifest, type ContextSlice, type Ruleset } from '@narrator/shared';
+import { ATTRIBUTES, levelBonus, skillTier, type ContextManifest, type ContextSlice, type NarrationLength, type Ruleset } from '@narrator/shared';
 import type { Db } from '../db/client';
 import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills } from '../db/schema';
 import { repoRoot } from '../paths';
@@ -12,6 +12,14 @@ const prompt = (name: string) => readFileSync(join(repoRoot, `server/src/engine/
 const NARRATOR_PROMPT = prompt('narrator');
 /** Extra rules for campaigns on a rule set other than classic. */
 const RULESET_PROMPTS: Partial<Record<Ruleset, string>> = { ascension: prompt('ascension') };
+
+/** Per-campaign length setting, restated every turn so it outweighs the habits of the transcript. */
+const NARRATION_LENGTH: Record<NarrationLength, string> = {
+  brief: 'Brief: usually one to three short paragraphs. Keep it tight and fast, but never skip a consequence or an NPC reaction that matters.',
+  standard:
+    'Standard: usually three to five paragraphs for a scene, one or two for a quick exchange. Give arrivals, fights, and revelations room.',
+  rich: 'Rich: usually five to eight full paragraphs. Linger on sensory detail, NPC body language and subtext, the texture of the world, and the character’s surroundings shifting in response to what they did. Quick exchanges can still be shorter.',
+};
 
 // ---------------------------------------------------------------- manifest
 
@@ -36,7 +44,7 @@ const HISTORY_SCAN_LIMIT = 200;
 export function characterHeader(pc: CharacterRow, locationName: string | null): string {
   const parts = [
     pc.name,
-    `Lv ${pc.level}${pc.archetype ? ` ${pc.archetype}` : ''}`,
+    `Lv ${pc.level}${pc.archetype ? ` ${pc.archetype}` : ''}${levelBonus(pc.level) > 0 ? ` (+${levelBonus(pc.level)} to all checks)` : ''}`,
     `HP ${pc.hp}/${pc.maxHp}`,
     `Loc: ${locationName ?? 'unknown'}`,
   ];
@@ -136,7 +144,8 @@ export async function buildTurnContext(
     .from(skills)
     .where(eq(skills.campaignId, cid))
     .orderBy(desc(skills.level), asc(skills.name));
-  const skillLine = skillRows.length > 0 ? skillRows.map((s) => `${s.name} ${s.level}`).join(', ') : 'none yet';
+  // Tiers let the narration show competence: a Journeyman handles what a Novice fumbles.
+  const skillLine = skillRows.length > 0 ? skillRows.map((s) => `${s.name} ${s.level} (${skillTier(s.level)})`).join(', ') : 'none yet';
 
   const alwaysLore = await db
     .select({ id: loreEntries.id, title: loreEntries.title, body: loreEntries.body })
@@ -177,6 +186,15 @@ export async function buildTurnContext(
   core.push({ slice: 'skill_names', reason: 'always (names and levels only)', approxTokens: approxTokens(skillLine), detail: skillRows.length });
   if (location) core.push({ slice: 'location', reason: 'current location', approxTokens: approxTokens(location.description), detail: location.name });
   if (mission) core.push({ slice: 'active_mission', reason: 'title and next objective only', approxTokens: 20, detail: mission.title });
+
+  stateLines.push(`Narration length: ${NARRATION_LENGTH[campaign.narrationLength]}`);
+  core.push({ slice: 'narration_length', reason: 'campaign setting', approxTokens: 30, detail: campaign.narrationLength });
+
+  const storyNotes = campaign.storyNotes.trim();
+  stateLines.push(
+    `# Your story notes (private; the player never sees these)\n\n${storyNotes || 'None yet. Once the story finds its footing, use update_story_notes to plan threads, secrets, and what NPCs are doing offscreen.'}`,
+  );
+  if (storyNotes) core.push({ slice: 'story_notes', reason: 'always (GM planning)', approxTokens: approxTokens(storyNotes) });
 
   const summary = campaign.rollingSummary.trim();
   stateLines.push(`# Story so far\n\n${summary || 'This is the beginning of the story. Open with a vivid scene at the character’s location.'}`);

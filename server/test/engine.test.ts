@@ -189,8 +189,92 @@ describe('write tools', () => {
     expect(second.rewardsGranted).toBeUndefined();
     const pc = await character(id);
     expect(pc.money).toBe(40 + 250);
-    // 120 + 150 xp at level 2 (200 to next) → level 3 with 70, and +2 max HP.
-    expect({ level: pc.level, xp: pc.xp, maxHp: pc.maxHp, hp: pc.hp }).toEqual({ level: 3, xp: 70, maxHp: 20, hp: 18 });
+    // 120 + 150 xp at level 2 (150 to next) → level 3 with 120 (200 to next), and +3 max HP.
+    expect({ level: pc.level, xp: pc.xp, maxHp: pc.maxHp, hp: pc.hp }).toEqual({ level: 3, xp: 120, maxHp: 21, hp: 19 });
+  });
+
+  it('reports what a check was made of, and whether training decided it', async () => {
+    const id = await newCampaign();
+    // Level 4 brings the first level bonus.
+    await t.db.update(playerCharacter).set({ level: 4 }).where(eq(playerCharacter.campaignId, id));
+    const { calls } = await play(id, 'I pick the lock.', [
+      { tools: [{ name: 'skill_check', input: { skill_name: 'Lockpicking', difficulty: 'medium' } }] },
+      { text: '...' },
+    ]);
+    const result = JSON.parse(toolResultsIn(calls[1]!)[0]!.content as string);
+    expect(result.breakdown).toEqual({ skill: 3, levelBonus: 1 });
+    expect(result.modifier).toBe(4);
+    expect(result.skillTier).toBe('Apprentice');
+    // Training mattered exactly when the roll alone (plus the level bonus) would have done worse.
+    const bare = result.roll + 1 >= 12 || result.roll === 20 ? 2 : result.roll + 1 >= 9 ? 1 : 0;
+    const got = { success: 2, partial: 1, fail: 0 }[result.outcome as 'success' | 'partial' | 'fail'];
+    expect(Boolean(result.trainingMadeTheDifference)).toBe(got > bare);
+  });
+
+  it('skips time: trains skills, seasons the character, heals, and advances the day; undo reverts it', async () => {
+    const id = await newCampaign();
+    await t.db.update(playerCharacter).set({ hp: 5 }).where(eq(playerCharacter.campaignId, id));
+    const skip = {
+      name: 'pass_time',
+      input: {
+        amount: 2,
+        unit: 'weeks',
+        training: [
+          { skill_name: 'Lockpicking', teacher: 'Old Fen' },
+          { skill_name: 'Stealth', focus: 'secondary' },
+        ],
+        summary: 'Two weeks in Old Fen’s workshop',
+      },
+    };
+    const { calls, events } = await play(id, '⏩ Time skip: 2 weeks. Train Lockpicking with Old Fen.', [{ tools: [skip] }, { text: 'The weeks blur.' }]);
+    const result = JSON.parse(toolResultsIn(calls[1]!)[0]!.content as string);
+    // Lockpicking 3 (40 xp) + 14 × 15 × 1.5 = 315 → level 5 with 130. Stealth 2 (15) + 105 → level 3 with 45.
+    expect(result.trained).toEqual([
+      expect.objectContaining({ skill: 'Lockpicking', xpGained: 315, level: 5, levelBefore: 3, tier: 'Apprentice', progress: '130/150' }),
+      expect.objectContaining({ skill: 'Stealth', xpGained: 105, level: 3, levelBefore: 2 }),
+    ]);
+    // 120 + 14 × 5 = 190 character xp at level 2 (150 to next) → level 3.
+    expect(result.characterXp).toMatchObject({ gained: 70, level: 3, levelsGained: 1 });
+    expect(result.hp.now).toBe(result.hp.max);
+    expect(result.day).toBe(15);
+    expect(doneEvent(events).stateChanges.map((c) => c.eventType)).toEqual(
+      expect.arrayContaining(['time_skip', 'skill_level', 'level_up', 'hp', 'day']),
+    );
+
+    // The rolls and growth stay attached to the turn in the story history.
+    const page = (await t.api('GET', `/api/campaigns/${id}/messages`)).json();
+    const narration = page.items.find((m: { role: string }) => m.role === 'narrator');
+    expect(narration.highlights.map((h: { eventType: string }) => h.eventType)).toEqual(['time_skip', 'skill_level', 'skill_level', 'level_up']);
+
+    await t.api('POST', `/api/campaigns/${id}/turns/undo`);
+    const pc = await character(id);
+    expect({ level: pc.level, hp: pc.hp }).toEqual({ level: 2, hp: 5 });
+    const [campaign] = await t.db.select().from(campaigns).where(eq(campaigns.id, id));
+    expect(campaign!.gameDay).toBe(1);
+    const lock = (await t.db.select().from(skills).where(eq(skills.campaignId, id))).find((s) => s.name === 'Lockpicking')!;
+    expect({ level: lock.level, xp: lock.xp }).toEqual({ level: 3, xp: 40 });
+  });
+
+  it('rejects a time skip longer than the limit', async () => {
+    const id = await newCampaign();
+    const { calls } = await play(id, 'I wait a year.', [
+      { tools: [{ name: 'pass_time', input: { amount: 20, unit: 'weeks', summary: 'waiting' } }] },
+      { text: '...' },
+    ]);
+    expect(toolResultsIn(calls[1]!)[0]).toMatchObject({ is_error: true });
+    expect((await character(id)).level).toBe(2);
+  });
+
+  it('keeps private story notes and shows them to the narrator on later turns', async () => {
+    const id = await newCampaign();
+    await play(id, 'I look around.', [
+      { tools: [{ name: 'update_story_notes', input: { notes: 'Mara is secretly skimming from the harbor guild.' } }] },
+      { text: 'Gulls wheel overhead.' },
+    ]);
+    const { calls } = await play(id, 'I keep walking.', [{ text: 'The docks stretch on.' }]);
+    const dynamic = (calls[0]!.system as Anthropic.TextBlockParam[])[1]!.text;
+    expect(dynamic).toContain('# Your story notes (private; the player never sees these)\n\nMara is secretly skimming from the harbor guild.');
+    expect(dynamic).toContain('Narration length: Standard');
   });
 
   it('forces narration after six tool rounds', async () => {
@@ -246,7 +330,7 @@ describe('context builder', () => {
     expect(system).toContain('Character: Kael — Lv 2 rogue — HP 16/18 — Loc: Dockside Market');
     expect(system).toContain('Active mission: none');
     // Skill names and levels are always present so the narrator reuses them rather than inventing duplicates.
-    expect(state).toMatch(/^Skills: Lockpicking 3, .*Stealth 2/m);
+    expect(state).toMatch(/^Skills: Lockpicking 3 \(Apprentice\), .*Stealth 2 \(Novice\)/m);
   });
 
   it('pre-fetches only the NPC (and relationship) the player talks to', async () => {
