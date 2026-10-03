@@ -81,16 +81,22 @@ describe('ascension rule set', () => {
     const id = await newCampaign();
     const { calls } = await play(id, 'I clear the Breach.', [
       { tools: [{ name: 'grant_xp', input: { amount: 100, reason: 'first clear' } }] },
-      { tools: [{ name: 'allocate_stat_point', input: { attribute: 'agility', points: 2, reason: 'player choice' } }] },
-      { tools: [{ name: 'allocate_stat_point', input: { attribute: 'will', points: 5 } }] },
+      { tools: [{ name: 'allocate_stat_point', input: { attribute: 'will', points: 2 } }] },
+      { tools: [{ name: 'allocate_stat_point', input: { attribute: 'agility', points: 1, reason: 'player choice' } }] },
       { text: 'You feel lighter.' },
     ]);
-    expect(JSON.parse(result(calls[1]!).content as string)).toMatchObject({ level: 2, statPointsGained: 3, unspentStatPoints: 3 });
-    expect(JSON.parse(result(calls[2]!).content as string)).toEqual({ attribute: 'agility', before: 6, after: 8, unspentStatPoints: 1 });
-    expect(result(calls[3]!)).toMatchObject({ is_error: true });
+    expect(JSON.parse(result(calls[1]!).content as string)).toMatchObject({
+      level: 2,
+      attributesGained: 1,
+      attributes: { strength: 6, agility: 7, vitality: 6, perception: 8, will: 9 },
+      statPointsGained: 1,
+      unspentStatPoints: 1,
+    });
+    expect(result(calls[2]!)).toMatchObject({ is_error: true });
+    expect(JSON.parse(result(calls[3]!).content as string)).toEqual({ attribute: 'agility', before: 7, after: 8, unspentStatPoints: 0 });
     const pc = await character(id);
-    expect(pc.attributes).toMatchObject({ agility: 8, will: 8 });
-    expect(pc.unspentStatPoints).toBe(1);
+    expect(pc.attributes).toMatchObject({ strength: 6, agility: 8, vitality: 6, perception: 8, will: 9 });
+    expect(pc.unspentStatPoints).toBe(0);
   });
 
   it('adds the named attribute to skill checks', async () => {

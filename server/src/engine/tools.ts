@@ -924,7 +924,7 @@ const writeTools: ToolDef[] = [
       return {
         timePassed: label,
         trained,
-        ...(character ? { characterXp: { gained: characterXp, level: character.level, levelsGained: character.levelsGained, ...(character.statPointsGained ? { statPointsGained: character.statPointsGained } : {}) } } : {}),
+        ...(character ? { characterXp: { gained: characterXp, level: character.level, levelsGained: character.levelsGained, ...(character.statPointsGained ? { attributesGained: character.attributesGained, statPointsGained: character.statPointsGained } : {}) } } : {}),
         hp: { now: hp, max: pc.maxHp, recovered: hp - pc.hp },
         ...(day ? { day } : {}),
       };

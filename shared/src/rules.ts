@@ -152,10 +152,13 @@ export function trainingXp(days: number, focus: TrainingFocus, withTeacher: bool
 
 // ---------------------------------------------------------------- attributes (ascension)
 
-/** Unspent stat points granted per character level-up (ascension ruleset). */
-export const STAT_POINTS_PER_LEVEL = 3;
+/** Added to every attribute automatically on each character level-up (ascension ruleset). */
+export const ATTRIBUTE_GAIN_PER_LEVEL = 1;
 
-/** Points per +1 an attribute adds to a skill check (ascension ruleset). One level's points buy +1. */
+/** Free stat points granted per character level-up for the player to allocate (ascension ruleset). */
+export const STAT_POINTS_PER_LEVEL = 1;
+
+/** Points per +1 an attribute adds to a skill check (ascension ruleset). */
 export const POINTS_PER_ATTRIBUTE_BONUS = 3;
 
 export function attributeBonus(score: number): number {

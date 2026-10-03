@@ -408,7 +408,7 @@ function Builder({
                 </div>
               </div>
               <p className="mt-3 text-xs leading-relaxed text-parchment-faint">
-                Attributes grow only through stat points, granted on each level-up. Each 5 points adds +1 to checks that lean on it.
+                Each level-up raises every attribute by 1 and grants 1 free stat point. Each 3 points adds +1 to checks that lean on it.
               </p>
             </Panel>
           )}

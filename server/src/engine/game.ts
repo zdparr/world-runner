@@ -1,5 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import {
+  ATTRIBUTES,
+  ATTRIBUTE_GAIN_PER_LEVEL,
   HP_PER_LEVEL,
   MAX_CHARACTER_LEVEL,
   MAX_SKILL_LEVEL,
@@ -98,8 +100,14 @@ export async function applyCharacterXp(ctx: EngineContext, amount: number, reaso
   const next = addXp(pc.level, pc.xp, amount, characterXpToNext, MAX_CHARACTER_LEVEL);
   const levelsGained = next.level - pc.level;
   const hpGain = levelsGained * HP_PER_LEVEL;
-  // Under the ascension ruleset each level also grants stat points for the player to allocate.
-  const statPoints = ctx.campaign.ruleset === 'ascension' ? levelsGained * STAT_POINTS_PER_LEVEL : 0;
+  // Under the ascension ruleset each level also raises every attribute and grants free stat points
+  // for the player to allocate.
+  const ascension = ctx.campaign.ruleset === 'ascension' && levelsGained > 0;
+  const statPoints = ascension ? levelsGained * STAT_POINTS_PER_LEVEL : 0;
+  const attributeGain = ascension ? levelsGained * ATTRIBUTE_GAIN_PER_LEVEL : 0;
+  const attributes = ascension
+    ? Object.fromEntries(ATTRIBUTES.map((a) => [a, Math.min(999, (pc.attributes[a] ?? 0) + attributeGain)]))
+    : pc.attributes;
   await ctx.mutator.update(
     'player_character',
     { campaignId: ctx.campaign.id },
@@ -108,6 +116,7 @@ export async function applyCharacterXp(ctx: EngineContext, amount: number, reaso
       xp: next.xp,
       maxHp: pc.maxHp + hpGain,
       hp: pc.hp + hpGain,
+      ...(ascension ? { attributes } : {}),
       ...(statPoints > 0 ? { unspentStatPoints: pc.unspentStatPoints + statPoints } : {}),
     },
   );
@@ -117,7 +126,7 @@ export async function applyCharacterXp(ctx: EngineContext, amount: number, reaso
       levelsGained > 0
         ? `Level ${pc.level} → ${next.level} (+${amount} xp${reason ? `, ${reason}` : ''})`
         : `+${amount} xp${reason ? ` (${reason})` : ''}`,
-    details: { amount, level: next.level, xp: next.xp, xpToNext: characterXpToNext(next.level), levelsGained, ...(statPoints > 0 ? { statPoints } : {}) },
+    details: { amount, level: next.level, xp: next.xp, xpToNext: characterXpToNext(next.level), levelsGained, ...(ascension ? { statPoints, attributeGain } : {}) },
   });
   return {
     level: next.level,
@@ -125,7 +134,9 @@ export async function applyCharacterXp(ctx: EngineContext, amount: number, reaso
     xpToNext: characterXpToNext(next.level),
     levelsGained,
     maxHp: pc.maxHp + hpGain,
-    ...(statPoints > 0 ? { statPointsGained: statPoints, unspentStatPoints: pc.unspentStatPoints + statPoints } : {}),
+    ...(ascension
+      ? { attributesGained: attributeGain, attributes, statPointsGained: statPoints, unspentStatPoints: pc.unspentStatPoints + statPoints }
+      : {}),
   };
 }
 
