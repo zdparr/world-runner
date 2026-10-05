@@ -4,6 +4,10 @@ import { z } from 'zod';
 import {
   AttributeName,
   DIFFICULTIES,
+  ItemEnhancement,
+  ItemUsage,
+  MAX_ENHANCEMENTS,
+  MAX_ITEM_GRADE,
   HEAL_SHARE_PER_DAY,
   MAX_ROUTINES,
   MAX_SKIP_DAYS,
@@ -17,6 +21,7 @@ import {
   TRAINING_HOURS_PER_DAY,
   attributeBonus,
   checkXp,
+  gearBonuses,
   levelBonus,
   resolveCheck,
   skillTier,
@@ -37,6 +42,7 @@ import {
   applyRoutines,
   applySkillXp,
   clamp,
+  describeGear,
   describeRoutine,
   findItem,
   findNpc,
@@ -103,8 +109,26 @@ function itemView(i: typeof inventoryItems.$inferSelect) {
     tags: i.tags,
     equipped: i.equipped,
     ...(Object.keys(i.properties).length > 0 ? { properties: i.properties } : {}),
+    ...(i.grade > 0 || i.enhances.length > 0 ? { grade: i.grade, usage: i.usage, enhances: i.enhances } : {}),
+    ...(describeGear(i) ? { bonus: describeGear(i) } : {}),
   };
 }
+
+const GearInput = {
+  grade: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_ITEM_GRADE)
+    .optional()
+    .describe('0 for ordinary gear. Grade I-VII for enhanced gear (crux, calyx, enchanted, masterwork); each grade adds +1 to the checks it enhances'),
+  usage: ItemUsage.optional().describe('"worn": helps whenever equipped (rings, armor, a charm). "wielded": helps only when it is the item being used (weapons, tools)'),
+  enhances: z
+    .array(ItemEnhancement)
+    .max(MAX_ENHANCEMENTS)
+    .optional()
+    .describe('What it improves: [{ skill: "Sword fighting" }] or [{ attribute: "agility" }], using the exact skill names. Ungraded items enhance nothing'),
+};
 
 async function locationView(ctx: EngineContext, loc: LocationRow) {
   const [parent] = loc.parentLocationId
@@ -257,12 +281,13 @@ function createMissionTool(ruleset: Ruleset): ToolDef {
 }
 
 const SKILL_CHECK_DESCRIPTION =
-  "Roll for an uncertain action. The server rolls d20 + the character's skill level + their level bonus against the difficulty and returns success, partial (success at a cost), or fail. You must narrate the returned outcome, including failures. Pick the most relevant skill; an untrained skill rolls without its bonus. When the result says trainingMadeTheDifference, the character's skill is what carried it: show that in the story. Harder checks teach more (skill XP is awarded automatically).";
+  "Roll for an uncertain action. The server rolls d20 + the character's skill level + their level bonus against the difficulty and returns success, partial (success at a cost), or fail. You must narrate the returned outcome, including failures. Pick the most relevant skill; an untrained skill rolls without its bonus. Equipped graded gear that enhances the skill (or attribute) adds its grade: name the weapon or tool being used in `using`; worn gear counts on its own. When the result says trainingMadeTheDifference, the character's skill is what carried it: show that in the story. Harder checks teach more (skill XP is awarded automatically).";
 
 const skillCheckInput = z.object({
   skill_name: Name,
   difficulty: z.enum(DIFFICULTIES),
   action: z.string().trim().max(200).default('').describe('What is being attempted, for the log'),
+  using: Name.optional().describe('The item the character is using for this action (the blade they swing, the bow, the tool), if any'),
 });
 
 function skillCheckTool(ruleset: Ruleset): ToolDef {
@@ -282,12 +307,31 @@ function skillCheckTool(ruleset: Ruleset): ToolDef {
       const skillBonus = skill?.level ?? 0;
       const attrBonus = attribute ? attributeBonus(pc.attributes[attribute] ?? 0) : 0;
       const lvlBonus = levelBonus(pc.level);
-      const modifier = skillBonus + attrBonus + lvlBonus;
+      const name = skill?.name ?? input.skill_name;
+
+      // Gear: the best equipped worn item for this skill or attribute, plus the wielded item in use.
+      const gearNotes: string[] = [];
+      let usingName: string | undefined;
+      if (input.using) {
+        // Resolved before the roll, so a wrong name costs nothing: fix it and call again.
+        const used = await findItem(ctx, input.using).catch((e: unknown) => {
+          if (e instanceof ToolError) throw new ToolError(`${e.message} Nothing was rolled: call skill_check again with the item's exact name, or without \`using\`.`);
+          throw e;
+        });
+        if (!used.equipped) gearNotes.push(`${used.name} isn't equipped, so it adds nothing; equip it first with equip_item.`);
+        usingName = used.name;
+      }
+      const items = await ctx.db.select().from(inventoryItems).where(and(eq(inventoryItems.campaignId, ctx.campaign.id), eq(inventoryItems.equipped, true)));
+      const gear = gearBonuses(items, name, attribute, usingName);
+      const gearBonus = gear.reduce((sum, g) => sum + g.bonus, 0);
+
+      const modifier = skillBonus + attrBonus + lvlBonus + gearBonus;
       const roll = rollD20(ctx.campaign.rngSeed, ctx.turnNumber, ctx.nextRollIndex());
       const { total, dc, outcome } = resolveCheck(roll, modifier, input.difficulty, skillBonus);
-      // Did the character's training (skill and attribute) turn this roll? The level bonus is kept on both sides.
-      const decisive = trainingMadeTheDifference(roll, input.difficulty, outcome, skillBonus + attrBonus, lvlBonus);
-      const name = skill?.name ?? input.skill_name;
+      // Did the character's training (skill and attribute) turn this roll? Level and gear are kept on both sides.
+      const decisive = trainingMadeTheDifference(roll, input.difficulty, outcome, skillBonus + attrBonus, lvlBonus + gearBonus);
+      // Did their gear? Everything else is kept on both sides.
+      const gearDecisive = trainingMadeTheDifference(roll, input.difficulty, outcome, gearBonus, skillBonus + attrBonus + lvlBonus);
       const tier = skill ? skillTier(skill.level) : null;
       await ctx.record({
         eventType: 'skill_check',
@@ -307,6 +351,8 @@ function skillCheckTool(ruleset: Ruleset): ToolDef {
           ...(tier ? { tier } : {}),
           ...(decisive ? { decisive: true } : {}),
           ...(attribute ? { attribute, attributeBonus: attrBonus } : {}),
+          ...(gear.length > 0 ? { gear, gearBonus } : {}),
+          ...(gearDecisive ? { gearDecisive: true } : {}),
         },
         always: true,
       });
@@ -316,11 +362,18 @@ function skillCheckTool(ruleset: Ruleset): ToolDef {
         outcome,
         roll,
         modifier,
-        breakdown: { skill: skillBonus, levelBonus: lvlBonus, ...(attribute ? { attribute, attributeBonus: attrBonus } : {}) },
+        breakdown: {
+          skill: skillBonus,
+          levelBonus: lvlBonus,
+          ...(attribute ? { attribute, attributeBonus: attrBonus } : {}),
+          ...(gear.length > 0 ? { gear: gear.map((g) => ({ item: g.item, bonus: g.bonus })) } : {}),
+        },
         total,
         dc,
         ...(tier ? { skillTier: tier } : { note: 'Untrained: no skill bonus.' }),
         ...(decisive ? { trainingMadeTheDifference: true } : {}),
+        ...(gearDecisive ? { gearMadeTheDifference: true } : {}),
+        ...(gearNotes.length > 0 ? { gearNote: gearNotes.join(' ') } : {}),
         ...(practice && practice.level > practice.levelBefore
           ? { levelUp: `${practice.skill} is now level ${practice.level} (${skillTier(practice.level)})` }
           : {}),
@@ -579,8 +632,38 @@ const writeTools: ToolDef[] = [
       quantity: z.number().int().min(1).max(10_000).default(1),
       description: z.string().trim().max(1000).default(''),
       tags: Tags.default([]).describe('Lowercase categories, e.g. ["weapon", "blade"]'),
+      ...GearInput,
     }),
     run: (ctx, input) => addItem(ctx, input),
+  }),
+
+  tool({
+    name: 'update_item',
+    kind: 'write',
+    description:
+      "Change an item the character already has: rewrite its description or tags, or set its grade and what it enhances (it was appraised, upgraded, bonded, or damaged). A graded item's bonus applies to rolls automatically, so keep the grade honest to the fiction.",
+    input: z.object({
+      name: Name,
+      description: z.string().trim().max(1000).optional(),
+      tags: Tags.optional(),
+      ...GearInput,
+      reason: Reason,
+    }),
+    run: async (ctx, input) => {
+      const item = await findItem(ctx, input.name);
+      const patch = Object.fromEntries(
+        Object.entries({ description: input.description, tags: input.tags, grade: input.grade, usage: input.usage, enhances: input.enhances }).filter(([, v]) => v !== undefined),
+      );
+      if (Object.keys(patch).length === 0) throw new ToolError('Nothing to change: pass a description, tags, grade, usage, or enhances.');
+      const updated = await ctx.mutator.update<typeof inventoryItems.$inferSelect>('inventory_items', { id: item.id }, patch);
+      const gear = describeGear(updated);
+      await ctx.record({
+        eventType: 'item_updated',
+        humanReadable: `${gear ?? `${item.name} updated`}${input.reason ? ` (${input.reason})` : ''}`,
+        details: { item: item.name, grade: updated.grade },
+      });
+      return itemView(updated);
+    },
   }),
 
   tool({

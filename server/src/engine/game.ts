@@ -10,9 +10,13 @@ import {
   RELATIONSHIP_MIN,
   TRAINING_HOURS_PER_DAY,
   characterXpToNext,
+  gradeBonus,
+  gradeLabel,
   skillTier,
   skillXpToNext,
   trainingXp,
+  type ItemEnhancement,
+  type ItemUsage,
   type Routine,
   type StateChange,
 } from '@narrator/shared';
@@ -165,6 +169,16 @@ export async function applySkillXp(ctx: EngineContext, skillName: string, amount
   return { skill: skill.name, level: next.level, levelBefore: skill.level, xp: next.xp, xpToNext: skillXpToNext(next.level), created };
 }
 
+// ---------------------------------------------------------------- gear
+
+/** "Water-Crux Blade (Grade III, wielded: Sword fighting +3)", or null for gear that adds nothing. */
+export function describeGear(i: { name: string; grade: number; usage: ItemUsage; enhances: ItemEnhancement[] }): string | null {
+  const bonus = gradeBonus(i.grade);
+  if (bonus === 0 || i.enhances.length === 0) return null;
+  const targets = i.enhances.map((e) => e.skill ?? `${e.attribute!.charAt(0).toUpperCase()}${e.attribute!.slice(1)}`);
+  return `${i.name} (${gradeLabel(i.grade)}, ${i.usage}: ${targets.map((t) => `${t} +${bonus}`).join(', ')})`;
+}
+
 // ---------------------------------------------------------------- routines
 
 export function describeRoutine(r: Routine): string {
@@ -207,7 +221,7 @@ export async function applyRoutines(ctx: EngineContext, nights: number, skip: st
 
 export async function addItem(
   ctx: EngineContext,
-  item: { name: string; quantity: number; description?: string; tags?: string[] },
+  item: { name: string; quantity: number; description?: string; tags?: string[]; grade?: number; usage?: ItemUsage; enhances?: ItemEnhancement[] },
   reason = '',
 ) {
   const name = item.name.trim();
@@ -230,6 +244,9 @@ export async function addItem(
       quantity: item.quantity,
       description: item.description ?? '',
       tags: (item.tags ?? []).map((t) => t.trim().toLowerCase()).filter(Boolean),
+      grade: item.grade ?? 0,
+      usage: item.usage ?? 'worn',
+      enhances: item.enhances ?? [],
     });
   }
   const label = stack?.name ?? name;

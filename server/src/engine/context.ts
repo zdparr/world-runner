@@ -6,7 +6,7 @@ import { ATTRIBUTES, MIN_WORLD_LOCATIONS, levelBonus, skillTier, type ContextMan
 import type { Db } from '../db/client';
 import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills, stateEvents } from '../db/schema';
 import { repoRoot } from '../paths';
-import { describeRoutine, type CampaignRow, type CharacterRow } from './game';
+import { describeGear, describeRoutine, type CampaignRow, type CharacterRow } from './game';
 import { MANUAL_EDIT_EVENT } from './manual';
 
 const prompt = (name: string) => readFileSync(join(repoRoot, `server/src/engine/prompts/${name}.md`), 'utf8').trim();
@@ -190,6 +190,18 @@ export async function buildTurnContext(
     .filter(Boolean)
     .join('\n');
 
+  // Graded gear changes rolls, so the narrator always knows what's equipped and what it's good for.
+  const gearLine = (
+    await db
+      .select()
+      .from(inventoryItems)
+      .where(and(eq(inventoryItems.campaignId, cid), eq(inventoryItems.equipped, true)))
+      .orderBy(desc(inventoryItems.grade), asc(inventoryItems.name))
+  )
+    .map(describeGear)
+    .filter(Boolean)
+    .join('; ');
+
   const alwaysLore = await db
     .select({ id: loreEntries.id, title: loreEntries.title, body: loreEntries.body })
     .from(loreEntries)
@@ -199,6 +211,7 @@ export async function buildTurnContext(
     `# Current state (turn ${turnNumber})`,
     `Character: ${header}`,
     `Skills: ${skillLine}`,
+    ...(gearLine ? [`Equipped gear with check bonuses (pass the weapon or tool in use as skill_check \`using\`; worn gear counts on its own): ${gearLine}`] : []),
     ...(pc.routines.length > 0
       ? [`Nightly routines (trained automatically every night and during time skips; never grant their XP by hand): ${pc.routines.map(describeRoutine).join('; ')}`]
       : []),
@@ -335,7 +348,14 @@ export async function buildTurnContext(
     .filter((x) => x.hit)
     .slice(0, LIMITS.items);
   if (itemHits.length > 0) {
-    const view = itemHits.map(({ i }) => ({ name: i.name, quantity: i.quantity, description: i.description, tags: i.tags, equipped: i.equipped }));
+    const view = itemHits.map(({ i }) => ({
+      name: i.name,
+      quantity: i.quantity,
+      description: i.description,
+      tags: i.tags,
+      equipped: i.equipped,
+      ...(describeGear(i) ? { bonus: describeGear(i) } : {}),
+    }));
     records.push(`## Mentioned items the character carries (not the full inventory)\n${JSON.stringify(view)}`);
     for (const { i, hit } of itemHits) prefetched.push({ slice: 'item', reason: `mentioned ("${hit}")`, approxTokens: approxTokens(JSON.stringify(i.name + i.description)), detail: i.name });
   }

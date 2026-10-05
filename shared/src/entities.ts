@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import {
   Attributes,
+  ItemEnhancement,
+  ItemUsage,
+  MAX_ENHANCEMENTS,
+  MAX_ITEM_GRADE,
   MAX_ROUTINES,
   MissionObjective,
   MissionObjectiveInput,
@@ -162,6 +166,10 @@ const itemShape = {
   tags: Tags.default([]),
   equipped: z.boolean().default(false),
   properties: z.record(z.string(), z.unknown()).default({}),
+  /** 0 = ungraded; Grade I-VII adds +1 to +7 to checks it enhances. */
+  grade: z.number().int().min(0).max(MAX_ITEM_GRADE).default(0),
+  usage: ItemUsage.default('worn'),
+  enhances: z.array(ItemEnhancement).max(MAX_ENHANCEMENTS).default([]),
 };
 export const ItemCreate = z.object(itemShape).strict();
 export const ItemUpdate = updateOf(itemShape);
@@ -176,6 +184,9 @@ export interface InventoryItem {
   tags: string[];
   equipped: boolean;
   properties: Record<string, unknown>;
+  grade: number;
+  usage: ItemUsage;
+  enhances: ItemEnhancement[];
   createdAt: string;
   updatedAt: string;
 }

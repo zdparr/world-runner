@@ -78,6 +78,26 @@ export type AttributeName = z.infer<typeof AttributeName>;
 export const Attributes = z.partialRecord(AttributeName, z.number().int().min(0).max(999));
 export type Attributes = z.infer<typeof Attributes>;
 
+// ---------------------------------------------------------------- gear
+
+/** Item grades run I to VII (Threshold's own scale; elsewhere I is fine work and VII mythic). 0 = ungraded. */
+export const MAX_ITEM_GRADE = 7;
+
+/** Worn gear helps whenever it is equipped; a wielded item only when it is the one being used. */
+export const ITEM_USAGES = ['worn', 'wielded'] as const;
+export const ItemUsage = z.enum(ITEM_USAGES);
+export type ItemUsage = z.infer<typeof ItemUsage>;
+
+/** What a graded item enhances: one skill (by name) or one core attribute. */
+export const ItemEnhancement = z
+  .object({
+    skill: z.string().trim().min(1).max(120).optional(),
+    attribute: AttributeName.optional(),
+  })
+  .refine((e) => (e.skill === undefined) !== (e.attribute === undefined), { message: 'Name either a skill or an attribute' });
+export type ItemEnhancement = z.infer<typeof ItemEnhancement>;
+export const MAX_ENHANCEMENTS = 4;
+
 export const MISSION_RECURRENCES = ['daily'] as const;
 export const MissionRecurrence = z.enum(MISSION_RECURRENCES);
 export type MissionRecurrence = z.infer<typeof MissionRecurrence>;

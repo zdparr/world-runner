@@ -1,5 +1,7 @@
 // Game rules shared by the engine (which enforces them) and the UI (which draws progress bars).
 
+import { MAX_ITEM_GRADE, type ItemEnhancement, type ItemUsage } from './game';
+
 export const MAX_SKILL_LEVEL = 20;
 export const MAX_CHARACTER_LEVEL = 100;
 
@@ -163,4 +165,48 @@ export const POINTS_PER_ATTRIBUTE_BONUS = 3;
 
 export function attributeBonus(score: number): number {
   return Math.floor(score / POINTS_PER_ATTRIBUTE_BONUS);
+}
+
+// ---------------------------------------------------------------- gear
+
+const GRADE_NUMERALS = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+
+/** Check bonus from an item of this grade: Grade I +1 up to Grade VII +7. Ungraded gear adds nothing. */
+export function gradeBonus(grade: number): number {
+  return Math.max(0, Math.min(MAX_ITEM_GRADE, Math.trunc(grade)));
+}
+
+export function gradeLabel(grade: number): string {
+  return grade > 0 ? `Grade ${GRADE_NUMERALS[Math.min(grade, MAX_ITEM_GRADE)]}` : 'ungraded';
+}
+
+export interface GearItem {
+  name: string;
+  equipped: boolean;
+  grade: number;
+  usage: ItemUsage;
+  enhances: ItemEnhancement[];
+}
+
+export interface GearBonus {
+  item: string;
+  grade: number;
+  usage: ItemUsage;
+  bonus: number;
+}
+
+/**
+ * The gear that counts on one check: the best equipped worn item that enhances the skill or the
+ * attribute, plus the wielded item being used (`using`) if it does. At most one of each, so a
+ * drawer of trinkets doesn't stack.
+ */
+export function gearBonuses(items: GearItem[], skill: string, attribute: string | undefined, using: string | undefined): GearBonus[] {
+  const helps = (i: GearItem) =>
+    i.equipped &&
+    gradeBonus(i.grade) > 0 &&
+    i.enhances.some((e) => (e.skill !== undefined && e.skill.toLowerCase() === skill.toLowerCase()) || (attribute !== undefined && e.attribute === attribute));
+  const toBonus = (i: GearItem): GearBonus => ({ item: i.name, grade: i.grade, usage: i.usage, bonus: gradeBonus(i.grade) });
+  const worn = items.filter((i) => i.usage === 'worn' && helps(i)).sort((a, b) => b.grade - a.grade)[0];
+  const wielded = using ? items.find((i) => i.usage === 'wielded' && i.name.toLowerCase() === using.toLowerCase() && helps(i)) : undefined;
+  return [wielded, worn].filter((i): i is GearItem => Boolean(i)).map(toBonus);
 }

@@ -77,17 +77,29 @@ function CheckChip({ d }: { d: Record<string, unknown> }) {
     typeof d.skillBonus === 'number' && d.skillBonus !== 0 ? `${signed(d.skillBonus)} skill` : null,
     typeof d.attributeBonus === 'number' && d.attributeBonus !== 0 ? `${signed(d.attributeBonus)} ${String(d.attribute ?? 'attr').slice(0, 3)}` : null,
     typeof d.levelBonus === 'number' && d.levelBonus !== 0 ? `${signed(d.levelBonus)} lvl` : null,
+    typeof d.gearBonus === 'number' && d.gearBonus !== 0 ? `${signed(d.gearBonus)} gear` : null,
   ].filter(Boolean);
+  const gear = Array.isArray(d.gear) ? (d.gear as { item: string; bonus: number }[]) : [];
   const math = `d20 ${d.roll}${parts.length ? ` ${parts.join(' ')}` : ''} = ${d.total} vs ${d.dc}`;
   return (
     <li className={cx('inline-flex flex-wrap items-center gap-x-1.5 rounded-md border bg-ink-950/40 px-2 py-1', OUTCOME_TONE[outcome] ?? 'border-ink-600')}>
       <span className="font-semibold">{String(d.skill)}</span>
       <span className="text-parchment-faint">· {String(d.difficulty)} ·</span>
-      <span className="tabular-nums text-parchment-dim" title="The roll and what was added to it">{math}</span>
+      <span
+        className="tabular-nums text-parchment-dim"
+        title={`The roll and what was added to it${gear.length > 0 ? `\nGear: ${gear.map((g) => `${g.item} ${signed(g.bonus)}`).join(', ')}` : ''}`}
+      >
+        {math}
+      </span>
       <span className="font-semibold uppercase tracking-wider">{outcome}</span>
       {Boolean(d.decisive) && (
         <span className="rounded-sm bg-brass/15 px-1 text-brass-bright" title="Without this training, the same roll would have gone worse">
           ✦ training decided it
+        </span>
+      )}
+      {Boolean(d.gearDecisive) && (
+        <span className="rounded-sm bg-sky-400/10 px-1 text-sky-200" title={`Without ${gear.map((g) => g.item).join(' and ')}, the same roll would have gone worse`}>
+          ⚙ gear decided it
         </span>
       )}
       {d.trained === false && <span className="text-parchment-faint italic">untrained</span>}

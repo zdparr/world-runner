@@ -42,6 +42,7 @@ When the character attempts something where failure is both possible and interes
 - **Use the character's existing skill names exactly** (from the Skills line) for `skill_check` and `grant_skill_xp`. If the action fits a skill they have, use that one rather than a synonym ("Swordfighting", not "Swordsmanship"). Name a new skill only for a genuinely different discipline, in Title Case.
 - You may describe the attempt beginning before calling the check, but never narrate its outcome before the result comes back.
 - In a fight, roll for the character's actions and use `adjust_hp` when they take damage. Opponents should be dangerous but fair.
+- **Gear counts.** Enhanced gear has a grade (I to VII), and each grade adds +1 to the checks it enhances. When the character acts with a weapon or tool, pass it as `using` in `skill_check`; equipped worn gear (rings, charms, armor) applies on its own. When the character gains enhanced gear, give it a grade, a usage, and what it enhances in `add_item`, or set them later with `update_item`. Grade it from the fiction: ordinary and merely well-made gear is ungraded. When a result says `gearMadeTheDifference`, show the gear doing it.
 
 ## Growth the player can feel
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ATTRIBUTES, MAX_ROUTINES, type Attributes, type CharacterSheet, type CharacterSheetSave, type Location, type Ruleset, type StatusEffect } from '@narrator/shared';
+import { ATTRIBUTES, AttributeName, MAX_ITEM_GRADE, MAX_ROUTINES, gradeLabel, type Attributes, type ItemEnhancement, type ItemUsage, type CharacterSheet, type CharacterSheetSave, type Location, type Ruleset, type StatusEffect } from '@narrator/shared';
 import { ApiRequestError, api } from '../api';
 import { Button, ErrorNote, Input, Label, NumberInput, Panel, Select, Spinner, Textarea, cx } from '../components/ui';
 
@@ -40,6 +40,9 @@ interface DraftItem {
   tagsText: string;
   equipped: boolean;
   properties: Record<string, unknown>;
+  grade: number;
+  usage: ItemUsage;
+  enhancesText: string;
 }
 
 interface DraftRoutine {
@@ -108,6 +111,9 @@ function draftFrom(sheet: CharacterSheet, locations: Location[], ruleset: Rulese
       tagsText: i.tags.join(', '),
       equipped: i.equipped,
       properties: i.properties,
+      grade: i.grade,
+      usage: i.usage,
+      enhancesText: i.enhances.map((e) => e.skill ?? e.attribute).join(', '),
     })),
     routines: (c?.routines ?? []).map((r) => ({
       key: newKey(),
@@ -119,6 +125,17 @@ function draftFrom(sheet: CharacterSheet, locations: Location[], ruleset: Rulese
     })),
   };
 }
+
+/** "Sword fighting, agility": attribute names become attributes, anything else a skill. */
+const enhancementsOf = (text: string): ItemEnhancement[] =>
+  text
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => {
+      const attribute = AttributeName.safeParse(s.toLowerCase());
+      return attribute.success ? { attribute: attribute.data } : { skill: s };
+    });
 
 const skillsOf = (text: string) =>
   text
@@ -157,7 +174,7 @@ function toPayload(d: Draft): CharacterSheetSave {
       xp,
       description,
     })),
-    items: d.items.map(({ id, name, description, quantity, tagsText, equipped, properties }) => ({
+    items: d.items.map(({ id, name, description, quantity, tagsText, equipped, properties, grade, usage, enhancesText }) => ({
       ...(id ? { id } : {}),
       name: name.trim(),
       description,
@@ -168,6 +185,9 @@ function toPayload(d: Draft): CharacterSheetSave {
         .filter(Boolean),
       equipped,
       properties,
+      grade,
+      usage,
+      enhances: enhancementsOf(enhancesText),
     })),
   };
 }
@@ -611,7 +631,10 @@ function Builder({
             onClick={() =>
               setDraft((d) => ({
                 ...d,
-                items: [...d.items, { key: newKey(), name: '', description: '', quantity: 1, tagsText: '', equipped: false, properties: {} }],
+                items: [
+                  ...d.items,
+                  { key: newKey(), name: '', description: '', quantity: 1, tagsText: '', equipped: false, properties: {}, grade: 0, usage: 'worn', enhancesText: '' },
+                ],
               }))
             }
           >
@@ -662,6 +685,27 @@ function Builder({
                     label={`Remove ${i.name || 'item'}`}
                     onClick={() => setDraft((d) => ({ ...d, items: d.items.filter((x) => x.key !== i.key) }))}
                     className="col-start-3 row-start-1 sm:col-start-5"
+                  />
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-[8rem_8rem_1fr]">
+                  <Select aria-label="Grade" value={i.grade} onChange={(e) => setItem(i.key, { grade: Number(e.target.value) })}>
+                    {Array.from({ length: MAX_ITEM_GRADE + 1 }, (_, g) => (
+                      <option key={g} value={g}>
+                        {g === 0 ? 'Ungraded' : `${gradeLabel(g)} (+${g})`}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select aria-label="Usage" value={i.usage} onChange={(e) => setItem(i.key, { usage: e.target.value as ItemUsage })}>
+                    <option value="worn">Worn</option>
+                    <option value="wielded">Wielded</option>
+                  </Select>
+                  <Input
+                    aria-label="Enhances"
+                    value={i.enhancesText}
+                    placeholder="enhances: Sword fighting, agility"
+                    disabled={i.grade === 0}
+                    onChange={(e) => setItem(i.key, { enhancesText: e.target.value })}
+                    className="col-span-2 sm:col-span-1"
                   />
                 </div>
                 <Textarea

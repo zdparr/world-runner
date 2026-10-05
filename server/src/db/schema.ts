@@ -15,7 +15,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { Attributes, MissionObjective, MissionPenalty, MissionRecurrence, MissionRewards, NarrationLength, Routine, Ruleset, StatusEffect } from '@narrator/shared';
+import type { Attributes, ItemEnhancement, ItemUsage, MissionObjective, MissionPenalty, MissionRecurrence, MissionRewards, NarrationLength, Routine, Ruleset, StatusEffect } from '@narrator/shared';
 
 // Column names are derived as snake_case (see `casing` in client.ts and drizzle.config.ts).
 // Raw SQL fragments below (checks, expression indexes, generated columns) use the snake_case names.
@@ -157,6 +157,10 @@ export const inventoryItems = pgTable(
     tags: tags(),
     equipped: boolean().notNull().default(false),
     properties: jsonb().$type<Record<string, unknown>>().notNull().default({}),
+    /** 0 = ungraded; Grade I-VII adds +1 to +7 to the checks it enhances. */
+    grade: integer().notNull().default(0),
+    usage: text().$type<ItemUsage>().notNull().default('worn'),
+    enhances: jsonb().$type<ItemEnhancement[]>().notNull().default([]),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -164,6 +168,8 @@ export const inventoryItems = pgTable(
     uniqueIndex('inventory_campaign_name_uq').on(t.campaignId, sql`lower(name)`),
     index('inventory_tags_gin').using('gin', t.tags),
     check('inventory_quantity_positive', sql`quantity > 0`),
+    check('inventory_grade_range', sql`grade BETWEEN 0 AND 7`),
+    check('inventory_usage_valid', sql`usage IN ('worn', 'wielded')`),
   ],
 );
 
