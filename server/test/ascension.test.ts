@@ -116,7 +116,7 @@ describe('ascension rule set', () => {
     const id = await newCampaign();
     const before = await character(id);
     const { calls } = await play(id, 'I sleep through the night.', [
-      { tools: [{ name: 'advance_day', input: { reason: 'slept', daily_objectives: [{ title: 'Daily Quest: Baseline', objectives: ['Run 3 miles before sunrise'] }] } }] },
+      { tools: [{ name: 'advance_day', input: { reason: 'slept', daily_review: [{ title: 'Daily Quest: Baseline', met: [] }], daily_objectives: [{ title: 'Daily Quest: Baseline', objectives: ['Run 3 miles before sunrise'] }] } }] },
       { text: 'Dawn.' },
     ]);
     const out = JSON.parse(result(calls[1]!).content as string);

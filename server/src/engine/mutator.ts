@@ -5,6 +5,7 @@ import {
   campaigns,
   inventoryItems,
   locations,
+  loreEntries,
   messages,
   missions,
   npcs,
@@ -28,6 +29,7 @@ const TABLES = {
   npcs: { table: npcs, key: ['id'] },
   relationships: { table: relationships, key: ['id'] },
   locations: { table: locations, key: ['id'] },
+  lore_entries: { table: loreEntries, key: ['id'] },
   missions: { table: missions, key: ['id'] },
   campaigns: { table: campaigns, key: ['id'] },
   messages: { table: messages, key: ['id'] },
@@ -42,6 +44,8 @@ export type RowChange =
   | { table: TableName; op: 'delete'; key: Row; before: Row };
 
 const TIMESTAMP_FIELDS = new Set(['createdAt', 'updatedAt']);
+/** Generated columns: never stored in a diff, since they can't be written back. */
+const GENERATED_FIELDS = new Set(['searchVector']);
 
 function columnsOf(name: TableName): Record<string, PgColumn> {
   return TABLES[name].table as unknown as Record<string, PgColumn>;
@@ -59,7 +63,7 @@ function whereKey(name: TableName, key: Row): SQL {
 
 /** JSON-safe copy of a row (Dates to ISO strings) for storing in jsonb. */
 function snapshot(row: Row): Row {
-  return JSON.parse(JSON.stringify(row)) as Row;
+  return JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(row).filter(([k]) => !GENERATED_FIELDS.has(k))))) as Row;
 }
 
 /** Undo a snapshot's serialization: timestamps back to Dates, so Drizzle can write them. */
@@ -91,6 +95,11 @@ export class Mutator {
     readonly turnNumber: number,
   ) {}
 
+  /** Changes made since the last commit. */
+  get pendingChanges(): readonly RowChange[] {
+    return this.pending;
+  }
+
   async insert<T extends Row>(name: TableName, values: Row): Promise<T> {
     const { table } = TABLES[name];
     const [row] = (await this.db
@@ -111,7 +120,7 @@ export class Mutator {
       .set(patch as never)
       .where(whereKey(name, key))
       .returning()) as unknown as T[];
-    const changed = Object.keys(patch).filter((k) => !TIMESTAMP_FIELDS.has(k) && !sameValue(before[k], (after as Row)[k]));
+    const changed = Object.keys(patch).filter((k) => !TIMESTAMP_FIELDS.has(k) && !GENERATED_FIELDS.has(k) && !sameValue(before[k], (after as Row)[k]));
     if (changed.length > 0) {
       this.pending.push({
         table: name,
@@ -155,6 +164,12 @@ export class Mutator {
   discard(): void {
     this.pending = [];
   }
+}
+
+/** Read one row of an engine table by its key (null if it doesn't exist). */
+export async function readRow(db: Db, name: TableName, key: Row): Promise<Row | null> {
+  const [row] = (await db.select().from(TABLES[name].table as never).where(whereKey(name, key))) as Row[];
+  return row ?? null;
 }
 
 /** Reverse a list of changes, last first. Used by undo. */

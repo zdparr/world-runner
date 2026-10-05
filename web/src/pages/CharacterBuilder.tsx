@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ATTRIBUTES, type Attributes, type CharacterSheet, type CharacterSheetSave, type Location, type Ruleset, type StatusEffect } from '@narrator/shared';
+import { ATTRIBUTES, MAX_ROUTINES, type Attributes, type CharacterSheet, type CharacterSheetSave, type Location, type Ruleset, type StatusEffect } from '@narrator/shared';
 import { ApiRequestError, api } from '../api';
 import { Button, ErrorNote, Input, Label, NumberInput, Panel, Select, Spinner, Textarea, cx } from '../components/ui';
 
@@ -42,10 +42,20 @@ interface DraftItem {
   properties: Record<string, unknown>;
 }
 
+interface DraftRoutine {
+  key: string;
+  name: string;
+  skillsText: string;
+  hours: number;
+  teacher: string;
+  active: boolean;
+}
+
 interface Draft {
   character: DraftCharacter;
   skills: DraftSkill[];
   items: DraftItem[];
+  routines: DraftRoutine[];
 }
 
 const ARCHETYPES = ['rogue', 'fighter', 'sailor', 'scholar', 'priest', 'bard', 'mercenary', 'smuggler', 'noble', 'healer'];
@@ -99,8 +109,22 @@ function draftFrom(sheet: CharacterSheet, locations: Location[], ruleset: Rulese
       equipped: i.equipped,
       properties: i.properties,
     })),
+    routines: (c?.routines ?? []).map((r) => ({
+      key: newKey(),
+      name: r.name,
+      skillsText: r.skills.join(', '),
+      hours: r.hours,
+      teacher: r.teacher,
+      active: r.active,
+    })),
   };
 }
+
+const skillsOf = (text: string) =>
+  text
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 
 const int = (n: number, fallback: number) => (Number.isFinite(n) ? n : fallback);
 
@@ -118,6 +142,13 @@ function toPayload(d: Draft): CharacterSheetSave {
       maxHp: int(c.maxHp, 1),
       attributes: Object.fromEntries(Object.entries(c.attributes).map(([a, v]) => [a, int(v, 0)])),
       unspentStatPoints: int(c.unspentStatPoints, 0),
+      routines: d.routines.map((r) => ({
+        name: r.name.trim(),
+        skills: skillsOf(r.skillsText),
+        hours: Number.isFinite(r.hours) ? r.hours : 2,
+        teacher: r.teacher.trim(),
+        active: r.active,
+      })),
     },
     skills: d.skills.map(({ id, name, level, xp, description }) => ({
       ...(id ? { id } : {}),
@@ -148,9 +179,13 @@ function problemsOf(d: Draft): string[] {
   if (int(d.character.hp, 0) > int(d.character.maxHp, 0)) out.push('HP cannot be higher than max HP.');
   if (d.skills.some((s) => !s.name.trim())) out.push('Every skill needs a name.');
   if (d.items.some((i) => !i.name.trim())) out.push('Every item needs a name.');
+  if (d.routines.some((r) => !r.name.trim())) out.push('Every routine needs a name.');
+  if (d.routines.some((r) => skillsOf(r.skillsText).length === 0)) out.push('Every routine needs at least one skill.');
+  if (d.routines.some((r) => skillsOf(r.skillsText).length > 4)) out.push('A routine trains at most four skills.');
   for (const [rows, label] of [
     [d.skills, 'skills'],
     [d.items, 'items'],
+    [d.routines, 'routines'],
   ] as const) {
     const names = rows.map((r) => r.name.trim().toLowerCase()).filter(Boolean);
     const dup = names.find((n, i) => names.indexOf(n) !== i);
@@ -254,6 +289,8 @@ function Builder({
     setDraft((d) => ({ ...d, skills: d.skills.map((s) => (s.key === key ? { ...s, ...patch } : s)) }));
   const setItem = (key: string, patch: Partial<DraftItem>) =>
     setDraft((d) => ({ ...d, items: d.items.map((i) => (i.key === key ? { ...i, ...patch } : i)) }));
+  const setRoutine = (key: string, patch: Partial<DraftRoutine>) =>
+    setDraft((d) => ({ ...d, routines: d.routines.map((r) => (r.key === key ? { ...r, ...patch } : r)) }));
 
   const c = draft.character;
   const location = locations.find((l) => l.id === c.currentLocationId);
@@ -473,6 +510,96 @@ function Builder({
             ))}
           </ul>
         )}
+      </Panel>
+
+      {/* -------------------------------------------------- routines */}
+      <Panel
+        title="Nightly routines"
+        action={
+          draft.routines.length < MAX_ROUTINES && (
+            <Button
+              variant="ghost"
+              onClick={() =>
+                setDraft((d) => ({
+                  ...d,
+                  routines: [...d.routines, { key: newKey(), name: '', skillsText: '', hours: 2, teacher: '', active: true }],
+                }))
+              }
+            >
+              + Add routine
+            </Button>
+          )
+        }
+      >
+        {draft.routines.length === 0 ? (
+          <p className="font-story text-sm text-parchment-faint italic">
+            Nothing you keep up every night yet. Drills before bed, lessons in your sleep, a page of the grimoire by candlelight?
+          </p>
+        ) : (
+          <ul className="space-y-4">
+            {draft.routines.map((r) => (
+              <li key={r.key} className="rounded-lg border border-ink-700 bg-ink-950/40 p-3">
+                <div className="grid grid-cols-[1fr_4.5rem_2.5rem] gap-3 sm:grid-cols-[1.2fr_1.4fr_4.5rem_1fr_auto_2.5rem]">
+                  <Input
+                    aria-label="Routine name"
+                    value={r.name}
+                    maxLength={80}
+                    placeholder="Sleep training"
+                    autoFocus={!r.name}
+                    onChange={(e) => setRoutine(r.key, { name: e.target.value })}
+                    className="col-start-1 row-start-1"
+                  />
+                  <Input
+                    aria-label="Skills trained"
+                    value={r.skillsText}
+                    placeholder="skills: Archery, Stealth"
+                    onChange={(e) => setRoutine(r.key, { skillsText: e.target.value })}
+                    className="col-span-3 col-start-1 row-start-2 sm:col-span-1 sm:col-start-2 sm:row-start-1"
+                  />
+                  <NumberInput
+                    aria-label="Hours a night"
+                    title="Hours a night, shared between its skills"
+                    min={1}
+                    max={12}
+                    value={r.hours}
+                    onChange={(hours) => setRoutine(r.key, { hours })}
+                    className="col-start-2 row-start-1 sm:col-start-3"
+                  />
+                  <Input
+                    aria-label="Teacher"
+                    value={r.teacher}
+                    maxLength={120}
+                    placeholder="taught by (optional)"
+                    onChange={(e) => setRoutine(r.key, { teacher: e.target.value })}
+                    className="col-span-2 col-start-1 row-start-3 sm:col-span-1 sm:col-start-4 sm:row-start-1"
+                  />
+                  <label
+                    className={cx(
+                      'col-start-3 row-start-3 flex cursor-pointer items-center gap-2 rounded-md border px-3 text-sm whitespace-nowrap transition sm:col-start-5 sm:row-start-1',
+                      r.active ? 'border-brass/60 text-brass' : 'border-ink-600 text-parchment-faint hover:text-parchment',
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={r.active}
+                      onChange={(e) => setRoutine(r.key, { active: e.target.checked })}
+                      className="size-3.5 accent-brass"
+                    />
+                    Active
+                  </label>
+                  <RemoveButton
+                    label={`Remove ${r.name || 'routine'}`}
+                    onClick={() => setDraft((d) => ({ ...d, routines: d.routines.filter((x) => x.key !== r.key) }))}
+                    className="col-start-3 row-start-1 sm:col-start-6"
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 text-xs leading-relaxed text-parchment-faint">
+          Active routines are trained automatically every in-game night and through time skips, with the hours shared between their skills.
+        </p>
       </Panel>
 
       {/* -------------------------------------------------- inventory */}

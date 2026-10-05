@@ -41,6 +41,7 @@ import {
 } from '../db/schema';
 import { assertNoLocationCycle } from '../db/refs';
 import { TEMPLATES, createFromTemplate, findTemplate } from '../db/seed/templates';
+import { withManualEdit } from '../engine/manual';
 import { normalizeObjectives } from '../game/missions';
 import { badRequest, notFound, parseId, parseWith } from '../http/errors';
 import { registerCharacterRoutes } from './character';
@@ -121,8 +122,9 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
 
         c.patch('/', async (request) => {
           const data = parseWith(CampaignUpdate, request.body);
-          const [row] = await db.update(campaigns).set(data).where(eq(campaigns.id, request.campaignId)).returning();
-          return row;
+          const { campaignId } = request;
+          if (Object.keys(data).length === 0) return (await db.select().from(campaigns).where(eq(campaigns.id, campaignId)))[0];
+          return withManualEdit(db, campaignId, (mutator) => mutator.update('campaigns', { id: campaignId }, data));
         });
 
         c.delete('/', async (request, reply) => {
@@ -140,6 +142,7 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
           path: 'skills',
           label: 'Skill',
           table: skills,
+          mutatorTable: 'skills',
           create: SkillCreate,
           update: SkillUpdate,
           orderBy: [desc(skills.level), asc(skills.name)],
@@ -149,6 +152,7 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
           path: 'items',
           label: 'Item',
           table: inventoryItems,
+          mutatorTable: 'inventory_items',
           create: ItemCreate,
           update: ItemUpdate,
           orderBy: [desc(inventoryItems.equipped), asc(inventoryItems.name)],
@@ -158,6 +162,7 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
           path: 'locations',
           label: 'Location',
           table: locations,
+          mutatorTable: 'locations',
           create: LocationCreate,
           update: LocationUpdate,
           orderBy: [asc(locations.name)],
@@ -172,6 +177,7 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
           path: 'npcs',
           label: 'NPC',
           table: npcs,
+          mutatorTable: 'npcs',
           create: NpcCreate,
           update: NpcUpdate,
           orderBy: [asc(npcs.name)],
@@ -181,6 +187,7 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
           path: 'relationships',
           label: 'Relationship',
           table: relationships,
+          mutatorTable: 'relationships',
           create: RelationshipCreate,
           update: RelationshipUpdate,
           orderBy: [desc(relationships.updatedAt)],
@@ -190,6 +197,7 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
           path: 'lore',
           label: 'Lore entry',
           table: loreEntries,
+          mutatorTable: 'lore_entries',
           create: LoreCreate,
           update: LoreUpdate,
           orderBy: [desc(loreEntries.alwaysInclude), asc(loreEntries.title)],
@@ -200,6 +208,7 @@ export const campaignRoutes: FastifyPluginAsync = async (app) => {
           path: 'missions',
           label: 'Mission',
           table: missions,
+          mutatorTable: 'missions',
           create: MissionCreate,
           update: MissionUpdate,
           // Order by lifecycle: active first, then offered, then finished.

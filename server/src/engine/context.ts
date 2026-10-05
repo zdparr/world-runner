@@ -1,12 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type Anthropic from '@anthropic-ai/sdk';
 import { ATTRIBUTES, MIN_WORLD_LOCATIONS, levelBonus, skillTier, type ContextManifest, type ContextSlice, type NarrationLength, type Ruleset } from '@narrator/shared';
 import type { Db } from '../db/client';
-import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills } from '../db/schema';
+import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills, stateEvents } from '../db/schema';
 import { repoRoot } from '../paths';
-import type { CampaignRow, CharacterRow } from './game';
+import { describeRoutine, type CampaignRow, type CharacterRow } from './game';
+import { MANUAL_EDIT_EVENT } from './manual';
 
 const prompt = (name: string) => readFileSync(join(repoRoot, `server/src/engine/prompts/${name}.md`), 'utf8').trim();
 const NARRATOR_PROMPT = prompt('narrator');
@@ -82,11 +83,29 @@ export function mentions(messageWords: Set<string>, messageLower: string, name: 
   return null;
 }
 
+/** The last turn on which anything changed this NPC's record (null if nothing has since it was seeded). */
+async function lastNpcWrite(db: Db, campaignId: string, npcId: string): Promise<number | null> {
+  const [row] = await db
+    .select({ turn: sql<number | null>`max(${stateEvents.turnNumber})` })
+    .from(stateEvents)
+    .where(
+      and(
+        eq(stateEvents.campaignId, campaignId),
+        sql`${stateEvents.payload}->'changes' @> ${JSON.stringify([{ table: 'npcs', key: { id: npcId } }])}::jsonb`,
+      ),
+    );
+  return row?.turn ?? null;
+}
+
 function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 const LIMITS = { npcs: 3, items: 5, locations: 2, lore: 3 };
+/** Extra NPCs fetched because the last narration named them (the scene's cast), after the player's own mentions. */
+const NARRATION_NPC_LIMIT = 3;
+/** An NPC record untouched for this many turns is flagged so the narrator refreshes it. */
+const STALE_NPC_TURNS = 50;
 /** Location names listed every turn; bigger worlds are summarized with a count. */
 const MAX_PLACES_LISTED = 40;
 
@@ -180,6 +199,9 @@ export async function buildTurnContext(
     `# Current state (turn ${turnNumber})`,
     `Character: ${header}`,
     `Skills: ${skillLine}`,
+    ...(pc.routines.length > 0
+      ? [`Nightly routines (trained automatically every night and during time skips; never grant their XP by hand): ${pc.routines.map(describeRoutine).join('; ')}`]
+      : []),
     location
       ? `Location: ${location.name}\n${location.description}\nPurpose (GM-only, don't reveal it directly): ${location.purpose.trim() || 'none yet; give it one with update_location'}`
       : 'Location: unknown (the character has not been placed anywhere yet)',
@@ -224,6 +246,20 @@ export async function buildTurnContext(
   );
   if (storyNotes) core.push({ slice: 'story_notes', reason: 'always (GM planning)', approxTokens: approxTokens(storyNotes) });
 
+  // Fixes the player made by hand since the last turn (they're logged on that turn).
+  const corrections = await db
+    .select({ text: stateEvents.humanReadable })
+    .from(stateEvents)
+    .where(and(eq(stateEvents.campaignId, cid), eq(stateEvents.turnNumber, turnNumber - 1), eq(stateEvents.eventType, MANUAL_EDIT_EVENT)))
+    .orderBy(asc(stateEvents.id));
+  if (corrections.length > 0) {
+    const text = corrections.map((c) => `- ${c.text}`).join('\n');
+    stateLines.push(
+      `# Player corrections since your last turn\n\nThe player fixed these by hand. They are already applied: treat them as true, don't grant or change them again, and remember what you missed.\n${text}`,
+    );
+    core.push({ slice: 'corrections', reason: 'edited by hand since the last turn', approxTokens: approxTokens(text), detail: corrections.length });
+  }
+
   const summary = campaign.rollingSummary.trim();
   stateLines.push(`# Story so far\n\n${summary || 'This is the beginning of the story. Open with a vivid scene at the character’s location.'}`);
   if (summary) core.push({ slice: 'rolling_summary', reason: 'always', approxTokens: approxTokens(summary) });
@@ -239,17 +275,36 @@ export async function buildTurnContext(
   const records: string[] = [];
 
   const allNpcs = await db.select().from(npcs).where(eq(npcs.campaignId, cid));
-  const npcHits = allNpcs
-    .map((n) => ({ n, hit: mentions(msgWords, lowerMsg, n.name) }))
+  const playerNpcHits = allNpcs
+    .map((n) => ({ n, hit: mentions(msgWords, lowerMsg, n.name), source: 'mentioned' }))
     .filter((x) => x.hit)
     .slice(0, LIMITS.npcs);
+  // The people in the scene are whoever the narrator just wrote about, named by the player or not.
+  const [lastNarration] = await db
+    .select({ content: messages.content })
+    .from(messages)
+    .where(and(eq(messages.campaignId, cid), eq(messages.role, 'narrator')))
+    .orderBy(desc(messages.id))
+    .limit(1);
+  const narrationLower = lastNarration?.content.toLowerCase() ?? '';
+  const narrationWords = wordsOf(narrationLower);
+  const narrationNpcHits = allNpcs
+    .filter((n) => !playerNpcHits.some((p) => p.n.id === n.id))
+    .map((n) => ({ n, hit: narrationLower ? mentions(narrationWords, narrationLower, n.name) : null, source: 'named in the last narration' }))
+    .filter((x) => x.hit)
+    // Latest mention first: the end of the narration is where the scene stands now.
+    .sort((a, b) => narrationLower.lastIndexOf(b.hit!.toLowerCase()) - narrationLower.lastIndexOf(a.hit!.toLowerCase()))
+    .slice(0, NARRATION_NPC_LIMIT);
+  const npcHits = [...playerNpcHits, ...narrationNpcHits];
   if (npcHits.length > 0) {
     const rels = await db.select().from(relationships).where(inArray(relationships.npcId, npcHits.map((x) => x.n.id)));
     const locNames = new Map(
       (await db.select({ id: locations.id, name: locations.name }).from(locations).where(eq(locations.campaignId, cid))).map((l) => [l.id, l.name]),
     );
-    for (const { n, hit } of npcHits) {
+    for (const { n, hit, source } of npcHits) {
       const rel = rels.find((r) => r.npcId === n.id);
+      const lastWritten = await lastNpcWrite(db, cid, n.id);
+      const age = turnNumber - (lastWritten ?? 0);
       const npcRecord = {
         name: n.name,
         shortDescription: n.shortDescription,
@@ -257,14 +312,20 @@ export async function buildTurnContext(
         location: n.locationId ? (locNames.get(n.locationId) ?? null) : null,
         alive: n.alive,
         gmNotes: n.notes,
+        recordLastUpdated: lastWritten ? `turn ${lastWritten}` : 'never, since the campaign began',
+        ...(age >= STALE_NPC_TURNS
+          ? {
+              stale: `Not updated in ${age} turns. If their situation, whereabouts, or attitude has moved on, fix it with update_npc this turn. Don't replay a past scene's mood or plans as if they were current.`,
+            }
+          : {}),
       };
       const relRecord = rel
         ? { affinity: rel.affinity, trust: rel.trust, status: rel.status, historyNotes: rel.historyNotes }
         : { affinity: 0, trust: 0, status: 'stranger', historyNotes: '' };
       const text = `## NPC: ${n.name}\n${JSON.stringify(npcRecord)}\nRelationship with the player character: ${JSON.stringify(relRecord)}`;
       records.push(text);
-      prefetched.push({ slice: 'npc', reason: `mentioned ("${hit}")`, approxTokens: approxTokens(JSON.stringify(npcRecord)), detail: n.name });
-      prefetched.push({ slice: 'relationship', reason: `NPC mentioned ("${hit}")`, approxTokens: approxTokens(JSON.stringify(relRecord)), detail: n.name });
+      prefetched.push({ slice: 'npc', reason: `${source} ("${hit}")`, approxTokens: approxTokens(JSON.stringify(npcRecord)), detail: n.name });
+      prefetched.push({ slice: 'relationship', reason: `NPC ${source} ("${hit}")`, approxTokens: approxTokens(JSON.stringify(relRecord)), detail: n.name });
     }
   }
 
@@ -302,7 +363,7 @@ export async function buildTurnContext(
 
   if (records.length > 0) {
     stateLines.push(
-      `# Fetched for this turn\n\nThese records matched words in the player's message. They are current; no need to look them up again this turn.\n\n${records.join('\n\n')}`,
+      `# Fetched for this turn\n\nThese records matched words in the player's message or your last narration. They are current; no need to look them up again this turn.\n\n${records.join('\n\n')}`,
     );
   }
 

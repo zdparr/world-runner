@@ -8,8 +8,12 @@ import {
   RELATIONSHIP_MAX,
   STAT_POINTS_PER_LEVEL,
   RELATIONSHIP_MIN,
+  TRAINING_HOURS_PER_DAY,
   characterXpToNext,
+  skillTier,
   skillXpToNext,
+  trainingXp,
+  type Routine,
   type StateChange,
 } from '@narrator/shared';
 import type { Db } from '../db/client';
@@ -159,6 +163,44 @@ export async function applySkillXp(ctx: EngineContext, skillName: string, amount
     details: { skill: skill.name, amount, levelBefore: skill.level, level: next.level, xp: next.xp, xpToNext: skillXpToNext(next.level), created },
   });
   return { skill: skill.name, level: next.level, levelBefore: skill.level, xp: next.xp, xpToNext: skillXpToNext(next.level), created };
+}
+
+// ---------------------------------------------------------------- routines
+
+export function describeRoutine(r: Routine): string {
+  return `${r.name}: ${r.skills.join(', ')} (${r.hours}h a night${r.teacher ? `, taught by ${r.teacher}` : ''}${r.active ? '' : ', paused'})`;
+}
+
+/**
+ * Apply the character's active routines for `nights` nights: each routine's hours are shared
+ * between its skills and paid out at the training rate. Called by advance_day and pass_time, so a
+ * nightly practice never depends on the narrator remembering it.
+ */
+export async function applyRoutines(ctx: EngineContext, nights: number, skip: string[] = []) {
+  if (nights < 1) return [];
+  const pc = await getCharacter(ctx);
+  const skipped = new Set(skip.map((s) => s.trim().toLowerCase()));
+  const results = [];
+  for (const routine of pc.routines) {
+    if (!routine.active || skipped.has(routine.name.toLowerCase())) continue;
+    const days = (routine.hours / TRAINING_HOURS_PER_DAY / routine.skills.length) * nights;
+    const why = `routine: ${routine.name}${routine.teacher ? ` with ${routine.teacher}` : ''}`;
+    const trained = [];
+    for (const skillName of routine.skills) {
+      const existing = await findSkill(ctx, skillName);
+      const xp = trainingXp(days, 'primary', Boolean(routine.teacher), existing?.level ?? 0);
+      const r = await applySkillXp(ctx, skillName, xp, why);
+      trained.push({
+        skill: r.skill,
+        xpGained: xp,
+        level: r.level,
+        ...(r.level > r.levelBefore ? { levelBefore: r.levelBefore, tier: skillTier(r.level) } : {}),
+        progress: `${r.xp}/${r.xpToNext}`,
+      });
+    }
+    results.push({ routine: routine.name, ...(nights > 1 ? { nights } : {}), trained });
+  }
+  return results;
 }
 
 // ---------------------------------------------------------------- items

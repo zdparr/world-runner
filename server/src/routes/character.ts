@@ -1,25 +1,29 @@
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { CharacterSheetSave, CharacterUpdate, CharacterUpsert, type CharacterSheet } from '@narrator/shared';
 import type { Db } from '../db/client';
 import { assertRefsInCampaign } from '../db/refs';
 import { inventoryItems, playerCharacter, skills } from '../db/schema';
+import { withManualEdit } from '../engine/manual';
+import type { Mutator } from '../engine/mutator';
 import { badRequest, notFound, parseWith } from '../http/errors';
 
-type SyncTable = typeof skills | typeof inventoryItems;
+const SYNC_TABLES = {
+  skills: { table: skills, label: 'Skill' },
+  inventory_items: { table: inventoryItems, label: 'Item' },
+} as const;
 
 /**
- * Make a campaign's rows in `table` match `incoming`: rows with an id are updated, rows without
+ * Make a campaign's rows in a table match `incoming`: rows with an id are updated, rows without
  * are inserted, and rows not mentioned are deleted. Deletes run first so a removed name can be reused.
  */
 async function syncRows(
-  tx: Db,
-  table: SyncTable,
-  campaignId: string,
+  mutator: Mutator,
+  name: keyof typeof SYNC_TABLES,
   incoming: ({ id?: string; name: string } & Record<string, unknown>)[],
-  label: string,
 ): Promise<void> {
-  const existing = await tx.select({ id: table.id }).from(table).where(eq(table.campaignId, campaignId));
+  const { table, label } = SYNC_TABLES[name];
+  const existing = await mutator.db.select({ id: table.id }).from(table).where(eq(table.campaignId, mutator.campaignId));
   const existingIds = new Set(existing.map((r) => r.id));
   for (const row of incoming) {
     if (row.id && !existingIds.has(row.id)) {
@@ -27,21 +31,22 @@ async function syncRows(
     }
   }
   const kept = new Set(incoming.flatMap((r) => (r.id ? [r.id] : [])));
-  const removed = [...existingIds].filter((id) => !kept.has(id));
-  if (removed.length > 0) {
-    await tx.delete(table).where(and(eq(table.campaignId, campaignId), inArray(table.id, removed)));
-  }
+  for (const id of existingIds) if (!kept.has(id)) await mutator.delete(name, { id });
   for (const { id, ...data } of incoming) {
-    // Drizzle can't narrow the union of two tables, hence the casts.
-    if (id) {
-      await tx
-        .update(table)
-        .set(data as never)
-        .where(and(eq(table.id, id), eq(table.campaignId, campaignId)));
-    } else {
-      await tx.insert(table).values({ ...data, campaignId } as never);
-    }
+    if (id) await mutator.update(name, { id }, data);
+    else await mutator.insert(name, data);
   }
+}
+
+/** Create the character, or update it through the mutator so the edit is logged. */
+async function upsertCharacter(mutator: Mutator, data: Record<string, unknown>) {
+  const [existing] = await mutator.db
+    .select({ campaignId: playerCharacter.campaignId })
+    .from(playerCharacter)
+    .where(eq(playerCharacter.campaignId, mutator.campaignId));
+  return existing
+    ? mutator.update<typeof playerCharacter.$inferSelect>('player_character', { campaignId: mutator.campaignId }, data)
+    : mutator.insert<typeof playerCharacter.$inferSelect>('player_character', data);
 }
 
 async function loadSheet(db: Db, campaignId: string): Promise<CharacterSheet> {
@@ -74,25 +79,17 @@ export function registerCharacterRoutes(app: FastifyInstance): void {
     const { campaignId } = request;
     const data = parseWith(CharacterUpsert, request.body);
     await assertRefsInCampaign(db, campaignId, data);
-    const [row] = await db
-      .insert(playerCharacter)
-      .values({ ...data, campaignId })
-      .onConflictDoUpdate({ target: playerCharacter.campaignId, set: data })
-      .returning();
-    return row;
+    return withManualEdit(db, campaignId, (mutator) => upsertCharacter(mutator, data));
   });
 
   app.patch('/character', async (request) => {
     const { campaignId } = request;
     const data = parseWith(CharacterUpdate, request.body);
     await assertRefsInCampaign(db, campaignId, data);
-    const [row] = await db
-      .update(playerCharacter)
-      .set(data)
-      .where(eq(playerCharacter.campaignId, campaignId))
-      .returning();
-    if (!row) throw notFound('Character');
-    return row;
+    const [existing] = await db.select().from(playerCharacter).where(eq(playerCharacter.campaignId, campaignId));
+    if (!existing) throw notFound('Character');
+    if (Object.keys(data).length === 0) return existing;
+    return withManualEdit(db, campaignId, (mutator) => mutator.update('player_character', { campaignId }, data));
   });
 
   // The character builder reads and saves the character, skills, and inventory as one sheet.
@@ -102,13 +99,10 @@ export function registerCharacterRoutes(app: FastifyInstance): void {
     const { campaignId } = request;
     const sheet = parseWith(CharacterSheetSave, request.body);
     await assertRefsInCampaign(db, campaignId, sheet.character);
-    await db.transaction(async (tx) => {
-      await tx
-        .insert(playerCharacter)
-        .values({ ...sheet.character, campaignId })
-        .onConflictDoUpdate({ target: playerCharacter.campaignId, set: sheet.character });
-      await syncRows(tx, skills, campaignId, sheet.skills, 'Skill');
-      await syncRows(tx, inventoryItems, campaignId, sheet.items, 'Item');
+    await withManualEdit(db, campaignId, async (mutator) => {
+      await upsertCharacter(mutator, sheet.character);
+      await syncRows(mutator, 'skills', sheet.skills);
+      await syncRows(mutator, 'inventory_items', sheet.items);
     });
     return loadSheet(db, campaignId);
   });

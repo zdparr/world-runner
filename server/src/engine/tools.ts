@@ -5,12 +5,14 @@ import {
   AttributeName,
   DIFFICULTIES,
   HEAL_SHARE_PER_DAY,
+  MAX_ROUTINES,
   MAX_SKIP_DAYS,
   MISSION_STATUSES,
   MissionPenalty,
   MissionRecurrence,
   MissionRewards,
   POINTS_PER_ATTRIBUTE_BONUS,
+  Routine,
   TRAINING_CHARACTER_XP_PER_DAY,
   TRAINING_HOURS_PER_DAY,
   attributeBonus,
@@ -32,8 +34,10 @@ import {
   applyCharacterXp,
   applyMoney,
   applyRelationship,
+  applyRoutines,
   applySkillXp,
   clamp,
+  describeRoutine,
   findItem,
   findNpc,
   findSkill,
@@ -62,6 +66,13 @@ function tool<S extends z.ZodType>(def: ToolDef<S>): ToolDef {
 const Name = z.string().trim().min(1).max(120);
 const Reason = z.string().trim().max(300).describe('Short in-story reason, shown in the change log');
 const Tags = z.array(z.string().trim().toLowerCase().min(1).max(40)).max(20);
+/** advance_day refuses a new day this soon after the last one began, unless told a night really passed. */
+const MIN_TURNS_BETWEEN_DAYS = 2;
+const SkipRoutines = z
+  .array(Name)
+  .max(MAX_ROUTINES)
+  .optional()
+  .describe("Routines that didn't happen this time (the night was interrupted, the character was elsewhere), by name");
 
 type LocationRow = typeof locations.$inferSelect;
 type MissionRow = typeof missions.$inferSelect;
@@ -124,6 +135,61 @@ function missionView(m: MissionRow, giver: string | null) {
     giver,
     objectives: m.objectives,
     rewards: m.rewards,
+  };
+}
+
+/**
+ * Tick objectives, add objectives, and/or change a mission's status, granting its rewards when it is
+ * completed. Shared by update_mission and advance_day's end-of-day review.
+ */
+async function updateMission(
+  ctx: EngineContext,
+  m: MissionRow,
+  input: { status?: MissionRow['status']; objectiveUpdates?: { id: string; done: boolean }[]; addObjectives?: string[] },
+) {
+  let objectives: MissionObjective[] = m.objectives;
+  for (const u of input.objectiveUpdates ?? []) {
+    if (!objectives.some((o) => o.id === u.id)) {
+      throw new ToolError(`Mission "${m.title}" has no objective "${u.id}". Objectives: ${m.objectives.map((o) => `${o.id} "${o.text}"`).join('; ')}.`);
+    }
+    objectives = objectives.map((o) => (o.id === u.id ? { ...o, done: u.done } : o));
+  }
+  if (input.addObjectives?.length) objectives = normalizeObjectives([...objectives, ...input.addObjectives.map((text) => ({ text }))]);
+
+  // A daily quest is done when its last objective is: complete it even if the narrator forgets to say so.
+  const autoCompleted =
+    !input.status && m.recurrence === 'daily' && m.status === 'active' && objectives.length > 0 && objectives.every((o) => o.done);
+  const status = autoCompleted ? 'completed' : (input.status ?? m.status);
+  const completing = status === 'completed' && !m.rewardsGranted;
+  await ctx.mutator.update('missions', { id: m.id }, { objectives, status, ...(completing ? { rewardsGranted: true } : {}) });
+  const ticked = (input.objectiveUpdates ?? []).filter((u) => u.done).map((u) => objectives.find((o) => o.id === u.id)!.text);
+  const headline =
+    status !== m.status
+      ? `${status === 'active' ? 'Mission accepted' : status === 'completed' ? 'Mission complete' : status === 'failed' ? 'Mission failed' : 'Mission'}: ${m.title}`
+      : ticked.length > 0
+        ? `${m.title}: ${ticked.join('; ')} ✓`
+        : `${m.title} updated`;
+  await ctx.record({ eventType: 'mission', humanReadable: headline, details: { mission: m.title, status, objectivesDone: objectives.filter((o) => o.done).length, objectivesTotal: objectives.length } });
+
+  const granted: unknown[] = [];
+  if (completing) {
+    const r = m.rewards;
+    const why = `reward: ${m.title}`;
+    if (r.money) granted.push(await applyMoney(ctx, r.money, why));
+    if (r.xp) granted.push(await applyCharacterXp(ctx, r.xp, why));
+    for (const item of r.items ?? []) granted.push(await addItem(ctx, item, why));
+    for (const s of r.skillXp ?? []) granted.push(await applySkillXp(ctx, s.skill, s.amount, why));
+    for (const rel of r.relationships ?? []) {
+      // A reward naming an NPC that no longer resolves shouldn't block completing the mission.
+      granted.push(await applyRelationship(ctx, rel.npc, rel.affinity, rel.trust, `Completed "${m.title}"`).catch((e: unknown) => ({ skipped: rel.npc, reason: e instanceof Error ? e.message : String(e) })));
+    }
+  }
+  return {
+    title: m.title,
+    status,
+    objectives,
+    ...(autoCompleted ? { note: 'Every objective is done, so this daily quest is now complete.' } : {}),
+    ...(completing ? { rewardsGranted: granted } : {}),
   };
 }
 
@@ -791,53 +857,12 @@ const writeTools: ToolDef[] = [
       objective_updates: z.array(z.object({ id: z.string().min(1), done: z.boolean() })).max(30).optional(),
       add_objectives: z.array(z.string().trim().min(1).max(300)).max(10).optional(),
     }),
-    run: async (ctx, input) => {
-      const m = await findMission(ctx, input.title);
-      let objectives: MissionObjective[] = m.objectives;
-      for (const u of input.objective_updates ?? []) {
-        if (!objectives.some((o) => o.id === u.id)) {
-          throw new ToolError(`Mission "${m.title}" has no objective "${u.id}". Objectives: ${m.objectives.map((o) => `${o.id} "${o.text}"`).join('; ')}.`);
-        }
-        objectives = objectives.map((o) => (o.id === u.id ? { ...o, done: u.done } : o));
-      }
-      if (input.add_objectives?.length) objectives = normalizeObjectives([...objectives, ...input.add_objectives.map((text) => ({ text }))]);
-
-      // A daily quest is done when its last objective is: complete it even if the narrator forgets to say so.
-      const autoCompleted =
-        !input.status && m.recurrence === 'daily' && m.status === 'active' && objectives.length > 0 && objectives.every((o) => o.done);
-      const status = autoCompleted ? 'completed' : (input.status ?? m.status);
-      const completing = status === 'completed' && !m.rewardsGranted;
-      await ctx.mutator.update('missions', { id: m.id }, { objectives, status, ...(completing ? { rewardsGranted: true } : {}) });
-      const ticked = (input.objective_updates ?? []).filter((u) => u.done).map((u) => objectives.find((o) => o.id === u.id)!.text);
-      const headline =
-        status !== m.status
-          ? `${status === 'active' ? 'Mission accepted' : status === 'completed' ? 'Mission complete' : status === 'failed' ? 'Mission failed' : 'Mission'}: ${m.title}`
-          : ticked.length > 0
-            ? `${m.title}: ${ticked.join('; ')} ✓`
-            : `${m.title} updated`;
-      await ctx.record({ eventType: 'mission', humanReadable: headline, details: { mission: m.title, status, objectivesDone: objectives.filter((o) => o.done).length, objectivesTotal: objectives.length } });
-
-      const granted: unknown[] = [];
-      if (completing) {
-        const r = m.rewards;
-        const why = `reward: ${m.title}`;
-        if (r.money) granted.push(await applyMoney(ctx, r.money, why));
-        if (r.xp) granted.push(await applyCharacterXp(ctx, r.xp, why));
-        for (const item of r.items ?? []) granted.push(await addItem(ctx, item, why));
-        for (const s of r.skillXp ?? []) granted.push(await applySkillXp(ctx, s.skill, s.amount, why));
-        for (const rel of r.relationships ?? []) {
-          // A reward naming an NPC that no longer resolves shouldn't block completing the mission.
-          granted.push(await applyRelationship(ctx, rel.npc, rel.affinity, rel.trust, `Completed "${m.title}"`).catch((e: unknown) => ({ skipped: rel.npc, reason: e instanceof Error ? e.message : String(e) })));
-        }
-      }
-      return {
-        title: m.title,
-        status,
-        objectives,
-        ...(autoCompleted ? { note: 'Every objective is done, so this daily quest is now complete.' } : {}),
-        ...(completing ? { rewardsGranted: granted } : {}),
-      };
-    },
+    run: async (ctx, input) =>
+      updateMission(ctx, await findMission(ctx, input.title), {
+        status: input.status,
+        objectiveUpdates: input.objective_updates,
+        addObjectives: input.add_objectives,
+      }),
   }),
 
   skillCheckTool('classic'),
@@ -862,6 +887,7 @@ const writeTools: ToolDef[] = [
         .max(4)
         .default([]),
       summary: z.string().trim().min(1).max(500).describe('What the character does over the span, for the log and memory'),
+      skip_routines: SkipRoutines,
     }),
     run: async (ctx, input) => {
       const hours = input.unit === 'hours' ? input.amount : input.amount * 24 * (input.unit === 'weeks' ? 7 : 1);
@@ -920,13 +946,72 @@ const writeTools: ToolDef[] = [
         }
         await ctx.record({ eventType: 'day', humanReadable: `Day ${day} begins`, details: { day, skipped: wholeDays } });
       }
+      // Nightly routines carry on through the skip, one session per night.
+      const routines = await applyRoutines(ctx, wholeDays, input.skip_routines);
 
       return {
         timePassed: label,
         trained,
+        ...(routines.length > 0 ? { routines } : {}),
         ...(character ? { characterXp: { gained: characterXp, level: character.level, levelsGained: character.levelsGained, ...(character.statPointsGained ? { attributesGained: character.attributesGained, statPointsGained: character.statPointsGained } : {}) } } : {}),
         hp: { now: hp, max: pc.maxHp, recovered: hp - pc.hp },
         ...(day ? { day } : {}),
+      };
+    },
+  }),
+
+  tool({
+    name: 'set_routine',
+    kind: 'write',
+    description:
+      "Record a practice the character keeps up every night (sleep training with a mentor, evening drills, nightly study): which skills, how many hours, and who teaches it. Its training XP is then granted automatically every in-game night and for each day of a time skip, so never grant that XP by hand. Use it when the player establishes or changes a routine; pause it with active: false, or delete it with remove: true.",
+    input: z.object({
+      name: z.string().trim().min(1).max(80).describe('Short name, e.g. "Sleep training with the voice"'),
+      skills: z
+        .array(Name)
+        .min(1)
+        .max(4)
+        .optional()
+        .describe("Skills it trains: existing skills' exact names, or a new discipline in Title Case. Required for a new routine"),
+      hours: z.number().min(0.5).max(12).optional().describe('Hours a night, shared between its skills (default 2)'),
+      teacher: z.string().trim().max(120).optional().describe('Who teaches it, if anyone capable does ("" for no one)'),
+      active: z.boolean().optional(),
+      remove: z.boolean().optional(),
+    }),
+    run: async (ctx, input) => {
+      const pc = await getCharacter(ctx);
+      const index = pc.routines.findIndex((r) => r.name.toLowerCase() === input.name.toLowerCase());
+      const existing = index >= 0 ? pc.routines[index]! : null;
+      const list = () => pc.routines.map((r) => r.name).join(', ') || 'none';
+      let routines: Routine[];
+      let headline: string;
+      if (input.remove) {
+        if (!existing) throw new ToolError(`No routine named "${input.name}". Routines: ${list()}. Nothing changed.`);
+        routines = pc.routines.filter((_, i) => i !== index);
+        headline = `Routine dropped: ${existing.name}`;
+      } else {
+        if (!existing && !input.skills) throw new ToolError('A new routine needs the skills it trains. Nothing changed.');
+        if (!existing && pc.routines.length >= MAX_ROUTINES) {
+          throw new ToolError(`The character already keeps ${MAX_ROUTINES} routines (${list()}); drop one first. Nothing changed.`);
+        }
+        // Use the character's own skill names, so the routine trains the skill they already have.
+        const skills = input.skills ? await Promise.all(input.skills.map(async (s) => (await findSkill(ctx, s))?.name ?? s.trim())) : existing!.skills;
+        const routine = Routine.parse({
+          ...existing,
+          name: existing?.name ?? input.name,
+          skills,
+          ...(input.hours !== undefined ? { hours: input.hours } : {}),
+          ...(input.teacher !== undefined ? { teacher: input.teacher } : {}),
+          ...(input.active !== undefined ? { active: input.active } : {}),
+        });
+        routines = existing ? pc.routines.map((r, i) => (i === index ? routine : r)) : [...pc.routines, routine];
+        headline = `${existing ? 'Routine updated' : 'New routine'}: ${describeRoutine(routine)}`;
+      }
+      await ctx.mutator.update('player_character', { campaignId: ctx.campaign.id }, { routines });
+      await ctx.record({ eventType: 'routine', humanReadable: headline, details: { routine: existing?.name ?? input.name, removed: Boolean(input.remove) } });
+      return {
+        routines: routines.map(describeRoutine),
+        note: 'Active routines are applied automatically every night (advance_day) and during time skips. Do not grant their XP by hand.',
       };
     },
   }),
@@ -980,26 +1065,78 @@ const writeTools: ToolDef[] = [
     kind: 'write',
     rulesets: ['ascension'],
     description:
-      'End the in-game day and begin the next (the character sleeps, or a night passes). Every daily quest left incomplete (active or failed) has its penalty applied automatically, then every daily quest resets for the new day. Optionally give daily quests fresh objectives. Never apply daily penalties by hand.',
+      "End the in-game day and begin the next (the character sleeps, or a night passes). If an active daily quest still has unticked objectives, first review each one against what happened today and pass daily_review: objectives listed as met are ticked (completing the quest, with its rewards, if that was the last). Every daily quest still incomplete then has its penalty applied automatically, every daily quest resets for the new day, and the character's nightly routines are trained. Optionally give daily quests fresh objectives. Never apply daily penalties or routine XP by hand.",
     input: z.object({
       reason: Reason,
+      daily_review: z
+        .array(
+          z.object({
+            title: Name,
+            met: z.array(z.string().min(1).max(40)).max(30).describe("Ids of this quest's unticked objectives the character actually achieved today; [] if none"),
+          }),
+        )
+        .max(10)
+        .optional()
+        .describe('Required whenever an active daily quest has unticked objectives: one entry per such quest'),
       daily_objectives: z
         .array(z.object({ title: Name, objectives: z.array(z.string().trim().min(1).max(300)).min(1).max(12) }))
         .max(10)
         .optional()
         .describe('New objectives for named daily quests; the others keep their objectives, unticked'),
+      skip_routines: SkipRoutines,
+      new_night: z
+        .boolean()
+        .optional()
+        .describe('Only when the day already advanced this turn or last turn and a whole further night has truly passed since'),
     }),
     run: async (ctx, input) => {
       const [campaign] = await ctx.db.select({ gameDay: campaigns.gameDay }).from(campaigns).where(eq(campaigns.id, ctx.campaign.id));
-      const dailies = await ctx.db
-        .select()
-        .from(missions)
-        .where(and(eq(missions.campaignId, ctx.campaign.id), eq(missions.recurrence, 'daily')));
+
+      // One night, one new day: a second advance right after the first is almost always a repeat.
+      const [lastDay] = await ctx.db
+        .select({ turnNumber: stateEvents.turnNumber })
+        .from(stateEvents)
+        .where(and(eq(stateEvents.campaignId, ctx.campaign.id), eq(stateEvents.eventType, 'day')))
+        .orderBy(desc(stateEvents.id))
+        .limit(1);
+      if (lastDay && ctx.turnNumber - lastDay.turnNumber < MIN_TURNS_BETWEEN_DAYS && !input.new_night) {
+        const when = lastDay.turnNumber === ctx.turnNumber ? 'this turn' : 'last turn';
+        throw new ToolError(
+          `Day ${campaign!.gameDay} already began ${when}. Nothing changed. Advance the day only once a whole night has passed since then. If one truly has (the character slept through another night), call advance_day again with new_night: true.`,
+        );
+      }
+
+      const loadDailies = () =>
+        ctx.db
+          .select()
+          .from(missions)
+          .where(and(eq(missions.campaignId, ctx.campaign.id), eq(missions.recurrence, 'daily')));
+      const before = await loadDailies();
+      const byTitle = (title: string) => before.find((m) => m.title.toLowerCase() === title.toLowerCase());
       const fresh = new Map((input.daily_objectives ?? []).map((d) => [d.title.toLowerCase(), d.objectives]));
-      for (const title of fresh.keys()) {
-        if (!dailies.some((m) => m.title.toLowerCase() === title)) {
-          throw new ToolError(`No daily quest titled "${title}". Daily quests: ${dailies.map((m) => m.title).join(', ') || 'none'}. Nothing changed.`);
+      for (const title of [...fresh.keys(), ...(input.daily_review ?? []).map((r) => r.title)]) {
+        if (!byTitle(title)) {
+          throw new ToolError(`No daily quest titled "${title}". Daily quests: ${before.map((m) => m.title).join(', ') || 'none'}. Nothing changed.`);
         }
+      }
+
+      // End-of-day review: objectives like "end the day uninjured" can only be ticked now, and are the
+      // ones most often forgotten, so the day can't end until every open one has been considered.
+      const review = new Map((input.daily_review ?? []).map((r) => [r.title.toLowerCase(), r.met]));
+      const open = before.filter((m) => m.status === 'active' && m.objectives.some((o) => !o.done));
+      const unreviewed = open.filter((m) => !review.has(m.title.toLowerCase()));
+      if (unreviewed.length > 0) {
+        const listing = unreviewed
+          .map((m) => `${m.title}: ${m.objectives.filter((o) => !o.done).map((o) => `${o.id} "${o.text}"`).join(', ')}`)
+          .join('; ');
+        throw new ToolError(
+          `Nothing changed. Before the day ends, review today's daily quests. Unticked: ${listing}. For each objective, decide from what happened today whether the character achieved it, then call advance_day again with daily_review: [{ title, met: [ids achieved] }] for each quest ([] if none were).`,
+        );
+      }
+      const reviewed = [];
+      for (const m of open) {
+        const met = review.get(m.title.toLowerCase())!.filter((id) => !m.objectives.find((o) => o.id === id)?.done);
+        if (met.length > 0) reviewed.push(await updateMission(ctx, m, { objectiveUpdates: met.map((id) => ({ id, done: true })) }));
       }
 
       const day = campaign!.gameDay + 1;
@@ -1007,7 +1144,7 @@ const writeTools: ToolDef[] = [
       await ctx.record({ eventType: 'day', humanReadable: `Day ${day} begins${input.reason ? ` (${input.reason})` : ''}`, details: { day } });
 
       const results = [];
-      for (const m of dailies) {
+      for (const m of await loadDailies()) {
         // 'offered' means it was never issued, so there is nothing to miss.
         const missed = m.status === 'active' || m.status === 'failed';
         const penalties: string[] = [];
@@ -1041,7 +1178,8 @@ const writeTools: ToolDef[] = [
         });
         results.push({ title: m.title, missed, penalties, status, objectives });
       }
-      return { day, dailies: results };
+      const routines = await applyRoutines(ctx, 1, input.skip_routines);
+      return { day, ...(reviewed.length > 0 ? { reviewed } : {}), dailies: results, ...(routines.length > 0 ? { routines } : {}) };
     },
   }),
 ];

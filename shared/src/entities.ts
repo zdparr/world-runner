@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   Attributes,
+  MAX_ROUTINES,
   MissionObjective,
   MissionObjectiveInput,
   MissionPenalty,
@@ -9,6 +10,7 @@ import {
   NarrationLength,
   RELATIONSHIP_MAX,
   RELATIONSHIP_MIN,
+  Routine,
   Ruleset,
   StatusEffect,
   Tags,
@@ -99,6 +101,7 @@ const characterShape = {
   /** Ascension ruleset only; empty otherwise. */
   attributes: Attributes.default({}),
   unspentStatPoints: z.number().int().min(0).max(10_000).default(0),
+  routines: z.array(Routine).max(MAX_ROUTINES).default([]),
 };
 export const CharacterUpsert = z
   .object(characterShape)
@@ -123,6 +126,7 @@ export interface PlayerCharacter {
   statusEffects: StatusEffect[];
   attributes: Attributes;
   unspentStatPoints: number;
+  routines: Routine[];
   updatedAt: string;
 }
 

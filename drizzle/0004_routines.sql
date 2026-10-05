@@ -1,0 +1,1 @@
+ALTER TABLE "player_character" ADD COLUMN "routines" jsonb DEFAULT '[]'::jsonb NOT NULL;

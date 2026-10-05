@@ -82,6 +82,23 @@ export const MISSION_RECURRENCES = ['daily'] as const;
 export const MissionRecurrence = z.enum(MISSION_RECURRENCES);
 export type MissionRecurrence = z.infer<typeof MissionRecurrence>;
 
+/**
+ * A recurring practice the character keeps up every night (sleep training, evening drills). The
+ * engine grants its training XP automatically each in-game night, so it never depends on the
+ * narrator remembering. Hours are shared between the skills, as in a time skip.
+ */
+export const Routine = z.object({
+  name: z.string().trim().min(1).max(80),
+  skills: z.array(z.string().trim().min(1).max(120)).min(1).max(4),
+  hours: z.number().min(0.5).max(12).default(2),
+  /** Who teaches it, if anyone capable does (speeds training up). */
+  teacher: z.string().trim().max(120).default(''),
+  /** Paused routines are kept but not applied. */
+  active: z.boolean().default(true),
+});
+export type Routine = z.infer<typeof Routine>;
+export const MAX_ROUTINES = 8;
+
 /** Applied automatically to a recurring mission left incomplete when the day ends. */
 export const MissionPenalty = z.object({
   hpLoss: z.number().int().positive().max(10_000).optional(),

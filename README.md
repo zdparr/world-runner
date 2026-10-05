@@ -80,6 +80,14 @@ The numbers live in [rules.ts](shared/src/rules.ts), shared by the engine and th
 - **Visible impact.** A check result says when the character's training changed the outcome (`trainingMadeTheDifference`). The narrator is told to show it in the story, and the turn shows it as a chip ("✦ training decided it"). Each saved turn keeps its rolls and level-ups under the narration (`highlights` on narrator messages).
 - **Time skips.** The ⏩ button sends a time-skip request, and the narrator calls `pass_time`. That tool grants 15 skill XP per training day on the main focus (half for side skills, ×1.5 with a teacher, half without one past level 10), 5 character XP per day, and 25% HP per day of rest, and advances the in-game day (daily quests are kept up, with no rewards or penalties). The narrator plays out the montage, then resumes the story. One skip covers at most 90 days.
 
+- **Routines.** `set_routine` records something the character does every night (skills, hours, teacher), stored in `player_character.routines` and editable in the character builder. `advance_day` trains active routines every night, and `pass_time` trains them once per day skipped, at the time-skip rates with the hours shared between the routine's skills.
+- **Ending the day** (ascension). `advance_day` refuses to end the day while an active daily quest has unticked objectives, until the narrator passes `daily_review` saying which were met. Those are ticked first, so a quest finished by its last objective is completed and rewarded rather than failed. It also refuses a second new day within a turn of the last one unless `new_night: true` says another night really passed.
+
+### Keeping state in step
+
+- **Hand corrections.** Edits from the UI (the collection endpoints, the character routes, and campaign settings) go through the Mutator too. Once play has started, each edit is recorded as a `manual_edit` event on the latest turn. The next turn's context lists them under "Player corrections since your last turn", `search_past_events` finds them, and undoing that turn reverts them with it. A save while a turn is running gets a 409 instead of waiting for it.
+- **NPCs in the scene.** Besides NPCs named in the player's message, each turn fetches up to 3 NPCs named in the last narration. Each fetched record says when it last changed, and one untouched for 50+ turns is flagged `stale` so the narrator brings it up to date.
+
 ### Story depth
 
 - **Story notes.** `update_story_notes` keeps the narrator's private planning notes (open threads, secrets, planted clues, what NPCs are doing offscreen) in `campaigns.story_notes`. They appear in every turn's context and never in the player's UI (except the debug drawer).

@@ -15,7 +15,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { Attributes, MissionObjective, MissionPenalty, MissionRecurrence, MissionRewards, NarrationLength, Ruleset, StatusEffect } from '@narrator/shared';
+import type { Attributes, MissionObjective, MissionPenalty, MissionRecurrence, MissionRewards, NarrationLength, Routine, Ruleset, StatusEffect } from '@narrator/shared';
 
 // Column names are derived as snake_case (see `casing` in client.ts and drizzle.config.ts).
 // Raw SQL fragments below (checks, expression indexes, generated columns) use the snake_case names.
@@ -113,6 +113,8 @@ export const playerCharacter = pgTable(
     /** Core attributes (ascension ruleset); empty otherwise. */
     attributes: jsonb().$type<Attributes>().notNull().default({}),
     unspentStatPoints: integer().notNull().default(0),
+    /** Recurring practices applied automatically every in-game night. */
+    routines: jsonb().$type<Routine[]>().notNull().default([]),
     updatedAt: updatedAt(),
   },
   () => [
