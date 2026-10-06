@@ -50,6 +50,7 @@ import {
   getCharacter,
   type EngineContext,
 } from './game';
+import { NO_RELATIONSHIP } from './context';
 import { ToolError, findByName, findOptional } from './lookup';
 import { rollD20 } from './rng';
 
@@ -451,7 +452,7 @@ const readTools: ToolDef[] = [
     run: async (ctx, input) => {
       const npc = await findNpc(ctx, input.npc_name);
       const [rel] = await ctx.db.select().from(relationships).where(eq(relationships.npcId, npc.id));
-      if (!rel) return { npc: npc.name, affinity: 0, trust: 0, status: 'stranger', historyNotes: '', note: 'No history with this NPC yet.' };
+      if (!rel) return { npc: npc.name, affinity: 0, trust: 0, historyNotes: '', ...NO_RELATIONSHIP };
       return { npc: npc.name, affinity: rel.affinity, trust: rel.trust, status: rel.status, historyNotes: rel.historyNotes };
     },
   }),
@@ -788,13 +789,20 @@ const writeTools: ToolDef[] = [
   tool({
     name: 'create_npc',
     kind: 'write',
-    description: 'Add a named NPC to the world so they persist. Use it when a new character becomes someone the player may meet again.',
+    description:
+      "Add a named NPC to the world so they persist. Use it when a new character becomes someone the player may meet again. If the character has just met them, say how in first_meeting: it starts their relationship, so the NPC is remembered as someone the character knows. Never create someone already listed among the people the character has met.",
     input: z.object({
       name: Name,
       short_description: z.string().trim().min(1).max(500),
       faction: z.string().trim().max(120).default(''),
       location_name: Name.optional(),
       notes: z.string().trim().max(2000).default('').describe('GM-only: motives, secrets'),
+      first_meeting: z
+        .string()
+        .trim()
+        .max(300)
+        .optional()
+        .describe('How the character met them this turn, e.g. "Sold Kael a map at the docks and overcharged him". Omit for someone not met yet (an offscreen villain, a name overheard).'),
     }),
     run: async (ctx, input) => {
       if (await findExactNpc(ctx, input.name)) throw new ToolError(`An NPC named "${input.name}" already exists. Use get_npc or update_npc.`);
@@ -806,8 +814,10 @@ const writeTools: ToolDef[] = [
         locationId: loc?.id ?? null,
         notes: input.notes,
       });
-      await ctx.record({ eventType: 'npc_created', humanReadable: `Met ${input.name}`, details: { npc: input.name } });
-      return { created: input.name, location: loc?.name ?? null };
+      const met = Boolean(input.first_meeting);
+      await ctx.record({ eventType: 'npc_created', humanReadable: `${met ? 'Met' : 'New NPC:'} ${input.name}`, details: { npc: input.name, met } });
+      const relationship = met ? await applyRelationship(ctx, input.name, 0, 0, `First met: ${input.first_meeting}`, 'acquaintance') : null;
+      return { created: input.name, location: loc?.name ?? null, ...(relationship ? { relationship } : {}) };
     },
   }),
 

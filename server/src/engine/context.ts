@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import type Anthropic from '@anthropic-ai/sdk';
 import { ATTRIBUTES, MIN_WORLD_LOCATIONS, levelBonus, skillTier, type ContextManifest, type ContextSlice, type NarrationLength, type Ruleset } from '@narrator/shared';
 import type { Db } from '../db/client';
@@ -108,6 +108,16 @@ const NARRATION_NPC_LIMIT = 3;
 const STALE_NPC_TURNS = 50;
 /** Location names listed every turn; bigger worlds are summarized with a count. */
 const MAX_PLACES_LISTED = 40;
+/** Known people listed every turn; the rest are summarized with a count. */
+const MAX_KNOWN_PEOPLE_LISTED = 60;
+/** Known people at the character's location whose full records are fetched, after anyone named. */
+const PRESENT_NPC_LIMIT = 3;
+
+/** What the narrator is told about an NPC the character has no relationship row with. */
+export const NO_RELATIONSHIP = {
+  status: 'no recorded history',
+  note: "Nothing recorded between them. If the story so far shows they have met, they know each other: don't introduce them again, and record it with adjust_relationship.",
+};
 
 // ---------------------------------------------------------------- builder
 
@@ -288,6 +298,37 @@ export async function buildTurnContext(
   const records: string[] = [];
 
   const allNpcs = await db.select().from(npcs).where(eq(npcs.campaignId, cid));
+  const allRels = await db.select().from(relationships).where(eq(relationships.campaignId, cid));
+  const relByNpc = new Map(allRels.map((r) => [r.npcId, r]));
+  const locNames = new Map(worldLocations.map((l) => [l.id, l.name]));
+
+  // Everyone the character has met: a relationship on record, or introduced in play (older campaigns
+  // created NPCs without one). Listed every turn so a known face is never introduced as a stranger.
+  const createdInPlay = new Set(
+    (
+      await db
+        .select({ npcId: sql<string | null>`${stateEvents.payload}->'changes'->0->'key'->>'id'` })
+        .from(stateEvents)
+        // Explicitly not met (an offscreen villain) doesn't count; events from before `met` existed do.
+        .where(and(eq(stateEvents.campaignId, cid), eq(stateEvents.eventType, 'npc_created'), sql`coalesce(${stateEvents.payload}->'details'->>'met', 'true') <> 'false'`))
+    ).map((r) => r.npcId),
+  );
+  const knownNpcs = allNpcs.filter((n) => relByNpc.has(n.id) || createdInPlay.has(n.id)).sort((a, b) => a.name.localeCompare(b.name));
+  const shownKnown = knownNpcs.slice(0, MAX_KNOWN_PEOPLE_LISTED);
+  const knownLine = `People ${pc.name} has met (${knownNpcs.length}; they know each other, so never introduce them as strangers; use get_relationship for their history): ${
+    shownKnown.length > 0
+      ? shownKnown
+          .map((n) => {
+            const where = n.locationId ? locNames.get(n.locationId) : null;
+            const tags = [relByNpc.get(n.id)?.status ?? 'met', where ? `at ${where}` : '', n.alive ? '' : 'dead'].filter(Boolean);
+            return `${n.name} (${tags.join(', ')})`;
+          })
+          .join('; ')
+      : 'nobody yet'
+  }${knownNpcs.length > shownKnown.length ? `; and ${knownNpcs.length - shownKnown.length} more` : ''}.`;
+  stateLines.splice(stateLines.indexOf(placesLine) + 1, 0, knownLine);
+  core.push({ slice: 'known_people', reason: 'always (names, standing, whereabouts)', approxTokens: approxTokens(knownLine), detail: knownNpcs.length });
+
   const playerNpcHits = allNpcs
     .map((n) => ({ n, hit: mentions(msgWords, lowerMsg, n.name), source: 'mentioned' }))
     .filter((x) => x.hit)
@@ -308,14 +349,18 @@ export async function buildTurnContext(
     // Latest mention first: the end of the narration is where the scene stands now.
     .sort((a, b) => narrationLower.lastIndexOf(b.hit!.toLowerCase()) - narrationLower.lastIndexOf(a.hit!.toLowerCase()))
     .slice(0, NARRATION_NPC_LIMIT);
-  const npcHits = [...playerNpcHits, ...narrationNpcHits];
+  // People the character knows who are where the character is, so a return visit picks up where it left off.
+  const named = new Set([...playerNpcHits, ...narrationNpcHits].map((x) => x.n.id));
+  const presentNpcHits = location
+    ? knownNpcs
+        .filter((n) => n.alive && n.locationId === location.id && !named.has(n.id))
+        .slice(0, PRESENT_NPC_LIMIT)
+        .map((n) => ({ n, hit: location.name, source: 'known, at the current location' }))
+    : [];
+  const npcHits = [...playerNpcHits, ...narrationNpcHits, ...presentNpcHits];
   if (npcHits.length > 0) {
-    const rels = await db.select().from(relationships).where(inArray(relationships.npcId, npcHits.map((x) => x.n.id)));
-    const locNames = new Map(
-      (await db.select({ id: locations.id, name: locations.name }).from(locations).where(eq(locations.campaignId, cid))).map((l) => [l.id, l.name]),
-    );
     for (const { n, hit, source } of npcHits) {
-      const rel = rels.find((r) => r.npcId === n.id);
+      const rel = relByNpc.get(n.id);
       const lastWritten = await lastNpcWrite(db, cid, n.id);
       const age = turnNumber - (lastWritten ?? 0);
       const npcRecord = {
@@ -334,7 +379,7 @@ export async function buildTurnContext(
       };
       const relRecord = rel
         ? { affinity: rel.affinity, trust: rel.trust, status: rel.status, historyNotes: rel.historyNotes }
-        : { affinity: 0, trust: 0, status: 'stranger', historyNotes: '' };
+        : { affinity: 0, trust: 0, ...NO_RELATIONSHIP, ...(createdInPlay.has(n.id) ? { met: 'Yes: introduced earlier in the story.' } : {}) };
       const text = `## NPC: ${n.name}\n${JSON.stringify(npcRecord)}\nRelationship with the player character: ${JSON.stringify(relRecord)}`;
       records.push(text);
       prefetched.push({ slice: 'npc', reason: `${source} ("${hit}")`, approxTokens: approxTokens(JSON.stringify(npcRecord)), detail: n.name });
@@ -383,7 +428,7 @@ export async function buildTurnContext(
 
   if (records.length > 0) {
     stateLines.push(
-      `# Fetched for this turn\n\nThese records matched words in the player's message or your last narration. They are current; no need to look them up again this turn.\n\n${records.join('\n\n')}`,
+      `# Fetched for this turn\n\nThese records matched words in the player's message or your last narration, or are people the character knows at the current location. They are current; no need to look them up again this turn.\n\n${records.join('\n\n')}`,
     );
   }
 

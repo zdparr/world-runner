@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import Anthropic from '@anthropic-ai/sdk';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { createTestApp } from './helpers';
 import { doneEvent, parseSse, scriptedModel, toolResultsIn, type Step } from './fake-model';
 import {
@@ -351,7 +351,7 @@ describe('context builder', () => {
     // The per-turn state block (the static block is the prompt and world bible, which name these concepts).
     const state = ctx.system[1]!.text;
     expect(state).not.toMatch(/\b40\b|money/i);
-    expect(state).not.toMatch(/affinity|trust|relationship/i);
+    expect(state).not.toMatch(/affinity|trust|historyNotes/i);
     // What is there: the one-line header, location, and active mission (none yet).
     expect(system).toContain('Character: Kael — Lv 2 rogue — HP 16/18 — Loc: Dockside Market');
     expect(system).toContain('Active mission: none');
@@ -393,6 +393,45 @@ describe('context builder', () => {
     expect(system).toContain('"affinity":20');
     expect(system).not.toContain('Oskar Thane');
     expect(system).not.toContain('Balanced knife');
+  });
+
+  it('lists everyone the character has met, every turn', async () => {
+    const id = await newCampaign();
+    const state = (await contextFor(id, 'I look around.')).system[1]!.text;
+    expect(state).toContain('People Kael has met (2; they know each other, so never introduce them as strangers');
+    expect(state).toContain('Mara Vell (acquaintance, at The Drowned Lantern); Rook (rival, at The Saltworks).');
+    expect(state).not.toContain('Oskar Thane');
+  });
+
+  it('pre-fetches people the character knows at the current location', async () => {
+    const id = await newCampaign();
+    await play(id, 'I head to the Lantern.', [{ tools: [{ name: 'move_player', input: { location_name: 'Drowned Lantern' } }] }, { text: 'Warm inside.' }]);
+    const [campaign] = await t.db.select().from(campaigns).where(eq(campaigns.id, id));
+    const ctx = await buildTurnContext(t.db, campaign!, await character(id), 'I find a seat.', 2);
+    expect(ctx.manifest.prefetched.find((p) => p.slice === 'npc')).toMatchObject({ detail: 'Mara Vell', reason: expect.stringContaining('current location') });
+  });
+
+  it('remembers an NPC met in play as someone the character knows', async () => {
+    const id = await newCampaign();
+    await play(id, 'I chat with the net-mender.', [
+      {
+        tools: [
+          { name: 'create_npc', input: { name: 'Old Brannoc', short_description: 'A net-mender', location_name: 'Dockside Market', first_meeting: "Mended Kael's coat for free" } },
+          { name: 'create_npc', input: { name: 'The Pale Duke', short_description: 'A distant tyrant' } },
+        ],
+      },
+      { text: 'He waves you off.' },
+    ]);
+    const [rel] = await t.db.select().from(relationships).innerJoin(npcs, eq(npcs.id, relationships.npcId)).where(and(eq(npcs.campaignId, id), eq(npcs.name, 'Old Brannoc')));
+    expect(rel!.relationships).toMatchObject({ status: 'acquaintance', historyNotes: "- (turn 1) First met: Mended Kael's coat for free" });
+
+    const [campaign] = await t.db.select().from(campaigns).where(eq(campaigns.id, id));
+    const ctx = await buildTurnContext(t.db, campaign!, await character(id), 'I wave to Brannoc.', 2);
+    const state = ctx.system[1]!.text;
+    expect(state).toContain('Old Brannoc (acquaintance, at Dockside Market)');
+    expect(state).toMatch(/^People Kael has met \(3;/m);
+    expect(state).not.toContain('Pale Duke');
+    expect(state).toContain('First met: Mended');
   });
 
   it('pre-fetches mentioned items and lore without loading the whole inventory', async () => {

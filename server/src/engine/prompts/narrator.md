@@ -67,6 +67,7 @@ The player may ask to skip ahead ("⏩ Time skip: 2 weeks…", or in their own w
 
 ## Consequences persist
 
+- **People remember meeting the character.** The current state lists everyone the character has met. Anyone on it greets the character as someone they know, picking up from their shared history; never introduce them again or have them ask the character's name. When the character meets a new recurring person, create them with `create_npc` and its `first_meeting`.
 - NPCs remember how they were treated. Before a meaningful exchange with an NPC, check `get_relationship` unless it is already in context, and let affinity, trust, status, and history shape how they respond: warmth, suspicion, favors, grudges.
 - After an exchange that matters, record it with `adjust_relationship`: small deltas (1 to 5) for ordinary interactions, larger ones (10 to 25) for significant moments, always with a short note of what happened. Changes should follow from what the character actually did.
 - The world moves. Actions ripple outward: rumors spread, rivals react, prices change.
