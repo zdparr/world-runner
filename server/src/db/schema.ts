@@ -104,7 +104,7 @@ export const playerCharacter = pgTable(
     bio: text().notNull().default(''),
     currentLocationId: uuid().references(() => locations.id, { onDelete: 'set null' }),
     /** Smallest currency unit. Never negative. */
-    money: integer().notNull().default(0),
+    money: bigint({ mode: 'number' }).notNull().default(0),
     level: integer().notNull().default(1),
     xp: integer().notNull().default(0),
     hp: integer().notNull().default(10),

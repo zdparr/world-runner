@@ -43,6 +43,13 @@
       "when": 1791237245656,
       "tag": "0005_item_grades",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791318402817,
+      "tag": "0006_money_bigint",
+      "breakpoints": true
     }
   ]
 }

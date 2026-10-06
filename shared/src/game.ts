@@ -4,6 +4,8 @@ import { z } from 'zod';
 
 export const RELATIONSHIP_MIN = -100;
 export const RELATIONSHIP_MAX = 100;
+/** Most money a character can hold, and the most one change can move (well within a JS safe integer). */
+export const MONEY_MAX = 1_000_000_000_000;
 
 export const StatusEffect = z.object({
   name: z.string().trim().min(1).max(80),
@@ -28,7 +30,7 @@ const Tags = z.array(z.string().trim().toLowerCase().min(1).max(40)).max(20);
 
 /** Applied automatically when a mission is completed. */
 export const MissionRewards = z.object({
-  money: z.number().int().nonnegative().optional(),
+  money: z.number().int().nonnegative().max(MONEY_MAX).optional(),
   xp: z.number().int().nonnegative().optional(),
   items: z
     .array(

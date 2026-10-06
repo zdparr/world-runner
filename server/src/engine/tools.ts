@@ -11,6 +11,7 @@ import {
   HEAL_SHARE_PER_DAY,
   MAX_ROUTINES,
   MAX_SKIP_DAYS,
+  MONEY_MAX,
   MISSION_STATUSES,
   MissionPenalty,
   MissionRecurrence,
@@ -620,7 +621,7 @@ const writeTools: ToolDef[] = [
     kind: 'write',
     description:
       'Change the player character\'s money: positive to gain, negative to spend or lose. Rejected (nothing changes) if it would go below zero; narrate that the character can\'t afford it.',
-    input: z.object({ delta: z.number().int().min(-1_000_000).max(1_000_000).refine((n) => n !== 0, 'delta cannot be 0'), reason: Reason }),
+    input: z.object({ delta: z.number().int().min(-MONEY_MAX).max(MONEY_MAX).refine((n) => n !== 0, 'delta cannot be 0'), reason: Reason }),
     run: (ctx, input) => applyMoney(ctx, input.delta, input.reason),
   }),
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ATTRIBUTES, AttributeName, MAX_ITEM_GRADE, MAX_ROUTINES, gradeLabel, type Attributes, type ItemEnhancement, type ItemUsage, type CharacterSheet, type CharacterSheetSave, type Location, type Ruleset, type StatusEffect } from '@narrator/shared';
+import { ATTRIBUTES, AttributeName, MAX_ITEM_GRADE, MAX_ROUTINES, MONEY_MAX, gradeLabel, type Attributes, type ItemEnhancement, type ItemUsage, type CharacterSheet, type CharacterSheetSave, type Location, type Ruleset, type StatusEffect } from '@narrator/shared';
 import { ApiRequestError, api } from '../api';
 import { Button, ErrorNote, Input, Label, NumberInput, Panel, Select, Spinner, Textarea, cx } from '../components/ui';
 
@@ -416,7 +416,7 @@ function Builder({
                 <Label htmlFor="pc-money" hint={currency}>
                   Money
                 </Label>
-                <NumberInput id="pc-money" min={0} value={c.money} onChange={(money) => setCharacter({ money })} />
+                <NumberInput id="pc-money" min={0} max={MONEY_MAX} value={c.money} onChange={(money) => setCharacter({ money })} />
               </div>
               <div>
                 <Label htmlFor="pc-hp">HP</Label>

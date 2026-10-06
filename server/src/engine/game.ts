@@ -5,6 +5,7 @@ import {
   HP_PER_LEVEL,
   MAX_CHARACTER_LEVEL,
   MAX_SKILL_LEVEL,
+  MONEY_MAX,
   RELATIONSHIP_MAX,
   STAT_POINTS_PER_LEVEL,
   RELATIONSHIP_MIN,
@@ -79,6 +80,9 @@ export async function applyMoney(ctx: EngineContext, delta: number, reason: stri
   const balance = pc.money + delta;
   if (balance < 0) {
     throw new ToolError(`Not enough money: the character has ${pc.money} ${currency} and this needs ${-delta}. Nothing was spent.`);
+  }
+  if (balance > MONEY_MAX) {
+    throw new ToolError(`That would put the character over the ${MONEY_MAX} ${currency} limit (they have ${pc.money}). Nothing changed.`);
   }
   await ctx.mutator.update('player_character', { campaignId: ctx.campaign.id }, { money: balance });
   await ctx.record({

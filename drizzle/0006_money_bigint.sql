@@ -1,0 +1,1 @@
+ALTER TABLE "player_character" ALTER COLUMN "money" SET DATA TYPE bigint;
