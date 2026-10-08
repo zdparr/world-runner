@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import type Anthropic from '@anthropic-ai/sdk';
-import { ATTRIBUTES, MIN_WORLD_LOCATIONS, levelBonus, skillTier, type ContextManifest, type ContextSlice, type NarrationLength, type Ruleset } from '@narrator/shared';
+import { ATTRIBUTES, MIN_WORLD_LOCATIONS, describeEffect, levelBonus, skillTier, type ContextManifest, type ContextSlice, type NarrationLength, type Ruleset } from '@narrator/shared';
 import type { Db } from '../db/client';
 import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills, stateEvents } from '../db/schema';
 import { repoRoot } from '../paths';
@@ -49,7 +49,6 @@ export function characterHeader(pc: CharacterRow, locationName: string | null): 
     `HP ${pc.hp}/${pc.maxHp}`,
     `Loc: ${locationName ?? 'unknown'}`,
   ];
-  if (pc.statusEffects.length > 0) parts.push(pc.statusEffects.map((s) => s.name).join(', '));
   return parts.join(' — ');
 }
 
@@ -212,6 +211,11 @@ export async function buildTurnContext(
     .filter(Boolean)
     .join('; ');
 
+  const unreviewed = pc.statusEffects.filter((e) => e.modifiers === undefined).map((e) => e.name);
+  if (pc.statusEffects.length > 0) {
+    core.push({ slice: 'conditions', reason: 'always (with modifiers)', approxTokens: approxTokens(pc.statusEffects.map(describeEffect).join('; ')), detail: pc.statusEffects.length });
+  }
+
   const alwaysLore = await db
     .select({ id: loreEntries.id, title: loreEntries.title, body: loreEntries.body })
     .from(loreEntries)
@@ -221,6 +225,16 @@ export async function buildTurnContext(
     `# Current state (turn ${turnNumber})`,
     `Character: ${header}`,
     `Skills: ${skillLine}`,
+    ...(pc.statusEffects.length > 0
+      ? [
+          `Conditions (their modifiers are added to skill_check automatically; don't also adjust difficulty for them): ${pc.statusEffects.map(describeEffect).join('; ')}`,
+        ]
+      : []),
+    ...(unreviewed.length > 0
+      ? [
+          `Conditions from before modifiers existed: ${unreviewed.join('; ')}. This turn, give each one modifiers with update_status_effect (action "update"), or [] if it shouldn't affect rolls.`,
+        ]
+      : []),
     ...(gearLine ? [`Equipped gear with check bonuses (pass the weapon or tool in use as skill_check \`using\`; worn gear counts on its own): ${gearLine}`] : []),
     ...(pc.routines.length > 0
       ? [`Nightly routines (trained automatically every night and during time skips; never grant their XP by hand): ${pc.routines.map(describeRoutine).join('; ')}`]

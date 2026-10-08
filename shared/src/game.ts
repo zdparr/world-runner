@@ -7,13 +7,39 @@ export const RELATIONSHIP_MAX = 100;
 /** Most money a character can hold, and the most one change can move (well within a JS safe integer). */
 export const MONEY_MAX = 1_000_000_000_000;
 
+/** Largest bonus or penalty one modifier can apply to a check. */
+export const MAX_EFFECT_BONUS = 5;
+export const MAX_EFFECT_MODIFIERS = 4;
+
+/**
+ * A condition's effect on the dice: `bonus` is added to every skill_check whose skill or attribute
+ * matches `target` (case-insensitive), or to every check when `target` is "all".
+ */
+export const EffectModifier = z.object({
+  target: z.string().trim().min(1).max(120),
+  bonus: z
+    .number()
+    .int()
+    .min(-MAX_EFFECT_BONUS)
+    .max(MAX_EFFECT_BONUS)
+    .refine((n) => n !== 0, 'bonus cannot be 0'),
+});
+export type EffectModifier = z.infer<typeof EffectModifier>;
+
 export const StatusEffect = z.object({
   name: z.string().trim().min(1).max(80),
   description: z.string().max(500).default(''),
   /** null = lasts until removed. */
   turnsRemaining: z.number().int().positive().nullable().default(null),
+  /**
+   * What it does to checks. Absent on effects from before modifiers existed (the narrator is asked
+   * to review those once); [] means reviewed, and the effect is purely narrative.
+   */
+  modifiers: z.array(EffectModifier).max(MAX_EFFECT_MODIFIERS).optional(),
 });
 export type StatusEffect = z.infer<typeof StatusEffect>;
+/** Room for a summoned hero's blessings and curses as well as ordinary conditions. */
+export const MAX_STATUS_EFFECTS = 60;
 
 export const MissionObjective = z.object({
   id: z.string().min(1).max(40),

@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { eq, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
-import type { StateChange, TurnStreamEvent, TurnUsage } from '@narrator/shared';
+import type { StateChange, StatusEffect, TurnStreamEvent, TurnUsage } from '@narrator/shared';
 import type { Db } from '../db/client';
 import { campaigns, messages, playerCharacter, turnDebug } from '../db/schema';
 import { HttpError } from '../http/errors';
@@ -146,6 +146,15 @@ export async function runTurn(
       });
       if (!narrator.narration) throw new NarratorTruncated('Empty narration');
 
+      // Timed conditions tick down once per turn and wear off at zero. Ones set or changed this
+      // turn start counting next turn.
+      const ticked = await tickStatusEffects(tx, campaignId, turnNumber, pc.statusEffects);
+      // Only a condition wearing off is news; the countdown itself is still logged (and undoable).
+      if (ticked && (ticked.details.expired as string[]).length > 0) {
+        stateChanges.push(ticked);
+        emit({ type: 'state_change', change: ticked });
+      }
+
       const usage: TurnUsage = {
         inputTokens: sum(narrator.rounds, 'inputTokens'),
         outputTokens: sum(narrator.rounds, 'outputTokens'),
@@ -192,6 +201,32 @@ export async function runTurn(
     deps.log.error({ err, campaignId }, 'Turn failed');
     emit({ type: 'error', ...friendlyError(err) });
   }
+}
+
+/** Count down conditions that were unchanged this turn; returns the change, if any. */
+async function tickStatusEffects(tx: Db, campaignId: string, turnNumber: number, atStart: StatusEffect[]): Promise<StateChange | null> {
+  const [pc] = await tx.select({ statusEffects: playerCharacter.statusEffects }).from(playerCharacter).where(eq(playerCharacter.campaignId, campaignId));
+  if (!pc) return null;
+  const untouched = (e: StatusEffect) => atStart.some((s) => s.name === e.name && s.turnsRemaining === e.turnsRemaining);
+  const expired: string[] = [];
+  const next = pc.statusEffects.flatMap((e) => {
+    if (!e.turnsRemaining || !untouched(e)) return [e];
+    if (e.turnsRemaining <= 1) {
+      expired.push(e.name);
+      return [];
+    }
+    return [{ ...e, turnsRemaining: e.turnsRemaining - 1 }];
+  });
+  if (next.every((e, i) => e === pc.statusEffects[i]) && next.length === pc.statusEffects.length) return null;
+  const mutator = new Mutator(tx, campaignId, turnNumber);
+  await mutator.update('player_character', { campaignId }, { statusEffects: next });
+  const event: RecordedEvent = {
+    eventType: 'status',
+    humanReadable: expired.length > 0 ? `Wore off: ${expired.join(', ')}` : 'Conditions ticked down',
+    details: { action: 'tick', expired },
+  };
+  const row = await mutator.commit(event);
+  return row ? { id: row.id, eventType: event.eventType, humanReadable: event.humanReadable, details: event.details } : null;
 }
 
 type UsageKey = 'inputTokens' | 'outputTokens' | 'cacheReadTokens' | 'cacheCreationTokens';

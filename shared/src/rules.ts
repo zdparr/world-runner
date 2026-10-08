@@ -101,6 +101,52 @@ export function trainingMadeTheDifference(
   return OUTCOME_RANK[outcome] > OUTCOME_RANK[untrained];
 }
 
+// ---------------------------------------------------------------- conditions
+
+export interface EffectBonus {
+  effect: string;
+  target: string;
+  bonus: number;
+}
+
+/** Every condition modifier that applies to a check with this skill (and attribute). */
+export function effectBonuses(
+  effects: { name: string; modifiers?: { target: string; bonus: number }[] }[],
+  skill: string,
+  attribute: string | undefined,
+): EffectBonus[] {
+  const targets = new Set(['all', skill.toLowerCase(), ...(attribute ? [attribute.toLowerCase()] : [])]);
+  return effects.flatMap((e) =>
+    (e.modifiers ?? []).filter((m) => targets.has(m.target.trim().toLowerCase())).map((m) => ({ effect: e.name, target: m.target, bonus: m.bonus })),
+  );
+}
+
+/**
+ * Whether the character's conditions changed this roll's outcome: 'helped' when the same roll
+ * without them would have come out worse, 'hurt' when it would have come out better.
+ */
+export function effectsMadeTheDifference(
+  roll: number,
+  difficulty: Difficulty,
+  outcome: CheckOutcome,
+  modifier: number,
+  effectTotal: number,
+  skillLevel: number,
+): 'helped' | 'hurt' | null {
+  if (effectTotal === 0) return null;
+  const without = OUTCOME_RANK[resolveCheck(roll, modifier - effectTotal, difficulty, skillLevel).outcome];
+  if (OUTCOME_RANK[outcome] > without) return 'helped';
+  if (OUTCOME_RANK[outcome] < without) return 'hurt';
+  return null;
+}
+
+/** "Curse: Honest Face (Persuasion -3, Deception -3)", for the narrator's context and the UI. */
+export function describeEffect(e: { name: string; turnsRemaining: number | null; modifiers?: { target: string; bonus: number }[] }): string {
+  const mods = (e.modifiers ?? []).map((m) => `${m.target === 'all' ? 'all checks' : m.target} ${m.bonus > 0 ? '+' : ''}${m.bonus}`);
+  const extras = [...mods, ...(e.turnsRemaining ? [`${e.turnsRemaining} turns left`] : [])];
+  return extras.length > 0 ? `${e.name} (${extras.join(', ')})` : e.name;
+}
+
 // ---------------------------------------------------------------- world
 
 /** Every world should have at least this many locations, each with a purpose in the story. */

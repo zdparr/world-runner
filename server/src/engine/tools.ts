@@ -4,8 +4,10 @@ import { z } from 'zod';
 import {
   AttributeName,
   DIFFICULTIES,
+  EffectModifier,
   ItemEnhancement,
   ItemUsage,
+  MAX_EFFECT_MODIFIERS,
   MAX_ENHANCEMENTS,
   MAX_ITEM_GRADE,
   HEAL_SHARE_PER_DAY,
@@ -22,6 +24,9 @@ import {
   TRAINING_HOURS_PER_DAY,
   attributeBonus,
   checkXp,
+  describeEffect,
+  effectBonuses,
+  effectsMadeTheDifference,
   gearBonuses,
   levelBonus,
   resolveCheck,
@@ -283,7 +288,7 @@ function createMissionTool(ruleset: Ruleset): ToolDef {
 }
 
 const SKILL_CHECK_DESCRIPTION =
-  "Roll for an uncertain action. The server rolls d20 + the character's skill level + their level bonus against the difficulty and returns success, partial (success at a cost), or fail. You must narrate the returned outcome, including failures. Pick the most relevant skill; an untrained skill rolls without its bonus. Equipped graded gear that enhances the skill (or attribute) adds its grade: name the weapon or tool being used in `using`; worn gear counts on its own. When the result says trainingMadeTheDifference, the character's skill is what carried it: show that in the story. Harder checks teach more (skill XP is awarded automatically).";
+  "Roll for an uncertain action. The server rolls d20 + the character's skill level + their level bonus against the difficulty and returns success, partial (success at a cost), or fail. You must narrate the returned outcome, including failures. Pick the most relevant skill; an untrained skill rolls without its bonus. Equipped graded gear that enhances the skill (or attribute) adds its grade: name the weapon or tool being used in `using`; worn gear counts on its own. When the result says trainingMadeTheDifference, the character's skill is what carried it: show that in the story. The character's conditions (blessings, curses, injuries, penalties) apply their modifiers automatically; when the result says conditionsMadeTheDifference, show that condition at work (the curse that gave them away, the blessing that saved them). Never lower or raise the difficulty for a condition that has modifiers: it is already counted. Harder checks teach more (skill XP is awarded automatically).";
 
 const skillCheckInput = z.object({
   skill_name: Name,
@@ -326,14 +331,18 @@ function skillCheckTool(ruleset: Ruleset): ToolDef {
       const items = await ctx.db.select().from(inventoryItems).where(and(eq(inventoryItems.campaignId, ctx.campaign.id), eq(inventoryItems.equipped, true)));
       const gear = gearBonuses(items, name, attribute, usingName);
       const gearBonus = gear.reduce((sum, g) => sum + g.bonus, 0);
+      // Conditions: blessings, curses, injuries, and penalties that the character carries.
+      const effects = effectBonuses(pc.statusEffects, name, attribute);
+      const effectBonus = effects.reduce((sum, e) => sum + e.bonus, 0);
 
-      const modifier = skillBonus + attrBonus + lvlBonus + gearBonus;
+      const modifier = skillBonus + attrBonus + lvlBonus + gearBonus + effectBonus;
       const roll = rollD20(ctx.campaign.rngSeed, ctx.turnNumber, ctx.nextRollIndex());
       const { total, dc, outcome } = resolveCheck(roll, modifier, input.difficulty, skillBonus);
       // Did the character's training (skill and attribute) turn this roll? Level and gear are kept on both sides.
-      const decisive = trainingMadeTheDifference(roll, input.difficulty, outcome, skillBonus + attrBonus, lvlBonus + gearBonus);
+      const decisive = trainingMadeTheDifference(roll, input.difficulty, outcome, skillBonus + attrBonus, lvlBonus + gearBonus + effectBonus);
       // Did their gear? Everything else is kept on both sides.
-      const gearDecisive = trainingMadeTheDifference(roll, input.difficulty, outcome, gearBonus, skillBonus + attrBonus + lvlBonus);
+      const gearDecisive = trainingMadeTheDifference(roll, input.difficulty, outcome, gearBonus, skillBonus + attrBonus + lvlBonus + effectBonus);
+      const conditionsDecided = effectsMadeTheDifference(roll, input.difficulty, outcome, modifier, effectBonus, skillBonus);
       const tier = skill ? skillTier(skill.level) : null;
       await ctx.record({
         eventType: 'skill_check',
@@ -355,6 +364,8 @@ function skillCheckTool(ruleset: Ruleset): ToolDef {
           ...(attribute ? { attribute, attributeBonus: attrBonus } : {}),
           ...(gear.length > 0 ? { gear, gearBonus } : {}),
           ...(gearDecisive ? { gearDecisive: true } : {}),
+          ...(effects.length > 0 ? { conditions: effects, conditionBonus: effectBonus } : {}),
+          ...(conditionsDecided ? { conditionsDecided } : {}),
         },
         always: true,
       });
@@ -369,12 +380,16 @@ function skillCheckTool(ruleset: Ruleset): ToolDef {
           levelBonus: lvlBonus,
           ...(attribute ? { attribute, attributeBonus: attrBonus } : {}),
           ...(gear.length > 0 ? { gear: gear.map((g) => ({ item: g.item, bonus: g.bonus })) } : {}),
+          ...(effects.length > 0 ? { conditions: effects.map((e) => ({ condition: e.effect, bonus: e.bonus })) } : {}),
         },
         total,
         dc,
         ...(tier ? { skillTier: tier } : { note: 'Untrained: no skill bonus.' }),
         ...(decisive ? { trainingMadeTheDifference: true } : {}),
         ...(gearDecisive ? { gearMadeTheDifference: true } : {}),
+        ...(conditionsDecided
+          ? { conditionsMadeTheDifference: `${conditionsDecided === 'helped' ? 'Helped by' : 'Hurt by'} ${[...new Set(effects.filter((e) => (conditionsDecided === 'helped' ? e.bonus > 0 : e.bonus < 0)).map((e) => e.effect))].join(', ')}` }
+          : {}),
         ...(gearNotes.length > 0 ? { gearNote: gearNotes.join(' ') } : {}),
         ...(practice && practice.level > practice.levelBefore
           ? { levelUp: `${practice.skill} is now level ${practice.level} (${skillTier(practice.level)})` }
@@ -747,28 +762,46 @@ const writeTools: ToolDef[] = [
   tool({
     name: 'update_status_effect',
     kind: 'write',
-    description: 'Add or remove a lasting condition on the player character (poisoned, drunk, exhausted, disguised, wanted by the watch).',
+    description:
+      "Add, change, or remove a lasting condition on the player character (poisoned, drunk, exhausted, disguised, wanted by the watch, a blessing or a curse). Give it `modifiers` when it should help or hinder rolls: each adds its bonus (-5..+5) to every skill_check on the named skill, attribute, or \"all\". Pass [] for a purely narrative condition. Use action \"update\" to change an existing condition's modifiers, description, or remaining turns without resetting the rest.",
     input: z.object({
-      action: z.enum(['add', 'remove']),
+      action: z.enum(['add', 'update', 'remove']),
       name: Name,
-      description: z.string().trim().max(500).default(''),
-      turns: z.number().int().min(1).max(1000).optional().describe('How many turns it lasts; omit for until removed'),
+      description: z.string().trim().max(500).optional(),
+      turns: z.number().int().min(1).max(1000).nullable().optional().describe('How many turns it lasts; omit (or null) for until removed. On update, omit to keep the current count.'),
+      modifiers: z
+        .array(EffectModifier)
+        .max(MAX_EFFECT_MODIFIERS)
+        .optional()
+        .describe('Effects on checks, e.g. [{ "target": "Persuasion", "bonus": -3 }, { "target": "all", "bonus": -1 }]. Targets: a skill name, an attribute, or "all". [] = no effect on rolls.'),
     }),
     run: async (ctx, input) => {
       const pc = await getCharacter(ctx);
-      const others = pc.statusEffects.filter((s) => s.name.toLowerCase() !== input.name.toLowerCase());
-      if (input.action === 'remove' && others.length === pc.statusEffects.length) {
+      const existing = pc.statusEffects.find((s) => s.name.toLowerCase() === input.name.toLowerCase());
+      const others = pc.statusEffects.filter((s) => s !== existing);
+      if (input.action !== 'add' && !existing) {
         throw new ToolError(`The character has no status effect named "${input.name}". Current: ${pc.statusEffects.map((s) => s.name).join(', ') || 'none'}.`);
       }
-      const effect: StatusEffect = { name: input.name, description: input.description, turnsRemaining: input.turns ?? null };
-      const statusEffects = input.action === 'add' ? [...others, effect] : others;
+      let effect: StatusEffect | null = null;
+      if (input.action === 'add') {
+        effect = { name: input.name, description: input.description ?? '', turnsRemaining: input.turns ?? null, modifiers: input.modifiers ?? [] };
+      } else if (input.action === 'update') {
+        effect = {
+          ...existing!,
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          ...(input.turns !== undefined ? { turnsRemaining: input.turns } : {}),
+          ...(input.modifiers !== undefined ? { modifiers: input.modifiers } : {}),
+        };
+      }
+      const statusEffects = effect ? [...others, effect] : others;
       await ctx.mutator.update('player_character', { campaignId: ctx.campaign.id }, { statusEffects });
+      const label = effect ? describeEffect(effect) : input.name;
       await ctx.record({
         eventType: 'status',
-        humanReadable: `${input.action === 'add' ? 'Now' : 'No longer'} ${input.name}`,
-        details: { action: input.action, name: input.name },
+        humanReadable: input.action === 'add' ? `Now ${label}` : input.action === 'update' ? `Changed: ${label}` : `No longer ${input.name}`,
+        details: { action: input.action, name: input.name, ...(effect?.modifiers?.length ? { modifiers: effect.modifiers } : {}) },
       });
-      return { statusEffects };
+      return { statusEffects: statusEffects.map(describeEffect) };
     },
   }),
 

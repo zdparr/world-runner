@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import Anthropic from '@anthropic-ai/sdk';
-import { and, asc, eq } from 'drizzle-orm';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { createTestApp } from './helpers';
 import { doneEvent, parseSse, scriptedModel, toolResultsIn, type Step } from './fake-model';
 import {
@@ -18,6 +20,7 @@ import {
 } from '../src/db/schema';
 import { createFromTemplate } from '../src/db/seed/templates';
 import { buildTurnContext } from '../src/engine/context';
+import { migrationsDir } from '../src/paths';
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
 beforeAll(async () => {
@@ -563,4 +566,81 @@ describe('map snapshot', () => {
     expect(trip('The Drowned Lantern', 'Lantern Cellar')).toBe(2);
     expect(map.travels).toHaveLength(2);
   });
+});
+
+// ---------------------------------------------------------------- conditions
+
+describe('conditions', () => {
+  const result = (calls: Anthropic.MessageStreamParams[], i = 0) => JSON.parse(toolResultsIn(calls[1]!)[i]!.content as string);
+
+  it('adds a condition\'s modifiers to matching checks, and says when they decided the outcome', async () => {
+    const id = await newCampaign();
+    const check: Step[] = [{ tools: [{ name: 'skill_check', input: { skill_name: 'Persuasion', difficulty: 'medium' } }] }, { text: '...' }];
+    const before = result((await play(id, 'I talk my way in.', check)).calls);
+    await play(id, 'Cursed.', [
+      {
+        tools: [
+          { name: 'update_status_effect', input: { action: 'add', name: 'Curse: Honest Face', description: 'Every feeling shows.', modifiers: [{ target: 'persuasion', bonus: -3 }, { target: 'Stealth', bonus: -1 }] } },
+        ],
+      },
+      { text: 'Ouch.' },
+    ]);
+    const after = result((await play(id, 'I talk my way in again.', check)).calls);
+    expect(after.modifier).toBe(before.modifier - 3);
+    expect(after.breakdown.conditions).toEqual([{ condition: 'Curse: Honest Face', bonus: -3 }]);
+    if (after.conditionsMadeTheDifference) expect(after.conditionsMadeTheDifference).toBe('Hurt by Curse: Honest Face');
+
+    const state = (await contextFor(id)).system[1]!.text;
+    expect(state).toContain('Conditions (their modifiers are added to skill_check automatically');
+    expect(state).toContain('Curse: Honest Face (persuasion -3, Stealth -1)');
+  });
+
+  it('updates a condition in place and counts timed ones down each turn', async () => {
+    const id = await newCampaign();
+    await play(id, 'I get hurt and lucky.', [
+      {
+        tools: [
+          { name: 'update_status_effect', input: { action: 'add', name: 'Bruised', turns: 2 } },
+          { name: 'update_status_effect', input: { action: 'add', name: 'Inspired', modifiers: [] } },
+        ],
+      },
+      { text: 'Ow.' },
+    ]);
+    // Set this turn, so not counted down yet.
+    expect((await character(id)).statusEffects.find((e) => e.name === 'Bruised')).toMatchObject({ turnsRemaining: 2, modifiers: [] });
+
+    await play(id, 'I wince.', [{ tools: [{ name: 'update_status_effect', input: { action: 'update', name: 'Bruised', modifiers: [{ target: 'all', bonus: -1 }] } }] }, { text: 'Hm.' }]);
+    // The update left the count alone, so it ticked.
+    expect((await character(id)).statusEffects.find((e) => e.name === 'Bruised')).toMatchObject({ turnsRemaining: 1, modifiers: [{ target: 'all', bonus: -1 }] });
+
+    const { events } = await play(id, 'I rest.', [{ text: 'Better.' }]);
+    expect((await character(id)).statusEffects.map((e) => e.name)).toEqual(['Inspired']);
+    expect(events.some((e) => e.type === 'state_change' && e.change.humanReadable === 'Wore off: Bruised')).toBe(true);
+
+    // Undo brings it back.
+    await t.api('POST', `/api/campaigns/${id}/turns/undo`);
+    expect((await character(id)).statusEffects.find((e) => e.name === 'Bruised')?.turnsRemaining).toBe(1);
+  });
+
+  it('asks the narrator to review conditions from before modifiers, and migrates the seeded ones', async () => {
+    const id = await newCampaign();
+    await t.db
+      .update(playerCharacter)
+      .set({ statusEffects: [{ name: 'Cracked Ribs', description: '', turnsRemaining: 5 }, { name: 'Drunk', description: '', turnsRemaining: null }] })
+      .where(eq(playerCharacter.campaignId, id));
+    expect((await contextFor(id)).system[1]!.text).toContain('Conditions from before modifiers existed: Cracked Ribs; Drunk.');
+
+    const migration = readFileSync(join(migrationsDir, '0007_condition_modifiers.sql'), 'utf8');
+    for (const statement of migration.split('--> statement-breakpoint')) await t.db.execute(sql.raw(statement));
+    expect((await character(id)).statusEffects).toEqual([
+      { name: 'Cracked Ribs', description: '', turnsRemaining: 5, modifiers: [{ target: 'strength', bonus: -2 }, { target: 'agility', bonus: -1 }] },
+      { name: 'Drunk', description: '', turnsRemaining: null },
+    ]);
+    expect((await contextFor(id)).system[1]!.text).toContain('Conditions from before modifiers existed: Drunk.');
+  });
+
+  async function contextFor(id: string) {
+    const [campaign] = await t.db.select().from(campaigns).where(eq(campaigns.id, id));
+    return buildTurnContext(t.db, campaign!, await character(id), 'I look around.', 99);
+  }
 });

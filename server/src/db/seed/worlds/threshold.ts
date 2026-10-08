@@ -271,6 +271,11 @@ Do not reveal any of this early. The Protocol never explains its origin, purpose
           name: 'Protocol Deficit',
           description: 'Weakness, nausea, and the sense that the world is a half-step out of sync. Physical effort is harder while it lasts.',
           turnsRemaining: 20,
+          modifiers: [
+            { target: 'strength', bonus: -2 },
+            { target: 'agility', bonus: -2 },
+            { target: 'vitality', bonus: -2 },
+          ],
         },
       },
     },
@@ -340,6 +345,10 @@ Do not reveal any of this early. The Protocol never explains its origin, purpose
         name: 'Cracked Ribs',
         description: 'Two ribs cracked in the Tolliver collapse. Deep breaths hurt, and hard twisting or heavy lifting is painful.',
         turnsRemaining: 30,
+        modifiers: [
+          { target: 'strength', bonus: -2 },
+          { target: 'agility', bonus: -1 },
+        ],
       },
     ],
     attributes: { strength: 5, agility: 6, vitality: 5, perception: 7, will: 8 },

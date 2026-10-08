@@ -282,9 +282,15 @@ function CharacterTab({ state }: { state: CampaignState }) {
         <Section title="Conditions">
           <div className="flex flex-wrap gap-1.5">
             {pc.statusEffects.map((s) => (
-              <Chip key={s.name} tone="border-ember/50 text-ember">
+              <Chip key={s.name} tone={s.name.startsWith('Blessing:') ? 'border-brass/50 text-brass' : 'border-ember/50 text-ember'}>
                 <span title={s.description || undefined}>
                   {s.name}
+                  {(s.modifiers ?? []).map((m) => (
+                    <span key={m.target} className={cx('ml-1 tabular-nums', m.bonus > 0 ? 'text-brass' : 'text-ember/80')}>
+                      {m.target === 'all' ? 'all' : m.target} {m.bonus > 0 ? '+' : ''}
+                      {m.bonus}
+                    </span>
+                  ))}
                   {s.turnsRemaining ? ` · ${s.turnsRemaining}t` : ''}
                 </span>
               </Chip>

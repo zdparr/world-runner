@@ -38,7 +38,7 @@ The campaign opens in the Void. No time passes there: never call \`advance_day\`
   C2. ...
   \`\`\`
 - **Record every pick the turn it is made**, before you show the next board:
-  1. \`update_status_effect\` (action add, no turns) named "Blessing: <name>" or "Curse: <name>", with the full effect as its description.
+  1. \`update_status_effect\` (action add, no turns) named "Blessing: <name>" or "Curse: <name>", with the full effect as its description and the modifiers listed in [brackets] (\`[]\` when none are listed). Modifiers are added to every matching \`skill_check\` automatically, so the dice feel them; everything else in the entry (rerolls, immunities, surviving a killing blow) is yours to honor in play.
   2. Any mechanical part the entry lists: a new skill through \`grant_skill_xp\` (a new skill starts at level 0; reaching level L takes 25 × L × (L+1) / 2 XP in total: level 2 = 75, level 3 = 150, level 4 = 250, level 5 = 375), an item through \`add_item\` (with grade, usage, and what it enhances when it is gear), money through \`adjust_money\`, character XP through \`grant_xp\`, or an NPC through \`create_npc\` (with \`first_meeting\`).
   3. Add the pick and its exact effect to a "Bargain" section of your story notes (\`update_story_notes\`), so every blessing and curse stays in front of you for the rest of the campaign.
 - **Ending the Bargain.** When the player says they are done, check the tally. If they still have a blessing owed, Ilyra points it out once; if they leave anyway, it is lost. Then she says goodbye (see her notes), the Void folds away, and the character wakes on the summoning dais of the Radiant Cathedral in Aurion: call \`move_player\`, tick the Bargain's objectives with \`update_mission\`, and show a short \`system\` block summarizing the Ledger (the character's blessings and curses). From then on, the daily quest applies.
@@ -47,31 +47,32 @@ The campaign opens in the Void. No time passes there: never call \`advance_day\`
 Blessings must shine and curses must bite. Bring each one into play regularly, in the moments where it matters most: a Truthbound hero questioned by the Hierarch, a hero with Beastspeaker in a cavalry charge. A curse that never costs anything breaks the bargain the player made.
 
 ### Blessing pool
-- **Sword Saint's Instinct**: blades move like part of your body. Swordsmanship starts at level 5.
+Modifiers in [brackets] go on the status effect (targets are skill names or lowercase attributes). Blessings that start a skill already help through its level; their bracketed modifier is the extra edge on top. Write modifiers in the same style for blessings and curses you invent.
+- **Sword Saint's Instinct**: blades move like part of your body. Swordsmanship starts at level 5. [Swordsmanship +2]
 - **Mana Wellspring**: deep reserves of mana and a feel for spellcraft. Arcane Magic starts at level 3, and casting rarely tires you.
 - **Elemental Affinity** (the player names fire, water, earth, air, or lightning): that element answers you. <Element> Magic starts at level 4.
 - **Lightbearer**: you can call holy light: to blind, to burn the undead, to warm. Light Magic starts at level 3. Morvhai feel it on their skin.
 - **Healer's Grace**: Healing Magic starts at level 4; you can close wounds with your hands.
 - **Tongue of All Peoples**: you understand and speak every language of Ereth, including Morvhai speech and old runic script.
-- **Appraisal**: with a moment's focus you see a short truth about a thing or person: its name, condition, and rough danger. Show it in a \`system\` block.
-- **Eyes of the Night**: you see in total darkness, and illusions and glamours never fool you.
+- **Appraisal**: with a moment's focus you see a short truth about a thing or person: its name, condition, and rough danger. Show it in a \`system\` block. [perception +1]
+- **Eyes of the Night**: you see in total darkness, and illusions and glamours never fool you. [perception +2]
 - **Pocket of Elsewhere**: a fold of space only you can reach into, holding about a wagonload. Add it as an item.
 - **Troll's Mending**: wounds close in hours instead of weeks; resting restores HP much faster.
 - **Second Dawn**: once per in-game day, a blow that would kill you leaves you at 1 HP instead.
 - **Luck of the Fool**: once per in-game day, when a roll goes against you, you may roll it again and keep the better.
-- **Danger Sense**: a heartbeat of warning before any ambush, trap, or betrayal aimed at you.
-- **Ledger of Truth**: you hear a lie spoken to you as a sour note.
-- **Unbreakable Will**: charms, fear magic, and mind-reading slide off you.
+- **Danger Sense**: a heartbeat of warning before any ambush, trap, or betrayal aimed at you. [perception +2]
+- **Ledger of Truth**: you hear a lie spoken to you as a sour note. [Insight +3]
+- **Unbreakable Will**: charms, fear magic, and mind-reading slide off you. [will +3]
 - **Iron Stomach**: poison and disease cannot take hold of you.
 - **Hero's Head Start**: you wake already stronger. Grant 250 character XP (to level 3).
 - **Golden Touch**: you arrive with 500 marks sewn into your clothes and a merchant's instinct. Trade starts at level 3.
 - **Weapon Bond**: a weapon of the player's choice, forged by Ilyra: Grade III, wielded, enhancing its fighting skill. It returns to your hand when called.
 - **Battle Tactician**: you read a battlefield like a board. Tactics starts at level 4, and commanders tend to listen.
-- **Voice of Kings**: people are inclined to like and follow you on first meeting. Persuasion starts at level 3; Leadership at level 2.
-- **Beastspeaker**: animals understand your meaning and mostly trust you. Animal Handling starts at level 3.
-- **Archer's Eye**: Archery starts at level 5; you judge wind and distance without thinking.
-- **Shadowstep**: once per scene, blink up to ten paces to a place you can see. Stealth starts at level 2.
-- **Fleetfoot**: Athletics starts at level 4, and long marches never wear you down.
+- **Voice of Kings**: people are inclined to like and follow you on first meeting. Persuasion starts at level 3; Leadership at level 2. [Persuasion +2]
+- **Beastspeaker**: animals understand your meaning and mostly trust you. Animal Handling starts at level 3. [Riding +2]
+- **Archer's Eye**: Archery starts at level 5; you judge wind and distance without thinking. [Archery +2]
+- **Shadowstep**: once per scene, blink up to ten paces to a place you can see. Stealth starts at level 2. [Stealth +2]
+- **Fleetfoot**: Athletics starts at level 4, and long marches never wear you down. [agility +1]
 - **Smith-Blessed Hands**: Smithing starts at level 4; with the right forge you can raise a weapon or armor a grade.
 - **Earthly Memory**: perfect recall of everything you ever read, watched, or learned on Earth: chemistry, recipes, history, how a printing press works.
 - **Growth Unbound**: you learn absurdly fast. Whenever you grant this character skill XP, add half again.
@@ -81,33 +82,33 @@ Blessings must shine and curses must bite. Bring each one into play regularly, i
 - **Echo of Another Life**: fragments of a life you never lived, in Ereth, three hundred years ago, surface in dreams. (GM: they are memories of Saint Aurelia. Reveal them slowly.)
 
 ### Curse pool
-- **Truthbound**: you cannot speak a direct lie. You can stay silent or mislead, but the false words will not come.
-- **Glass Bones**: falls and blunt blows hurt you twice as much as they should.
+- **Truthbound**: you cannot speak a direct lie. You can stay silent or mislead, but the false words will not come. [Deception -4]
+- **Glass Bones**: falls and blunt blows hurt you twice as much as they should. [vitality -2]
 - **Hero's Beacon**: Morvhai mages can sense where you are within a mile.
-- **Demon's Mark**: a black, horn-shaped mark on your face that everyone in Valcrest reads as demonic taint.
+- **Demon's Mark**: a black, horn-shaped mark on your face that everyone in Valcrest reads as demonic taint. [Persuasion -2]
 - **Mana-deaf**: you can never learn or cast magic.
 - **Hunger of Heroes**: you must eat three times what a normal person does, or weaken by nightfall.
 - **Heavy Sleeper**: once asleep, almost nothing wakes you before dawn.
-- **Beast-Hated**: animals fear and hate you; horses will not carry you.
+- **Beast-Hated**: animals fear and hate you; horses will not carry you. [Animal Handling -5, Riding -5]
 - **Pariah of the Light**: priests sense something wrong in you; Church healing works at half strength on you.
-- **Bloodlust**: after you kill, stopping is hard; it takes Will to pull back.
-- **Nightmares of Dying**: most nights you relive your death on Earth, and sleep badly.
+- **Bloodlust**: after you kill, stopping is hard; it takes Will to pull back. [will -1]
+- **Nightmares of Dying**: most nights you relive your death on Earth, and sleep badly. [will -1]
 - **Oathbound**: breaking a promise you made aloud costs you HP and leaves you weakened for a day.
 - **Wanted Face**: you are the image of a notorious bandit with a price on his head in Valcrest.
-- **Shadowless**: you cast no shadow. Common folk make the sign against evil when they notice.
+- **Shadowless**: you cast no shadow. Common folk make the sign against evil when they notice. [Persuasion -1]
 - **Coin-Cursed**: money slips through your fingers. At the end of each in-game week, a tenth of your marks are lost.
 - **Bleeder**: your wounds do not close on their own without treatment; every serious cut leaves you bleeding.
 - **Sun-Scorched Soul**: hours of direct sunlight leave you weak and feverish.
-- **Honest Face**: every feeling shows on your face; bluffing and hiding fear are far harder.
-- **Slow Hand** (the player names a skill or discipline): that skill gains only half XP, forever.
-- **Fear of Deep Water**: deep or dark water sends you into panic.
+- **Honest Face**: every feeling shows on your face; bluffing and hiding fear are far harder. [Deception -3, Persuasion -1]
+- **Slow Hand** (the player names a skill or discipline): that skill gains only half XP, forever. [<that skill> -1]
+- **Fear of Deep Water**: deep or dark water sends you into panic. [Swimming -4]
 - **Rival's Thread**: fate ties you to a rival who always turns up at the worst moment. (GM: Jun Arakawa, if the player has met him; otherwise someone new.)
 - **Debt to the Goddess**: one day Ilyra will ask a favor, and you will not be able to refuse. (GM: she calls it in during the war, at a moment that costs.)
 - **Price of Power**: every spell or blessing you use costs a little HP.
 - **Hero-Bane**: weapons of Morvhai black glass wound you twice as deeply.
 - **Lodestone Luck**: whenever you roll a critical success, something nearby breaks.
-- **Stranger's Tongue**: you speak only your Earth language; you understand Ereth's tongues, but must use an interpreter or gestures to be understood.
-- **Frail Vessel**: your body tires fast; you start with 3 fewer max HP (reduce HP by 3 now).
+- **Stranger's Tongue**: you speak only your Earth language; you understand Ereth's tongues, but must use an interpreter or gestures to be understood. [Persuasion -3]
+- **Frail Vessel**: your body tires fast; you start with 3 fewer max HP (reduce HP by 3 now). [vitality -2]
 - **Moonsick**: on nights of the full moon you are feverish and weak.
 - **Heart on a String**: whenever someone you care about is in danger nearby, you know it, and you cannot rest until you go to them.
 
@@ -414,6 +415,7 @@ Do not reveal any of this early. Let clues build over many sessions; the charact
           name: "Goddess's Disfavor",
           description: 'A dull, heavy listlessness, as if the world has turned a little away from you. Effort comes harder and luck runs thin while it lasts.',
           turnsRemaining: 20,
+          modifiers: [{ target: 'all', bonus: -2 }],
         },
       },
     },

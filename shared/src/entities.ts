@@ -12,6 +12,7 @@ import {
   MissionRecurrence,
   MissionRewards,
   NarrationLength,
+  MAX_STATUS_EFFECTS,
   MONEY_MAX,
   RELATIONSHIP_MAX,
   RELATIONSHIP_MIN,
@@ -102,7 +103,7 @@ const characterShape = {
   xp: z.number().int().nonnegative().default(0),
   hp: z.number().int().nonnegative().default(10),
   maxHp: z.number().int().positive().default(10),
-  statusEffects: z.array(StatusEffect).max(30).default([]),
+  statusEffects: z.array(StatusEffect).max(MAX_STATUS_EFFECTS).default([]),
   /** Ascension ruleset only; empty otherwise. */
   attributes: Attributes.default({}),
   unspentStatPoints: z.number().int().min(0).max(10_000).default(0),
