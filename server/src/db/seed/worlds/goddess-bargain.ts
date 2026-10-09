@@ -22,10 +22,10 @@ The campaign opens in the Void. No time passes there: never call \`advance_day\`
 ### The rules of the Bargain
 - **One blessing is free.** Each **curse** the character accepts buys exactly **one more blessing**. There is no cap. Blessings owed = 1 + curses taken − blessings taken. The character may never take a blessing they have not paid for; Ilyra will kindly but firmly refuse.
 - The character may take curses first and blessings later, or alternate, in any order.
-- **Every pick repopulates the board.** Each time the character accepts a blessing or a curse, the whole offer is replaced: 4 new blessings and 4 new curses, none ever offered before in this Bargain. Choosing is final; past offers never return. (This is what makes it a bargain, and Ilyra says so.)
+- **Every pick repopulates the board.** Each time the character accepts a blessing or a curse, the whole offer is replaced: 6 new blessings and 6 new curses, none ever offered before in this Bargain. Choosing is final; past offers never return. (This is what makes it a bargain, and Ilyra says so.)
 - Draw from the pools below, varying power, theme, and tone, and invent new ones in the same spirit when it suits the character. Never offer a curse that cancels a blessing the character already holds (Mana-deaf after Mana Wellspring), or a blessing that simply erases a curse they took.
 - The player may ask Ilyra questions between picks. She answers honestly about the gifts and the price, and evasively about the war (see the GM section).
-- **Show the board** every time it changes, in a \`system\` block in exactly this shape (number them B1 to B4 and C1 to C4 so the player can answer with a code):
+- **Show the board** every time it changes, in a \`system\` block in exactly this shape (number them B1 to B6 and C1 to C6 so the player can answer with a code):
   \`\`\`system
   [ THE BARGAIN ]
   Blessings owed: 1   ·   Curses taken: 0   ·   Blessings taken: 0
@@ -80,6 +80,51 @@ Modifiers in [brackets] go on the status effect (targets are skill names or lowe
 - **Familiar Spirit**: a small spirit companion (the player picks its shape and name) who scouts, talks back, and is loyal to you. Create it as an NPC.
 - **Hero's Aura**: allies fighting beside you are braver and steadier. Leadership starts at level 3.
 - **Echo of Another Life**: fragments of a life you never lived, in Ereth, three hundred years ago, surface in dreams. (GM: they are memories of Saint Aurelia. Reveal them slowly.)
+- **Stoneskin**: your skin hardens like oiled leather under a blow; cuts and bruises that would fell others barely mark you. [vitality +2]
+- **Quicksilver Reflexes**: you move before you've decided to. [agility +2]
+- **Titan's Grip**: you lift, hold, and swing far beyond your size. [strength +2]
+- **Hawk's Eye**: you see clearly at distances that make others squint, and notice small movements at the edge of sight. [perception +2]
+- **Silver Tongue**: the right words come when you need them. Persuasion starts at level 2. [Persuasion +2, Deception +1]
+- **Spellweaver's Memory**: any spell you see cast once, you can learn. Arcane Magic starts at level 2. [Arcane Magic +1]
+- **Shieldwall**: a shield in your hands is a wall. Shield Fighting starts at level 4. [Shield Fighting +2]
+- **Spear Dancer**: Spear Fighting starts at level 5; you keep any foe at the length of your reach.
+- **Brawler's Soul**: your fists hit like hammers and you never fight fair. Unarmed Combat starts at level 4. [Unarmed Combat +2]
+- **Rider Born**: horses love you and you ride as if born in the saddle. Riding starts at level 4. [Riding +2]
+- **Shadow's Child**: shadows lean toward you and silence follows your steps. Stealth starts at level 4. [Stealth +2]
+- **Lockbreaker**: no lock made by mortal hands keeps you out for long. Lockpicking starts at level 4. [Lockpicking +2]
+- **Herbwise**: you know every plant of Ereth on sight, what it heals and what it kills. Herbalism starts at level 4. [Herbalism +2]
+- **Alchemist's Nose**: you can smell what a potion or poison is made of. Alchemy starts at level 3. [Alchemy +2]
+- **Runesmith**: you can carve runes that hold small enchantments: a blade that stays sharp, a door that won't open, a stone that glows. Runecraft starts at level 3.
+- **Wardweaver**: you can raise shimmering barriers of force. Warding Magic starts at level 3. [Warding Magic +2]
+- **Stormcaller**: thunder answers when you shout. Lightning Magic starts at level 3; storms gather faster around you. [Lightning Magic +1]
+- **Frostbound Heart**: cold cannot hurt you, and ice forms where you will it. Ice Magic starts at level 3.
+- **Gravewarden**: the restless dead fear you, and you can speak with the newly dead for a minute before they pass on. Spirit Magic starts at level 2.
+- **Dreamwalker**: you can step into the dreams of sleepers you have touched, and speak with them there.
+- **Polyglot Pen**: you read every script ever written in Ereth, including dead languages and ciphers. [Lore +2]
+- **Scholar's Mind**: you learn from books ten times as fast as anyone else, and forget nothing you read. [Lore +3]
+- **Field Medic**: First Aid rises to level 4; no one bleeds out under your hands. [First Aid +2]
+- **Cook of Legends**: your food heals spirits as well as hunger; a meal you cook removes a minor condition from everyone who eats it. Cooking starts at level 3.
+- **Bard's Gift**: your music moves crowds to tears, laughter, or courage. Performance starts at level 4. [Performance +2]
+- **Gambler's Grin**: dice and cards favor you, and you always know when someone is cheating. [Gambling +3]
+- **Pathfinder**: you never get lost, always know which way is north, and can find water anywhere. Survival starts at level 3. [Survival +2]
+- **Feather Fall**: falls never hurt you more than a stumble.
+- **Waterborn**: you breathe water as easily as air and swim like a seal. [Swimming +4]
+- **Ember Blood**: fire cannot burn you, and you can warm yourself, others, or a cold forge with a touch.
+- **Sleepless Watch**: you need only two hours of sleep a night, and wake instantly at any sound. [perception +1]
+- **Ironclad Constitution**: you shrug off exhaustion, cold, and hunger far longer than any soldier. [vitality +1]
+- **Quartermaster's Instinct**: you always know what an army, caravan, or camp is short of and how to get it. [Logistics +2]
+- **Commander's Voice**: soldiers obey your orders in the thick of battle without question. Leadership starts at level 3. [Leadership +2]
+- **Spymaster's Eye**: you read faces, spot tails, and notice who is lying about who they are. Insight starts at level 3. [Insight +2]
+- **Kingmaker's Luck**: once per story arc, a powerful stranger takes an unexpected liking to you and offers help.
+- **Seven-League Stride**: you walk three times as far in a day as anyone else without tiring.
+- **Mirror Image**: once per scene, you can conjure a perfect illusory double that moves as you will for a minute.
+- **Hand of Mercy**: once per in-game day, touch a dying person to stabilize them instantly, however grave the wound.
+- **Anchor of Calm**: panic and despair cannot take hold of anyone standing beside you. [will +1]
+- **Goddess-Touched Steel**: every weapon you wield for more than a day becomes Grade I and enhances its fighting skill. (Update the weapon with \`update_item\`.)
+- **Hero's Stamina**: you can fight, march, or work through a whole night and a day without penalty. [vitality +1]
+- **Monster Lore**: you know the weaknesses of every beast and monster in Ereth. [Monster Lore +3]
+- **Fortune's Pocket**: once per in-game week, you find something small and useful in a pocket you know was empty.
+- **The Long Memory**: you can recall perfectly any moment you have lived since arriving in Ereth, down to the words spoken.
 
 ### Curse pool
 - **Truthbound**: you cannot speak a direct lie. You can stay silent or mislead, but the false words will not come. [Deception -4]
@@ -111,6 +156,42 @@ Modifiers in [brackets] go on the status effect (targets are skill names or lowe
 - **Frail Vessel**: your body tires fast; you start with 3 fewer max HP (reduce HP by 3 now). [vitality -2]
 - **Moonsick**: on nights of the full moon you are feverish and weak.
 - **Heart on a String**: whenever someone you care about is in danger nearby, you know it, and you cannot rest until you go to them.
+- **Leaden Feet**: you are slower and clumsier than you look; running and dodging take real effort. [agility -2]
+- **Brittle Grip**: your hands cramp and weaken under strain. [strength -2]
+- **Myopic**: everything past twenty paces is a blur. [perception -2, Archery -2]
+- **Foggy Mind**: you lose track of plans and names under pressure. [will -2]
+- **Cursed Steel**: any blade you wield for long rusts, chips, or snaps at the worst moment.
+- **Arrow Magnet**: missiles and stray spells seem to seek you out in battle. [agility -1]
+- **Sickly**: you catch every cold, fever, and flux going round; rest heals you at half speed.
+- **Insomniac**: sleep comes hard and short; you are often tired. [will -1, perception -1]
+- **Fear of the Dark**: true darkness fills you with dread. [will -2]
+- **Vertigo**: heights make you dizzy and sick. [Climbing -4]
+- **Tremors**: your hands shake when you're nervous; fine work is harder. [Lockpicking -2, Archery -1]
+- **Spell-Allergic**: magic cast on you, even healing, leaves you sick and itching for an hour.
+- **Unlucky Star**: when a roll is close, it tends to go against you. [all -1]
+- **Grudge-Keeper**: you can never quite forgive a slight; letting go of anger costs you. [Persuasion -1]
+- **Craven Moment**: the first time in each battle you face real danger, you freeze for a heartbeat. [will -1]
+- **Unforgettable Face**: people always remember your face, and gossip follows you. [Stealth -3]
+- **Clumsy Hands**: you drop things, knock things over, and fumble small tasks. [agility -1, Lockpicking -2]
+- **Monster Bait**: wild beasts and monsters go for you first.
+- **Gold-Shy**: merchants instinctively distrust you and quote you double. [Trade -3]
+- **Bound to the Capital**: if you are away from Aurion for more than a month, you weaken until you return. (GM: the Sunforge's pull on summoned souls; a clue.)
+- **Glass Heart**: grief and guilt hit you twice as hard; the death of an ally leaves you shaken for days. [will -1]
+- **Night-Blind**: in dim light you are nearly blind. [perception -2]
+- **Thin Blood**: wounds weaken you quickly; you start with 2 fewer max HP (reduce HP by 2 now). [vitality -1]
+- **Sacrificial Soul**: whenever you are healed by magic, the healer suffers a little of your wound.
+- **Hounded**: a minor Morvhai hunter-spirit has your scent and turns up every few weeks.
+- **Forgettable**: people you have met once rarely remember you; first impressions never stick. [Persuasion -1]
+- **Pious Burden**: you must pray to the goddess at dawn and dusk, or the day's luck turns. (On a day you miss it, add a temporary condition with [all -1].)
+- **Wyrd Weather**: rain, wind, or fog follows you, ruining camps and spoiling bowshots. [Archery -1]
+- **Voice of a Child**: your voice sounds young and soft; hard men do not take your commands seriously. [Leadership -2, Intimidation -2]
+- **Ironbane**: iron feels faintly hot against your skin, and heavy iron armor wears you out.
+- **Haunted**: a ghost from your past life whispers in quiet moments; others sometimes hear it.
+- **Cursed Name**: if you speak your true name aloud in Ereth, something old hears it.
+- **Lightweight**: a single cup of wine makes you drunk.
+- **Faithless Mount**: any horse you ride throws you at the worst moment, once a week. [Riding -2]
+- **Mirror-Cursed**: your reflection shows you as you looked when you died on Earth, injuries and all.
+- **Echo of Pain**: you feel a ghost of every wound you inflict on others. [will -1]
 
 ## Phase two: Training in Aurion
 
