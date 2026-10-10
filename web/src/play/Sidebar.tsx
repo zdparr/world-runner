@@ -5,8 +5,10 @@ import {
   NARRATION_LENGTHS,
   attributeBonus,
   characterXpToNext,
+  factionList,
   levelBonus,
   nextLevelBonusAt,
+  reputationLabel,
   skillTier,
   skillXpToNext,
   type CampaignState,
@@ -220,6 +222,19 @@ function CharacterTab({ state }: { state: CampaignState }) {
         </p>
         {state.location && <p className="mt-1 text-xs text-parchment-faint">at {state.location.name}</p>}
         {state.campaign.ruleset === 'ascension' && <p className="mt-1 text-xs text-parchment-faint">Day {state.campaign.gameDay}</p>}
+        {state.campaign.choices.some((c) => c.chosen !== null) && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {state.campaign.choices
+              .filter((c) => c.chosen !== null)
+              .map((c) => (
+                <Chip key={c.key} tone="border-sky-400/60 text-sky-300">
+                  <span title="Locked: it can never be changed">
+                    {c.title}: {c.options.find((o) => o.id === c.chosen)?.label ?? c.chosen}
+                  </span>
+                </Chip>
+              ))}
+          </div>
+        )}
       </div>
 
       <Section title="Vitals">
@@ -275,6 +290,22 @@ function CharacterTab({ state }: { state: CampaignState }) {
               </div>
             ))}
           </dl>
+        </Section>
+      )}
+
+      {Object.keys(state.campaign.reputation).length > 0 && (
+        <Section title="Reputation">
+          <ul className="space-y-2.5">
+            {factionList(state.campaign.reputation).map(([faction, value]) => (
+              <li key={faction}>
+                <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
+                  <span className="min-w-0 truncate text-parchment">{faction}</span>
+                  <span className="shrink-0 text-xs text-parchment-faint">{reputationLabel(value)}</span>
+                </div>
+                <Balance value={value} label="Standing" />
+              </li>
+            ))}
+          </ul>
         </Section>
       )}
 

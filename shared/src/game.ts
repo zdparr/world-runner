@@ -147,6 +147,86 @@ export const Routine = z.object({
 export type Routine = z.infer<typeof Routine>;
 export const MAX_ROUTINES = 8;
 
+// ---------------------------------------------------------------- factions
+
+export const REPUTATION_MIN = -100;
+export const REPUTATION_MAX = 100;
+export const MAX_FACTIONS = 12;
+
+/**
+ * The character's standing with each faction a world tracks (-100 hated .. 100 revered), keyed by
+ * faction name. NPCs whose `faction` matches a key act on it. Empty for worlds that don't track any.
+ */
+export const Reputation = z
+  .record(z.string().trim().min(1).max(120), z.number().int().min(REPUTATION_MIN).max(REPUTATION_MAX))
+  .refine((r) => Object.keys(r).length <= MAX_FACTIONS, `At most ${MAX_FACTIONS} factions`);
+export type Reputation = z.infer<typeof Reputation>;
+
+// ---------------------------------------------------------------- permanent choices
+
+/** One option of a permanent choice, and what picking it grants. */
+export const ChoiceOption = z.object({
+  id: z.string().trim().min(1).max(40),
+  /** Shown on the button, e.g. "METEOR". */
+  label: z.string().trim().min(1).max(60),
+  summary: z.string().trim().max(300).default(''),
+  grants: z
+    .object({
+      skills: z
+        .array(z.object({ name: z.string().trim().min(1).max(120), level: z.number().int().min(0).max(100).default(1), description: z.string().max(2000).default('') }))
+        .max(5)
+        .default([]),
+      items: z
+        .array(
+          z.object({
+            name: z.string().trim().min(1).max(120),
+            description: z.string().max(2000).default(''),
+            quantity: z.number().int().positive().default(1),
+            tags: Tags.default([]),
+          }),
+        )
+        .max(10)
+        .default([]),
+      statusEffects: z.array(StatusEffect).max(5).default([]),
+    })
+    .default({ skills: [], items: [], statusEffects: [] }),
+  /** Someone who enters the world when this option is passed over (e.g. the rival who was given it instead). Not yet met. */
+  ifNotChosen: z
+    .object({
+      npc: z.object({
+        name: z.string().trim().min(1).max(120),
+        shortDescription: z.string().max(2000).default(''),
+        faction: z.string().trim().max(120).default(''),
+        /** A location name; omitted = whereabouts unknown. */
+        location: z.string().trim().max(120).optional(),
+        notes: z.string().max(5000).default(''),
+      }),
+    })
+    .optional(),
+});
+export type ChoiceOption = z.infer<typeof ChoiceOption>;
+
+/**
+ * A choice the player makes once and can never change (a starting power, a patron, an oath). The
+ * play screen shows a pending choice as a System panel with one button per option; the narrator
+ * locks the pick with `lock_choice`, which applies its grants.
+ */
+export const CampaignChoice = z.object({
+  key: z.string().trim().min(1).max(40),
+  /** What is being chosen, e.g. "Starting skill". */
+  title: z.string().trim().min(1).max(80),
+  /** The System panel's text above the options. Lines like "[ SYSTEM ]" are headers. */
+  prompt: z.string().max(2000).default(''),
+  /** The panel's closing line under the options. */
+  footer: z.string().max(500).default(''),
+  options: z.array(ChoiceOption).min(2).max(8),
+  /** The chosen option's id; null while pending. Once set it never changes. */
+  chosen: z.string().nullable().default(null),
+});
+export type CampaignChoice = z.infer<typeof CampaignChoice>;
+/** A choice as authored in world data (defaults not yet applied). */
+export type CampaignChoiceInput = z.input<typeof CampaignChoice>;
+
 /** Applied automatically to a recurring mission left incomplete when the day ends. */
 export const MissionPenalty = z.object({
   hpLoss: z.number().int().positive().max(10_000).optional(),

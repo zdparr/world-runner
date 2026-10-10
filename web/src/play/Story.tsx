@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { HIGHLIGHT_EVENT_TYPES, skillTier, type Message, type TurnHighlight } from '@narrator/shared';
+import { HIGHLIGHT_EVENT_TYPES, skillTier, type CampaignState, type Message, type TurnHighlight } from '@narrator/shared';
 import { cx } from '../components/ui';
 import { DebugDrawer } from './DebugDrawer';
 
@@ -18,14 +18,45 @@ const textOf = (node: HastNode): string => node.value ?? (node.children ?? []).m
  * prompt explains when). Lines like "[ LEVEL UP ]" are styled as headers.
  */
 function SystemPanel({ text }: { text: string }) {
-  const lines = text.replace(/\n$/, '').split('\n');
   return (
     <div className="system-panel" role="note" aria-label="System message">
-      {lines.map((line, i) => (
-        <div key={i} className={/^\s*\[.*\]\s*$/.test(line) ? 'system-header' : undefined}>
-          {line || ' '}
-        </div>
-      ))}
+      <PanelLines text={text} />
+    </div>
+  );
+}
+
+function PanelLines({ text }: { text: string }) {
+  return text
+    .replace(/\n$/, '')
+    .split('\n')
+    .map((line, i) => (
+      <div key={i} className={/^\s*\[.*\]\s*$/.test(line) ? 'system-header' : undefined}>
+        {line || ' '}
+      </div>
+    ));
+}
+
+/**
+ * A permanent choice still to be made (a starting skill), as a System panel with one button per
+ * option. Picking one sends it as the player's move; the narrator locks it in.
+ */
+export function ChoicePanel({ choice, disabled = false, onChoose }: { choice: CampaignState['campaign']['choices'][number]; disabled?: boolean; onChoose: (text: string) => void }) {
+  return (
+    <div className="story">
+      <div className="system-panel" role="group" aria-label={choice.title}>
+        <PanelLines text={choice.prompt} />
+        <ul className="my-3 space-y-1.5">
+          {choice.options.map((o) => (
+            <li key={o.id}>
+              <button type="button" className="system-choice" disabled={disabled} onClick={() => onChoose(`I choose [${o.label}]${o.summary ? `: ${o.summary}` : ''}`)}>
+                <span className="system-header">[{o.label}]</span>
+                <span>{o.summary}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {choice.footer && <PanelLines text={choice.footer} />}
+      </div>
     </div>
   );
 }

@@ -147,6 +147,29 @@ export function describeEffect(e: { name: string; turnsRemaining: number | null;
   return extras.length > 0 ? `${e.name} (${extras.join(', ')})` : e.name;
 }
 
+// ---------------------------------------------------------------- factions
+
+/** How a faction regards the character, in a word: what NPCs of that faction act on. */
+export function reputationLabel(value: number): string {
+  if (value <= -60) return 'hated';
+  if (value <= -20) return 'distrusted';
+  if (value < 20) return 'neutral';
+  if (value < 60) return 'respected';
+  return 'revered';
+}
+
+/** Factions and standings in a stable order (jsonb keeps no key order), by name. */
+export function factionList(reputation: Record<string, number>): [string, number][] {
+  return Object.entries(reputation).sort(([a], [b]) => a.localeCompare(b));
+}
+
+/** The character's standing with an NPC's faction, if the campaign tracks it (names match case-insensitively). */
+export function factionStanding(reputation: Record<string, number>, faction: string): { faction: string; reputation: number; regard: string } | null {
+  const wanted = faction.trim().toLowerCase();
+  const key = wanted ? Object.keys(reputation).find((k) => k.toLowerCase() === wanted) : undefined;
+  return key === undefined ? null : { faction: key, reputation: reputation[key]!, regard: reputationLabel(reputation[key]!) };
+}
+
 // ---------------------------------------------------------------- world
 
 /** Every world should have at least this many locations, each with a purpose in the story. */

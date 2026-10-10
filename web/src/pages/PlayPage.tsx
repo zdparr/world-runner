@@ -6,7 +6,7 @@ import { ApiRequestError, api } from '../api';
 import { toneFor, useToast } from '../components/Toasts';
 import { Button, ErrorNote, Spinner, cx } from '../components/ui';
 import { HamburgerIcon, Sidebar, type Tab } from '../play/Sidebar';
-import { Highlights, Narration, PlayerLine, TurnBlock, groupTurns } from '../play/Story';
+import { ChoicePanel, Highlights, Narration, PlayerLine, TurnBlock, groupTurns } from '../play/Story';
 import { TimeSkipDialog } from '../play/TimeSkip';
 
 /** Where a new turn sits after the send scroll, and the story column's bottom padding (py-8). */
@@ -240,6 +240,8 @@ export function PlayPage() {
   const live = pending && !(pending.done && turns.some((t) => t.turn === pending.turnNumber)) ? pending : null;
   const empty = turns.length === 0 && !live;
   const latest = turns[turns.length - 1];
+  // A permanent choice (a starting skill) waits as a System panel until the narrator locks it in.
+  const pendingChoice = s.campaign.choices.find((c) => c.chosen === null);
 
   const sidebar = <Sidebar campaignId={campaignId} state={s} tab={tab} onTab={setTab} />;
 
@@ -303,7 +305,14 @@ export function PlayPage() {
               </div>
             )}
 
-            {empty && (
+            {empty && pendingChoice && (
+              <div className="py-6">
+                <ChoicePanel choice={pendingChoice} onChoose={(text) => void send(text)} />
+                <p className="mt-3 text-center text-xs text-parchment-faint">Choose above, or ask the System a question below</p>
+              </div>
+            )}
+
+            {empty && !pendingChoice && (
               <div className="py-10 text-center">
                 <p className="text-xs tracking-[0.2em] text-parchment-faint uppercase">Chapter One</p>
                 <h2 className="mt-2 font-display text-2xl tracking-[0.1em] text-parchment">{s.location?.name ?? s.campaign.name}</h2>
@@ -324,6 +333,11 @@ export function PlayPage() {
             <div ref={tail} className="[overflow-anchor:none]">
               {!live && latest && (
                 <TurnBlock key={latest.turn} campaignId={campaignId} turn={latest.turn} player={latest.player} narrator={latest.narrator} />
+              )}
+              {!live && latest && pendingChoice && (
+                <div className="mt-8">
+                  <ChoicePanel choice={pendingChoice} onChoose={(text) => void send(text)} />
+                </div>
               )}
               {live && (
                 <article className="space-y-5" aria-live="polite">

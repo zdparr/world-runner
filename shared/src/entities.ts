@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   Attributes,
+  CampaignChoice,
   ItemEnhancement,
   ItemUsage,
   MAX_ENHANCEMENTS,
@@ -13,6 +14,7 @@ import {
   MissionRewards,
   NarrationLength,
   MAX_STATUS_EFFECTS,
+  Reputation,
   MONEY_MAX,
   RELATIONSHIP_MAX,
   RELATIONSHIP_MIN,
@@ -78,6 +80,10 @@ export interface Campaign {
   /** In-game day, advanced by the narrator (drives daily quests). */
   gameDay: number;
   rngSeed: number;
+  /** The character's standing with each faction this world tracks; {} when it tracks none. */
+  reputation: Reputation;
+  /** Permanent choices (a starting power): pending until the narrator locks one with lock_choice. */
+  choices: CampaignChoice[];
   createdAt: string;
   updatedAt: string;
 }
@@ -455,7 +461,7 @@ export type CampaignFromTemplate = z.input<typeof CampaignFromTemplate>;
 
 /** Everything the play screen's sidebar shows, in one request. */
 export interface CampaignState {
-  campaign: Pick<Campaign, 'id' | 'name' | 'currencyName' | 'turnCount' | 'rollingSummary' | 'summaryInterval' | 'ruleset' | 'gameDay' | 'narrationLength'>;
+  campaign: Pick<Campaign, 'id' | 'name' | 'currencyName' | 'turnCount' | 'rollingSummary' | 'summaryInterval' | 'ruleset' | 'gameDay' | 'narrationLength' | 'reputation' | 'choices'>;
   /** Whether post-turn memory upkeep (summary, note condensing) can run: needs an API key. */
   memoryEnabled: boolean;
   character: PlayerCharacter | null;

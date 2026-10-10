@@ -15,7 +15,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { Attributes, ItemEnhancement, ItemUsage, MissionObjective, MissionPenalty, MissionRecurrence, MissionRewards, NarrationLength, Routine, Ruleset, StatusEffect } from '@narrator/shared';
+import type { Attributes, CampaignChoice, ItemEnhancement, ItemUsage, MissionObjective, MissionPenalty, MissionRecurrence, MissionRewards, NarrationLength, Reputation, Routine, Ruleset, StatusEffect } from '@narrator/shared';
 
 // Column names are derived as snake_case (see `casing` in client.ts and drizzle.config.ts).
 // Raw SQL fragments below (checks, expression indexes, generated columns) use the snake_case names.
@@ -65,6 +65,10 @@ export const campaigns = pgTable(
     rngSeed: integer()
       .notNull()
       .default(sql`floor(random() * 2147483647)::int`),
+    /** Standing with each faction the world tracks (-100..100), keyed by faction name. */
+    reputation: jsonb().$type<Reputation>().notNull().default({}),
+    /** Permanent choices (a starting power), locked once by the narrator's lock_choice. */
+    choices: jsonb().$type<CampaignChoice[]>().notNull().default([]),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

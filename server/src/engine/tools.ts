@@ -19,6 +19,8 @@ import {
   MissionRecurrence,
   MissionRewards,
   POINTS_PER_ATTRIBUTE_BONUS,
+  REPUTATION_MAX,
+  REPUTATION_MIN,
   Routine,
   TRAINING_CHARACTER_XP_PER_DAY,
   TRAINING_HOURS_PER_DAY,
@@ -27,13 +29,17 @@ import {
   describeEffect,
   effectBonuses,
   effectsMadeTheDifference,
+  factionList,
+  factionStanding,
   gearBonuses,
   levelBonus,
+  reputationLabel,
   resolveCheck,
   skillTier,
   skillXpToNext,
   trainingMadeTheDifference,
   trainingXp,
+  type CampaignChoice,
   type MissionObjective,
   type Ruleset,
   type StatusEffect,
@@ -477,15 +483,17 @@ const readTools: ToolDef[] = [
     name: 'get_npc',
     kind: 'read',
     description:
-      "Look up an NPC: description, faction, where they are, whether they're alive, and GM notes. GM notes may hold secrets; don't reveal them unless the player discovers them in the story.",
+      "Look up an NPC: description, faction (and the character's reputation with it, when tracked), where they are, whether they're alive, and GM notes. GM notes may hold secrets; don't reveal them unless the player discovers them in the story.",
     input: z.object({ name: Name }),
     run: async (ctx, input) => {
       const npc = await findNpc(ctx, input.name);
       const [loc] = npc.locationId ? await ctx.db.select({ name: locations.name }).from(locations).where(eq(locations.id, npc.locationId)) : [];
+      const standing = factionStanding(await currentReputation(ctx), npc.faction);
       return {
         name: npc.name,
         shortDescription: npc.shortDescription,
         faction: npc.faction,
+        ...(standing ? { factionReputation: standing } : {}),
         location: loc?.name ?? null,
         alive: npc.alive,
         gmNotes: npc.notes,
@@ -818,6 +826,129 @@ const writeTools: ToolDef[] = [
       status: z.string().trim().max(40).optional().describe('New label if the relationship changed kind, e.g. "ally", "rival", "owes you"'),
     }),
     run: (ctx, input) => applyRelationship(ctx, input.npc_name, input.affinity_delta, input.trust_delta, input.note, input.status),
+  }),
+
+  tool({
+    name: 'adjust_reputation',
+    kind: 'write',
+    description:
+      "Change the character's standing with a faction this campaign tracks (listed under Faction reputation in the current state) when their deeds reach that faction: a job well done for the guild, a miracle the church hears of, power used openly where the crown's agents can see. Small deltas (2-5) for what reaches a few ears, 10-20 for deeds the whole faction hears about. Clamped to -100..100. NPCs of that faction act on it.",
+    input: z.object({
+      faction: Name,
+      delta: z.number().int().min(-50).max(50).refine((n) => n !== 0, 'delta cannot be 0'),
+      reason: Reason,
+    }),
+    run: async (ctx, input) => {
+      const reputation = await currentReputation(ctx);
+      const tracked = factionStanding(reputation, input.faction);
+      if (!tracked) {
+        const known = factionList(reputation).map(([f]) => f);
+        throw new ToolError(
+          known.length > 0
+            ? `This campaign doesn't track "${input.faction}". Tracked factions: ${known.join(', ')}. Nothing changed.`
+            : 'This campaign tracks no faction reputation; show how individual NPCs feel with adjust_relationship instead. Nothing changed.',
+        );
+      }
+      const after = clamp(tracked.reputation + input.delta, REPUTATION_MIN, REPUTATION_MAX);
+      await ctx.mutator.update('campaigns', { id: ctx.campaign.id }, { reputation: { ...reputation, [tracked.faction]: after } });
+      const regard = reputationLabel(after);
+      await ctx.record({
+        eventType: 'reputation',
+        humanReadable: `${tracked.faction} ${tracked.reputation} → ${after} (${regard})${input.reason ? `: ${input.reason}` : ''}`,
+        details: { faction: tracked.faction, before: tracked.reputation, after, regard },
+      });
+      return {
+        faction: tracked.faction,
+        before: tracked.reputation,
+        after,
+        regard,
+        ...(regard !== tracked.regard ? { note: `Standing changed from ${tracked.regard} to ${regard}: show the faction's people treating the character differently.` } : {}),
+      };
+    },
+  }),
+
+  tool({
+    name: 'lock_choice',
+    kind: 'write',
+    description:
+      "Lock in the player's pick for a permanent choice that the current state lists as pending (a starting skill, say), the turn they make it. It records the pick for good, applies what the option grants (skills, items, conditions), and quietly brings into the world anyone the passed-over options introduce (not yet met; the result names them for your notes). Only when the player has clearly chosen one of the listed options; never choose for them. A locked choice can never be changed: a second pick is refused.",
+    input: z.object({
+      choice: Name.optional().describe('The choice\'s key or title, e.g. "starting_skill"; omit when only one is pending'),
+      option: Name.describe('The option\'s id or label, e.g. "meteor" or "TIME STOP"'),
+    }),
+    run: async (ctx, input) => {
+      const [row] = await ctx.db.select({ choices: campaigns.choices }).from(campaigns).where(eq(campaigns.id, ctx.campaign.id));
+      const choices = row?.choices ?? [];
+      if (choices.length === 0) throw new ToolError('This campaign has no permanent choices. Nothing changed.');
+      // Forgiving matches: "Time Stop", "TIME STOP", and "time_stop" are the same option.
+      const key = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+      const choice = input.choice
+        ? choices.find((c) => key(c.key) === key(input.choice!) || key(c.title) === key(input.choice!))
+        : (choices.find((c) => c.chosen === null) ?? choices[0]);
+      if (!choice) throw new ToolError(`No choice "${input.choice}". Choices: ${choices.map((c) => `${c.key} (${c.title})`).join(', ')}. Nothing changed.`);
+      if (choice.chosen !== null) {
+        const label = choice.options.find((o) => o.id === choice.chosen)?.label ?? choice.chosen;
+        throw new ToolError(`${choice.title} is already locked: ${label}. It can never be changed, and nothing changed. If the player asks to change it, the System refuses.`);
+      }
+      const option = choice.options.find((o) => key(o.id) === key(input.option) || key(o.label) === key(input.option));
+      if (!option) {
+        throw new ToolError(`"${input.option}" is not an option for ${choice.title}. Options: ${choice.options.map((o) => `${o.id} (${o.label})`).join(', ')}. Nothing changed.`);
+      }
+
+      const locked: CampaignChoice = { ...choice, chosen: option.id };
+      await ctx.mutator.update('campaigns', { id: ctx.campaign.id }, { choices: choices.map((c) => (c === choice ? locked : c)) });
+      // Whoever the passed-over options bring in arrives offscreen: not met, and not announced to the player.
+      const arrivals: { name: string; option: string; location: string | null }[] = [];
+      for (const other of choice.options) {
+        const npc = other.ifNotChosen?.npc;
+        if (other.id === option.id || !npc || (await findExactNpc(ctx, npc.name))) continue;
+        const loc = npc.location ? await findLocation(ctx, npc.location).catch(() => null) : null;
+        await ctx.mutator.insert('npcs', { name: npc.name, shortDescription: npc.shortDescription, faction: npc.faction, locationId: loc?.id ?? null, notes: npc.notes });
+        arrivals.push({ name: npc.name, option: other.label, location: loc?.name ?? null });
+      }
+      await ctx.record({
+        eventType: 'choice',
+        humanReadable: `${choice.title} locked: ${option.label}`,
+        details: { choice: choice.key, option: option.id, label: option.label },
+      });
+
+      const why = `${choice.title}: ${option.label}`;
+      const granted: unknown[] = [];
+      for (const s of option.grants.skills) {
+        const [existing] = await ctx.db
+          .select()
+          .from(skills)
+          .where(and(eq(skills.campaignId, ctx.campaign.id), sql`lower(${skills.name}) = lower(${s.name})`));
+        if (existing && existing.level >= s.level) continue;
+        if (existing) await ctx.mutator.update('skills', { id: existing.id }, { level: s.level, xp: 0 });
+        else await ctx.mutator.insert('skills', { name: s.name, level: s.level, xp: 0, description: s.description });
+        await ctx.record({ eventType: 'skill_learned', humanReadable: `New skill: ${s.name} (level ${s.level})`, details: { skill: s.name, level: s.level } });
+        granted.push({ skill: s.name, level: s.level });
+      }
+      for (const item of option.grants.items) granted.push(await addItem(ctx, item, why));
+      if (option.grants.statusEffects.length > 0) {
+        const pc = await getCharacter(ctx);
+        const names = new Set(option.grants.statusEffects.map((e) => e.name.toLowerCase()));
+        const statusEffects = [...pc.statusEffects.filter((e) => !names.has(e.name.toLowerCase())), ...option.grants.statusEffects];
+        await ctx.mutator.update('player_character', { campaignId: ctx.campaign.id }, { statusEffects });
+        await ctx.record({
+          eventType: 'status',
+          humanReadable: `Now ${option.grants.statusEffects.map(describeEffect).join('; ')}`,
+          details: { action: 'add', name: option.grants.statusEffects.map((e) => e.name).join(', ') },
+        });
+        for (const e of option.grants.statusEffects) granted.push({ condition: describeEffect(e) });
+      }
+      return {
+        locked: { choice: choice.title, option: option.label },
+        granted,
+        ...(arrivals.length > 0
+          ? {
+              offscreen: arrivals,
+              note: 'These people now exist in the world but have not met the character. Plan their first appearances in your story notes; never reveal them early.',
+            }
+          : {}),
+      };
+    },
   }),
 
   tool({
@@ -1310,6 +1441,12 @@ const writeTools: ToolDef[] = [
     },
   }),
 ];
+
+/** The campaign's faction standings as of now, including earlier writes this turn. */
+async function currentReputation(ctx: EngineContext) {
+  const [row] = await ctx.db.select({ reputation: campaigns.reputation }).from(campaigns).where(eq(campaigns.id, ctx.campaign.id));
+  return row?.reputation ?? {};
+}
 
 async function findExactNpc(ctx: EngineContext, name: string) {
   const [row] = await ctx.db

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import type Anthropic from '@anthropic-ai/sdk';
-import { ATTRIBUTES, MIN_WORLD_LOCATIONS, describeEffect, levelBonus, skillTier, type ContextManifest, type ContextSlice, type NarrationLength, type Ruleset } from '@narrator/shared';
+import { ATTRIBUTES, MIN_WORLD_LOCATIONS, describeEffect, factionList, factionStanding, levelBonus, reputationLabel, skillTier, type ContextManifest, type ContextSlice, type NarrationLength, type Ruleset } from '@narrator/shared';
 import type { Db } from '../db/client';
 import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills, stateEvents } from '../db/schema';
 import { repoRoot } from '../paths';
@@ -268,6 +268,29 @@ export async function buildTurnContext(
     core.push({ slice: 'attributes', reason: 'ascension rule set', approxTokens: approxTokens(attributeLine), detail: pc.unspentStatPoints });
     core.push({ slice: 'daily_quests', reason: 'ascension rule set', approxTokens: approxTokens(dailyLine), detail: dailies.length });
   }
+  // Permanent choices: a pending one shapes the whole scene; a locked one must never be reopened.
+  const pending = campaign.choices.filter((c) => c.chosen === null);
+  const locked = campaign.choices.filter((c) => c.chosen !== null);
+  const choiceLines = [
+    ...pending.map(
+      (c) =>
+        `Permanent choice pending: ${c.title} (key "${c.key}"). The play screen shows the player a System panel with these options as buttons: ${c.options.map((o) => `${o.label} (${o.summary})`).join('; ')}. The moment the player picks one, call lock_choice before narrating anything that depends on it. Until then, stay in the scene and answer their questions; never pick for them.`,
+    ),
+    ...(locked.length > 0
+      ? [`Permanent choices (locked for good; refuse any attempt to change them): ${locked.map((c) => `${c.title}: ${c.options.find((o) => o.id === c.chosen)?.label ?? c.chosen}`).join('; ')}`]
+      : []),
+  ];
+  if (choiceLines.length > 0) {
+    stateLines.splice(3, 0, ...choiceLines);
+    core.push({ slice: 'choices', reason: pending.length > 0 ? 'a permanent choice is pending' : 'always (locked choices)', approxTokens: approxTokens(choiceLines.join('\n')), detail: campaign.choices.map((c) => `${c.key}=${c.chosen ?? 'pending'}`).join(', ') });
+  }
+  // Four or so numbers: cheap, and every NPC of a tracked faction acts on them.
+  const factions = factionList(campaign.reputation);
+  if (factions.length > 0) {
+    const reputationLine = `Faction reputation (-100 hated .. 100 revered; NPCs of a faction treat the character accordingly; change it with adjust_reputation): ${factions.map(([f, v]) => `${f} ${v} (${reputationLabel(v)})`).join('; ')}`;
+    stateLines.splice(3, 0, reputationLine);
+    core.push({ slice: 'reputation', reason: 'always (tracked factions)', approxTokens: approxTokens(reputationLine), detail: factions.length });
+  }
   core.push({ slice: 'character_header', reason: 'always', approxTokens: approxTokens(header), detail: header });
   core.push({ slice: 'skill_names', reason: 'always (names and levels only)', approxTokens: approxTokens(skillLine), detail: skillRows.length });
   if (location) core.push({ slice: 'location', reason: 'current location (with purpose)', approxTokens: approxTokens(location.description + location.purpose), detail: location.name });
@@ -377,10 +400,12 @@ export async function buildTurnContext(
       const rel = relByNpc.get(n.id);
       const lastWritten = await lastNpcWrite(db, cid, n.id);
       const age = turnNumber - (lastWritten ?? 0);
+      const standing = factionStanding(campaign.reputation, n.faction);
       const npcRecord = {
         name: n.name,
         shortDescription: n.shortDescription,
         faction: n.faction,
+        ...(standing ? { factionReputation: standing } : {}),
         location: n.locationId ? (locNames.get(n.locationId) ?? null) : null,
         alive: n.alive,
         gmNotes: n.notes,

@@ -1,5 +1,5 @@
 import { eq, sql } from 'drizzle-orm';
-import type { Attributes, CampaignTemplate, MissionPenalty, MissionRewards, Ruleset, StatusEffect } from '@narrator/shared';
+import { CampaignChoice, type Attributes, type CampaignChoiceInput, type CampaignTemplate, type MissionPenalty, type MissionRewards, type Reputation, type Ruleset, type StatusEffect } from '@narrator/shared';
 import type { Db } from '../client';
 import { campaigns, inventoryItems, locations, loreEntries, missions, npcs, playerCharacter, relationships, skills } from '../schema';
 import { normalizeObjectives } from '../../game/missions';
@@ -16,6 +16,13 @@ export interface WorldTemplate extends CampaignTemplate {
   currencyName: string;
   /** Defaults to 'classic'. */
   ruleset?: Ruleset;
+  /** Factions whose regard for the character is tracked, with their starting standing (-100..100). */
+  reputation?: Reputation;
+  /**
+   * Permanent choices offered at the start (a starting power). Each option's grants are applied when
+   * the narrator locks it; options passed over can bring someone into the world (`ifNotChosen`).
+   */
+  choices?: CampaignChoiceInput[];
   /**
    * At least MIN_WORLD_LOCATIONS, each with a purpose: why it exists in the story (GM-only).
    * `parent` names the larger place this one sits inside.
@@ -79,6 +86,8 @@ export async function insertWorld(
       narratorStyle: world.narratorStyle,
       currencyName: world.currencyName,
       ruleset: world.ruleset ?? 'classic',
+      reputation: world.reputation ?? {},
+      choices: (world.choices ?? []).map((c) => CampaignChoice.parse(c)),
     })
     .returning({ id: campaigns.id });
   const campaignId = campaign!.id;

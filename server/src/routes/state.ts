@@ -22,6 +22,8 @@ export function registerStateRoutes(app: FastifyInstance): void {
         ruleset: campaigns.ruleset,
         gameDay: campaigns.gameDay,
         narrationLength: campaigns.narrationLength,
+        reputation: campaigns.reputation,
+        choices: campaigns.choices,
       })
       .from(campaigns)
       .where(eq(campaigns.id, cid));
@@ -61,7 +63,8 @@ export function registerStateRoutes(app: FastifyInstance): void {
 
     // Fastify serializes Dates to ISO strings, matching the DTOs.
     return {
-      campaign: campaign!,
+      // Who a passed-over option brings into the world is the narrator's secret.
+      campaign: { ...campaign!, choices: campaign!.choices.map((c) => ({ ...c, options: c.options.map(({ ifNotChosen: _secret, ...o }) => o) })) },
       memoryEnabled: app.maintenance.enabled,
       character: character ?? null,
       location: location ?? null,

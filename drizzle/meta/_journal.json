@@ -57,6 +57,13 @@
       "when": 1791424978008,
       "tag": "0007_condition_modifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791674128667,
+      "tag": "0008_faction_reputation_and_choices",
+      "breakpoints": true
     }
   ]
 }
