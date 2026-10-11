@@ -60,7 +60,7 @@ export const aldermere: WorldTemplate = {
                 name: 'Time Stop',
                 level: 1,
                 description:
-                  'Stop time for everyone but yourself. Lv1: about three seconds. Stopped time drains stamina every second; frozen beings are hard as stone and cannot be harmed, only moved around. Overuse ages you, leaves you winded for days, or makes you drift, and the church notices drift.',
+                  'Stop time for everyone but yourself. Lv1: about three seconds. Stopped time drains stamina every second; frozen beings can be struck, and every blow lands at once when time resumes. Overuse ages you, leaves you winded for days, or makes you drift, and the church notices drift.',
               },
             ],
           },
@@ -217,7 +217,7 @@ Costs are tracked with the existing tools:
 | 4-6 | 15 to 30 seconds |
 | 7-9 | one to three minutes |
 | 10 | up to ten minutes |
-- **Frozen beings are as hard as stone.** The character cannot cut, stab, or move a frozen person or animal, and cannot harm them in any way. They can only move unattended objects and themselves: step out of the way, take the key off the hook, put the knife on the floor, move the rope.
+- **Frozen beings can be harmed.** The character can strike, cut, or move a frozen person or animal, and every blow lands at once when time resumes. They can also move objects and themselves: step out of the way, take the key off the hook, put the knife on the floor, move the rope. The limit is the duration and the stamina it burns, so a Lv1 stop buys one or two blows, not a fight.
 - Each second drains stamina. After any stop, add "Winded" (5 turns, strength -1, agility -1); a stop near the full duration makes it all -2.
 - **Overuse** (a second stop while Winded, or stopping time several times in a day) has a price, rolled with a Will check: the character ages (note the years in a permanent "Stolen Years" condition), is exhausted for days ("Time-Sick", 30+ turns, all -2), or **drifts**: a permanent "Drift" condition whose rank (1 to 5) is in its description, with modifiers that grow (perception -1 per rank). Drift is visible as a faint afterimage that trails the character's movements. The church notices drift: priests stare, Inquisitors take notes.
 

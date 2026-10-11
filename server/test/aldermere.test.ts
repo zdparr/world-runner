@@ -1,12 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type Anthropic from '@anthropic-ai/sdk';
-import { eq } from 'drizzle-orm';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { eq, sql } from 'drizzle-orm';
 import type { CampaignState } from '@narrator/shared';
 import { createTestApp } from './helpers';
 import { parseSse, scriptedModel, toolResultsIn, type Step } from './fake-model';
 import { campaigns, inventoryItems, npcs, playerCharacter, relationships, skills } from '../src/db/schema';
 import { createFromTemplate } from '../src/db/seed/templates';
 import { aldermere } from '../src/db/seed/worlds/aldermere';
+import { migrationsDir } from '../src/paths';
 
 // The Candidate (Aldermere): a permanent starting-skill choice, rival Candidates, and faction reputation.
 
@@ -198,6 +201,31 @@ describe('The Candidate (Aldermere)', () => {
     expect((await campaign(id)).reputation).toEqual({ "Wayfarers' Guild": 15, 'Church of the Sevenfold Light': 0, 'Inquisition of Dusk': -100, 'The Crown': 0 });
     const next = await play(id, 'I wait.', [{ text: 'Time passes.' }]);
     expect(dynamicContext(next.calls[0]!)).toContain("Church of the Sevenfold Light 0 (neutral); Inquisition of Dusk -100 (hated); The Crown 0 (neutral); Wayfarers' Guild 15 (neutral)");
+  });
+
+  it('rewrites the old Time Stop rule in existing saves (migration 0009), matching the template', async () => {
+    const OLD_BIBLE =
+      '- **Frozen beings are as hard as stone.** The character cannot cut, stab, or move a frozen person or animal, and cannot harm them in any way. They can only move unattended objects and themselves: step out of the way, take the key off the hook, put the knife on the floor, move the rope.';
+    const OLD_SKILL =
+      'Stop time for everyone but yourself. Lv1: about three seconds. Stopped time drains stamina every second; frozen beings are hard as stone and cannot be harmed, only moved around. Overuse ages you, leaves you winded for days, or makes you drift, and the church notices drift.';
+    // A save made before the change: the old paragraph in its bible, the old skill description.
+    const id = await newCampaign();
+    const template = aldermere.worldBible.split('\n').find((l) => l.startsWith('- **Frozen beings'))!;
+    await t.db.update(campaigns).set({ worldBible: aldermere.worldBible.replace(template, OLD_BIBLE) }).where(eq(campaigns.id, id));
+    await t.db.insert(skills).values({ campaignId: id, name: 'Time Stop', level: 10, description: OLD_SKILL });
+    const untouched = await newCampaign('brinecross');
+    const brinecrossBible = (await campaign(untouched)).worldBible;
+
+    const migration = readFileSync(join(migrationsDir, '0009_time_stop_frozen_beings_harmable.sql'), 'utf8');
+    for (let run = 0; run < 2; run++) {
+      for (const statement of migration.split('--> statement-breakpoint')) await t.db.execute(sql.raw(statement));
+    }
+
+    // Updated to exactly what a new campaign gets, and running it twice changes nothing more.
+    expect((await campaign(id)).worldBible).toBe(aldermere.worldBible);
+    const [timeStop] = await t.db.select().from(skills).where(eq(skills.campaignId, id));
+    expect(timeStop!.description).toBe(aldermere.choices![0]!.options.find((o) => o.id === 'time_stop')!.grants!.skills![0]!.description);
+    expect((await campaign(untouched)).worldBible).toBe(brinecrossBible);
   });
 
   it('leaves worlds without factions or choices as they were', async () => {
