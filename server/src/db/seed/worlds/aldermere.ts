@@ -10,7 +10,7 @@ export const aldermere: WorldTemplate = {
   id: 'aldermere',
   name: 'The Candidate',
   description:
-    'System fantasy in the Kingdom of Aldermere. You died before your time and woke before a glowing System panel that offered one permanent skill as compensation. Now you are a nobody in a frontier town with a power that could change the kingdom, a guild card to earn, a church that cannot decide whether you are a saint or a stolen soul, and four other Candidates out there holding the skills you passed on.',
+    'System fantasy in the Kingdom of Aldermere. You died before your time and woke before a glowing System panel that offered one permanent skill as compensation. Now you are a nobody in a frontier town with a power that could change the kingdom, a guild card to earn, a church that cannot decide whether you are a saint or a stolen soul, and other Candidates out there holding the skills you passed on.',
   demoCampaignName: 'The Candidate: Aldermere',
   currencyName: 'copper',
   ruleset: 'ascension',
@@ -162,6 +162,21 @@ export const aldermere: WorldTemplate = {
             },
           },
         },
+        {
+          id: 'gravity',
+          label: 'GRAVITY',
+          summary: 'Make the world heavier or lighter.',
+          grants: {
+            skills: [
+              {
+                name: 'Gravity',
+                level: 1,
+                description:
+                  'Make things heavier or lighter. Lv1: by touch, one target, double its weight or halve it. Higher levels reach farther, push harder, and unlock pulling things sideways, flight, and at last a singularity. Holding an effect drains mana every turn, more for bigger targets and stronger pulls; releasing a strong effect abruptly hurts you; staying light yourself too long brings gravity sickness. Big, magical, or strong-willed creatures resist.',
+              },
+            ],
+          },
+        },
       ],
     },
   ],
@@ -173,7 +188,7 @@ The player character died before their time, in their previous life (on Earth un
 The world is open. There is no main quest the player must follow. Offer hooks (the guild's quest board, rumors, people in trouble, rivals, the mystery) and let the player choose. A central mystery runs in the background and can be pursued or ignored.
 
 ## The opening: the System panel and the choice
-- The campaign opens in the void. The play screen has already shown the player the System panel with the five skills as buttons. The pending choice is listed in the current state. Do not repeat the menu in prose; if the player asks questions first, answer as the System would (terse, official, a little too cheerful) and keep them in the void.
+- The campaign opens in the void. The play screen has already shown the player the System panel with the six skills as buttons. The pending choice is listed in the current state. Do not repeat the menu in prose; if the player asks questions first, answer as the System would (terse, official, a little too cheerful) and keep them in the void.
 - **When the player picks**, call \`lock_choice\` that same turn, then show the System confirming it in a \`system\` block, using the skill and level from the result:
   \`\`\`system
   [ SKILL ACQUIRED ]
@@ -181,7 +196,7 @@ The world is open. There is no main quest the player must follow. Offer hooks (t
   Reincarnation commencing. Good luck, Candidate.
   \`\`\`
   Then narrate the reincarnation: light, falling, and waking on moss in the Waking Glade, in a body that is theirs and not quite the one they remember (young adult, plain homespun clothes, nothing in their pockets). The character is already placed in the Waking Glade, so don't call \`move_player\` for this.
-- \`lock_choice\` also brings the four Candidates who received the skills the player passed on into the world, offscreen. The result names them. Write them into your story notes right away (who they are, where they are, what they want, and when they might first cross the player's path). Never introduce them early.
+- \`lock_choice\` also brings the Candidates who received the skills the player passed on into the world, offscreen. The result names them. Write them into your story notes right away (who they are, where they are, what they want, and when they might first cross the player's path). Never introduce them early.
 - **The choice is permanent.** If the player ever asks to change skills, the System refuses (\`[ REQUEST DENIED ]\`).
 - No time passes in the void: never call \`advance_day\` or \`pass_time\` there.
 
@@ -249,6 +264,51 @@ Costs are tracked with the existing tools:
 - **Everything belonged to someone.** Every vault item is tagged "treasury" and with its origin (e.g. "crest-house-varrow", "abbey-seal", "bloodline-seal", "cursed"), and its description says where it came from. Some carry curses (a condition when used), some bloodline seals that only an heir can open, some the crests of noble houses that want them back and will send people to get them.
 - **Flooding the market draws attention.** Spending or changing large sums of old-minted vault coin (hundreds of copper at once, or thousands over a few weeks) brings House Marrow's factors asking questions, then the Crown's tax collectors, then worse.
 
+### GRAVITY
+Gravity should feel physical and weighty: creaking stone, buckling knees, drifting dust, the stomach-drop of weightlessness.
+
+**Modes.** *Heavy* multiplies a target's weight: it pins enemies, breaks floors, drops projectiles, and makes armor crushing. *Light* divides it: leaping, lifting, floating allies, enemies drifting off the ground. *Redirect* (Lv5) pulls a target toward a chosen point instead of down: walking on walls, yanking weapons from hands, dragging enemies together. *Singularity* (Lv10, once per in-game day) makes a point of extreme pull that drags everything nearby into it.
+
+| Lv | Range | Heavy | Light | Targets | Zone | New at this level |
+| 1 | touch | ×2 | ×½ | 1 | none | Heavy and Light |
+| 2 | touch | ×3 | ×⅓ | 1 | none | can target self |
+| 3 | 10 ft | ×3 | ×⅓ | 1 | none | targets at range |
+| 4 | 20 ft | ×5 | ×⅕ | 2 | none | two targets |
+| 5 | 30 ft | ×5 | ×⅕ | 2 | none | Redirect |
+| 6 | 40 ft | ×10 | ×1/20 | 3 | 10 ft | small zones; can crush directly |
+| 7 | 60 ft | ×10 | weightless | 3 | 10 ft | flight |
+| 8 | 100 ft | ×20 | weightless | 4 | 20 ft | two modes at once |
+| 9 | 200 ft | ×50 | weightless | 5 | 60 ft | large zones |
+| 10 | anywhere in sight | ×100 | weightless | 6 | 60 ft | Singularity |
+
+**Strength tiers** measure how hard an effect pushes: tier 1 is ×2 or ×½, tier 2 ×3 or ×⅓, tier 3 ×5 or ×⅕, tier 4 ×10 or ×1/20, tier 5 ×20 or weightless, tier 6 ×50, tier 7 ×100.
+
+**Cost.** Each turn an effect is held costs 2 + (mass tier × strength tier) mana, where the mass tier is tiny 1, small 2, human-sized 4, large 8, huge 16, colossal 32; a zone costs three times as much. There is no mana pool to count down, so add up what the scene costs and turn it into "Mana-Drained": up to 10 is free (a pebble made weightless costs next to nothing), 11 to 30 is all -1 for 5 turns, 31 to 80 all -2 for 8 turns, and more than 80 all -3 for 10 turns, plus HP (\`adjust_hp\`) for every further turn held. Making a dragon weightless (huge 16 × tier 5, +2 = 82 a turn) drains the character within a turn or two.
+
+**Singularity.** It takes everything the character has: add "Mana-Drained" (all -3, 10 turns) at once and take HP every turn it is held, more each turn (2, then 4, then 8...). Holding it too long can kill them. After using it, add "Singularity Spent" (no modifiers) and remove it when the day advances.
+
+**Limits.**
+- Physics still applies. Light objects keep their momentum and are pushed by the wind. Heavy targets still fall, including off ledges, and can break through floors, possibly taking the character with them.
+- Large, magical, or strong-willed creatures resist: roll \`skill_check\` on Gravity with the difficulty set by the target's power (a wolf easy, an ogre medium, a knight-captain hard, a dragon very hard). On a failure, the effect is halved.
+- Below Lv6, gravity cannot crush a creature directly. Damage comes from falls, impacts, and the environment.
+- Held effects end if the character is knocked out or loses concentration to a heavy hit.
+
+**Side effects.**
+- **Backlash.** Releasing a tier 3 or stronger effect abruptly hurts: a nosebleed at Lv1-4 (1-2 HP), bruising and dizziness at Lv5-7 (3-5 HP and "Dizzy", agility -1, 3 turns), cracked ribs at Lv8-10 (6-8 HP and "Cracked Ribs", strength -2, agility -1, 30 turns).
+- **Gravity Sickness.** Using the skill on themselves for more than 3 turns in a row, or flying for long, brings "Gravity Sickness" (agility -2, perception -1): nausea, vertigo, and trouble judging distances. Remove it when the character next sleeps through the night.
+- **Being seen.** Any tier 3 or stronger effect, and any zone, makes the air shimmer and hum. Witnesses spread rumors (see Being seen, below).
+
+**XP.** Checks with the skill pay their XP automatically. For uses without a check, grant Gravity skill XP: 5 for paid work outside combat, 10 for creative use (combining modes, turning the environment into a weapon), and 15 for winning a contest against a stronger target. You decide what counts as creative.
+
+**Uses to reward:** a rope or ladder made light so the party climbs fast; a sword weightless in the swing and heavy on impact; a gate one person can lift, or a door too heavy to open; cargo made light for merchants (honest income); an arrow made heavy just before it hits, to pierce armor; a ship made light to cross shallows, or heavy to ride out a storm.
+
+**Push back:** enemies learn to fight from range or with wind magic; floors, bridges, and ice become hazards around heavy effects; strong creatures resist; witnesses' rumors bring the Inquisition of Dusk. If the player chose Gravity, Brother Tobiah (Time Stop) is the natural counter: in stopped time he simply walks out of whatever they have done.
+
+**Hooks:**
+- The Saint faction's scripture speaks of "the one who lifts the fallen and lays low the proud", and the Saint faction may claim the character fulfills it.
+- Ancient dwarven gravity wells in the Greywall Mountains react to the character and open sealed doors.
+- Merchant houses on the Saltmarsh Coast offer steady pay for making cargo light, and some of that cargo is contraband.
+
 ## The Kingdom of Aldermere
 A feudal human kingdom of river valleys, walled towns, and old roads, bordered by wilds, dungeons, and contested frontiers. **King Aldric III** rules from **Solhaven**; he is old and failing, and his daughter **Princess Seraphine** is gathering power and strong adventurers. Nobles feud, merchant houses buy influence, and the Church of the Sevenfold Light crowns kings and shelters the poor.
 
@@ -289,7 +349,7 @@ The character's standing with four factions is tracked (Faction reputation, in t
 NPCs react to **how openly the character uses their skill**. Use in front of witnesses spreads rumors: add or update a permanent "Rumors" condition with what people are saying (no modifiers at first; Stealth -1 or -2 once the character is widely recognized), and adjust Inquisition and Crown reputation. Rumors travel: Millbrook in a day, Solhaven in a week. The Church and the Crown both keep track of the character from the first time they hear.
 
 ## The central mystery (background, optional)
-The character is not the only Candidate. The four skills they did not choose were each given to another Returned reincarnated in this same era. \`lock_choice\` creates those four as NPCs (offscreen, not met). Each has their own goals; some serve the church, the crown, or only themselves. Bring them in over the course of the campaign, one at a time, when the story gives a natural opening: a rumor first, then a sighting, then a meeting. They can become rivals, allies, or both. The "The Candidate Question" mission is the player's record of what they've learned; it stays offered until the player chooses to pursue it.
+The character is not the only Candidate. The skills they did not choose were given to other Returned reincarnated in this same era: METEOR, TIME STOP, DRAGON LORD, CREATION, and INFINITE TREASURY each have a holder, and GRAVITY, if passed over, went to no one (yet). \`lock_choice\` creates the holders of the skills passed over as NPCs (offscreen, not met). Each has their own goals; some serve the church, the crown, or only themselves. Bring them in over the course of the campaign, one at a time, when the story gives a natural opening: a rumor first, then a sighting, then a meeting. They can become rivals, allies, or both. The "The Candidate Question" mission is the player's record of what they've learned; it stays offered until the player chooses to pursue it.
 
 ## GM ONLY: the truth
 Reveal none of this early. Clues come from the Sunken Abbey, the cathedral archives, System glitches, and the other Candidates.
