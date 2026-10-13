@@ -71,6 +71,13 @@
       "when": 1791681792715,
       "tag": "0009_time_stop_frozen_beings_harmable",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791917874778,
+      "tag": "0010_creation_any_nonliving_object",
+      "breakpoints": true
     }
   ]
 }

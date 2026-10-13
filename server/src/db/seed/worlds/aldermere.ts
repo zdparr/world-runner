@@ -112,7 +112,7 @@ export const aldermere: WorldTemplate = {
                 name: 'Creation',
                 level: 1,
                 description:
-                  'Make objects out of mana. Lv1: small, simple things (a nail, a cup, a dagger blade). Limited by mass, complexity, and how well you understand what you make. Creations fade after a while unless anchored at a higher mana cost. Living things and currency cannot be created; trying draws a System warning.',
+                  'Make any non-living object out of mana, coin included, and it lasts for good. The bigger and more intricate the thing, the harder it drains you; your level decides how fast it comes and how much it costs, not what is possible. Living things cannot be created; trying draws a System warning.',
               },
             ],
           },
@@ -124,7 +124,7 @@ export const aldermere: WorldTemplate = {
               faction: 'Saltmarsh syndicates',
               location: 'The Saltmarsh Coast',
               notes:
-                "**Earth:** a structural engineer from Chicago who died when a parking garage he had warned about collapsed. **Skill:** CREATION, about Lv5: he understands mechanisms so well that he makes locks, crossbows, and lenses no smith can match. **Want:** money, comfort, and proof that he is the smartest Candidate. **Serves:** himself, through the Saltmarsh smugglers who sell his anchored goods. Merchant houses and the Crown's tax collectors both want him. **Toward the player:** sees them as a market rival or a business partner, depending on their skill. **Clue he holds:** he tried to create a coin once; the System warning he got ended with a line he copied down: \"VIOLATION LOGGED. REPORTING TO: LANTERN CHOIR (OFFLINE)\".",
+                "**Earth:** a structural engineer from Chicago who died when a parking garage he had warned about collapsed. **Skill:** CREATION, about Lv5: he understands mechanisms so well that he makes locks, crossbows, and lenses no smith can match. **Want:** money, comfort, and proof that he is the smartest Candidate. **Serves:** himself, through the Saltmarsh smugglers who sell his creations. Merchant houses and the Crown's tax collectors both want him. **Toward the player:** sees them as a market rival or a business partner, depending on their skill. **Clue he holds:** he tried to create a sparrow once; the System warning he got ended with a line he copied down: \"VIOLATION LOGGED. REPORTING TO: LANTERN CHOIR (OFFLINE)\".",
             },
           },
         },
@@ -228,18 +228,18 @@ Costs are tracked with the existing tools:
 - Drake hunting is a staple guild job. A Dragon Lord taking those jobs will face a choice.
 
 ### CREATION
-| Lv | What can be made | Lasts |
-| 1 | small, simple, single-material objects: a nail, a cup, a dagger blade | about an hour |
-| 2-3 | hand tools, a plain sword, a rope | a few hours |
-| 4-6 | anything with a few parts the character truly understands: a lock, a crossbow | a day |
-| 7-9 | complex mechanisms, a wagon, a small bridge | days |
-| 10 | a building's worth of material, or one masterwork | a week |
-- Limits are mass, complexity, and **understanding**. The character must know how a thing is made; something they only half-understand comes out flawed (a sword that shatters, a lock that sticks). Earth knowledge counts.
-- Created objects are added with \`add_item\` tagged "created", with how long they last in the description, and removed with \`remove_item\` when they fade. **Anchoring** one makes it permanent at a heavy mana cost ("Mana-Drained", all -2 or worse); tag it "anchored".
-- **Living things and currency cannot be created.** Attempting either produces a System warning and nothing else:
+| Lv | Small (a nail, a cup, a coin) | Large (a sword, a lock, a cart, a purse of crowns) | Huge (a house, a bridge, a ship) |
+| 1 | a minute; Mana-Drained (all -1, 3 turns) | an hour of focus; Mana-Drained (all -3, 10 turns) and some HP | days, built in stages, each one draining |
+| 2-3 | seconds; no drain | ten minutes; Mana-Drained (all -2, 8 turns) | a day of stages |
+| 4-6 | a breath | a minute; Mana-Drained (all -1, 5 turns) | hours; Mana-Drained (all -3, 10 turns) |
+| 7-9 | instant | seconds; no drain | minutes; Mana-Drained (all -2, 8 turns) |
+| 10 | instant | instant | a minute; Mana-Drained (all -1, 5 turns) |
+- **Anything non-living, at any level.** Any object of any size or complexity, coin included. The level sets how fast it comes and how hard it drains, never what is possible. Casting while already Mana-Drained costs HP (\`adjust_hp\`) and may knock the character out.
+- **Real and permanent.** Created objects never fade and need no anchoring: add them with \`add_item\` tagged "created". Created coin is real money (\`adjust_money\`) and passes for crown-minted, but a flood of it draws the same attention as vault gold: House Marrow's factors, then the Crown's tax collectors, then worse.
+- **Living things cannot be created.** Attempting it produces a System warning and nothing else:
   \`\`\`system
   [ WARNING ]
-  Prohibited creation: CURRENCY.
+  Prohibited creation: LIVING ORGANISM.
   Violation logged.
   \`\`\`
 
@@ -432,7 +432,7 @@ Reveal none of this early. Clues come from the Sunken Abbey, the cathedral archi
       description:
         'A fog-bound coast of reed marshes, tidal channels, and stilt-legged port towns west of Millbrook. Danger: moderate. Smugglers run the channels at night, the excise men run the ports by day, and something large moves in the deep marsh.',
       purpose:
-        "Escort jobs, smuggler crackdowns or smuggling, investigation, and marsh monsters. The black market here moves cursed goods, vault coin, and impossible items. Isidore Quill (if the player didn't choose Creation) sells his anchored creations through the Saltmarsh syndicates.",
+        "Escort jobs, smuggler crackdowns or smuggling, investigation, and marsh monsters. The black market here moves cursed goods, vault coin, and impossible items. Isidore Quill (if the player didn't choose Creation) sells his creations through the Saltmarsh syndicates.",
       tags: ['coast', 'port', 'smugglers', 'danger-moderate'],
     },
     {

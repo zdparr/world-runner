@@ -6,7 +6,7 @@ import { eq, sql } from 'drizzle-orm';
 import type { CampaignState } from '@narrator/shared';
 import { createTestApp } from './helpers';
 import { parseSse, scriptedModel, toolResultsIn, type Step } from './fake-model';
-import { campaigns, inventoryItems, npcs, playerCharacter, relationships, skills } from '../src/db/schema';
+import { campaigns, inventoryItems, locations, npcs, playerCharacter, relationships, skills } from '../src/db/schema';
 import { createFromTemplate } from '../src/db/seed/templates';
 import { aldermere } from '../src/db/seed/worlds/aldermere';
 import { migrationsDir } from '../src/paths';
@@ -226,6 +226,44 @@ describe('The Candidate (Aldermere)', () => {
     const [timeStop] = await t.db.select().from(skills).where(eq(skills.campaignId, id));
     expect(timeStop!.description).toBe(aldermere.choices![0]!.options.find((o) => o.id === 'time_stop')!.grants!.skills![0]!.description);
     expect((await campaign(untouched)).worldBible).toBe(brinecrossBible);
+  });
+
+  it('rewrites the old Creation rules in existing saves (migration 0010), matching the template', async () => {
+    const migration = readFileSync(join(migrationsDir, '0010_creation_any_nonliving_object.sql'), 'utf8');
+    // The migration's own (old, new) pairs: every replace(…, 'old', 'new') in it.
+    const unquote = (s: string) => s.replace(/''/g, "'");
+    const pairs = [...migration.matchAll(/'((?:[^']|'')*)',\s*'((?:[^']|'')*)'\s*\)/g)].map((m) => [unquote(m[1]!), unquote(m[2]!)] as const);
+    expect(pairs.length).toBeGreaterThanOrEqual(14);
+    const age = (text: string) => pairs.reduce((t, [old, now]) => t.split(now).join(old), text);
+
+    // A save with the choice still pending, and one where Time Stop was picked (so Isidore exists) and that has a Creation skill.
+    const pending = await newCampaign();
+    const started = await newCampaign();
+    await play(started, 'I choose [TIME STOP].', pick('time_stop'));
+    const creation = aldermere.choices![0]!.options.find((o) => o.id === 'creation')!.grants!.skills![0]!.description!;
+    await t.db.insert(skills).values({ campaignId: started, name: 'Creation', level: 2, description: creation });
+
+    const snapshot = async () => ({
+      campaigns: await t.db.select({ id: campaigns.id, worldBible: campaigns.worldBible, choices: campaigns.choices }).from(campaigns).where(sql`${campaigns.id} in (${pending}, ${started})`).orderBy(campaigns.id),
+      skills: await t.db.select({ id: skills.id, description: skills.description }).from(skills).where(eq(skills.campaignId, started)),
+      npcs: await t.db.select({ id: npcs.id, notes: npcs.notes }).from(npcs).where(sql`${npcs.campaignId} in (${pending}, ${started})`).orderBy(npcs.id),
+      purposes: await t.db.select({ id: locations.id, purpose: locations.purpose }).from(locations).where(sql`${locations.campaignId} in (${pending}, ${started})`).orderBy(locations.id),
+    });
+    const current = await snapshot();
+    expect(JSON.stringify(current)).toContain('he tried to create a sparrow once');
+
+    // Turn both saves back into what they were before the change.
+    for (const c of current.campaigns) await t.db.update(campaigns).set({ worldBible: age(c.worldBible), choices: JSON.parse(age(JSON.stringify(c.choices))) }).where(eq(campaigns.id, c.id));
+    for (const s of current.skills) await t.db.update(skills).set({ description: age(s.description) }).where(eq(skills.id, s.id));
+    for (const n of current.npcs) await t.db.update(npcs).set({ notes: age(n.notes) }).where(eq(npcs.id, n.id));
+    for (const l of current.purposes) await t.db.update(locations).set({ purpose: age(l.purpose) }).where(eq(locations.id, l.id));
+    const aged = JSON.stringify(await snapshot());
+    for (const [old] of pairs) expect(aged, old).toContain(old.replace(/"/g, '\\"'));
+
+    for (let run = 0; run < 2; run++) {
+      for (const statement of migration.split('--> statement-breakpoint')) await t.db.execute(sql.raw(statement));
+    }
+    expect(await snapshot()).toEqual(current);
   });
 
   it('leaves worlds without factions or choices as they were', async () => {
