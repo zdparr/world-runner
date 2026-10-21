@@ -177,6 +177,21 @@ export const aldermere: WorldTemplate = {
             ],
           },
         },
+        {
+          id: 'shadow_master',
+          label: 'SHADOW MASTER',
+          summary: 'Walk through shadows and command what casts them.',
+          grants: {
+            skills: [
+              {
+                name: 'Shadow Master',
+                level: 1,
+                description:
+                  "Travel through shadows and seize whoever casts one. Lv1: step from one shadow into another a few paces away, and touch a creature's shadow (with your hand, or with your own shadow) to hold it still for a moment. Higher levels carry you farther, let you work a person or beast like a puppet, and at last turn shadows into blades and shields. No shadow, no power; bright and holy light weakens it; holding control drains you every turn; and overuse loosens your own shadow from you.",
+              },
+            ],
+          },
+        },
       ],
     },
   ],
@@ -309,6 +324,51 @@ Gravity should feel physical and weighty: creaking stone, buckling knees, drifti
 - Ancient dwarven gravity wells in the Greywall Mountains react to the character and open sealed doors.
 - Merchant houses on the Saltmarsh Coast offer steady pay for making cargo light, and some of that cargo is contraband.
 
+### SHADOW MASTER
+Shadows should feel cold and alive: a chill underfoot, torchlight that gutters, a shadow that moves a heartbeat before its owner does.
+
+**Modes.** *Shadow Step*: sink into a shadow and come out of another one big enough to hold the character. *Shadow Bind*: when the character touches a creature's shadow (with a hand, or with their own shadow), they seize the creature that casts it: first holding it still, then moving it like a puppet. *Shadow Craft* (Lv4): shadows made solid as shields, then blades, spikes, and armor.
+
+| Lv | Step range | Passengers | Own shadow reaches | Bind | Craft |
+| 1 | 10 ft, between shadows that touch | none | its natural length | hold a beast or person still for 1 turn | none |
+| 2 | 20 ft, any shadow in sight | none | its natural length | hold for 2 turns | none |
+| 3 | 40 ft | none | +10 ft | puppet: walk, turn, drop or pick up what they hold | none |
+| 4 | 100 ft | 1 | +20 ft | 2 targets | **shield**: block one blow a turn |
+| 5 | a quarter mile | 1 | +30 ft | puppet fully in a fight (strike, block, run) | **blades**: a shadow weapon in hand |
+| 6 | a mile, between deep shadows | 3 | +40 ft | 3 targets; borrow a bound target's senses | shield an ally; spikes from shadows in a 10-ft zone |
+| 7 | the **shadow-road**: a few miles a turn | 5 | +60 ft | a squad or a pack | shadow armor; several blades at once |
+| 8 | Millbrook to the Greywall foothills in an hour | 10 | anywhere it falls in sight | 5 targets | 30-ft zones; shadows that grapple |
+| 9 | anywhere in the kingdom in an hour | 20 | anywhere in sight | 10 targets; a bound target can use their own skills at your will | walls of shadow that stop a charge |
+| 10 | anywhere in the kingdom in minutes | a company | every shadow in sight | **Eclipse** (once per in-game day): everyone standing in one great shadow (a castle's at dusk, a storm's) is bound at once | shadow siege-weapons; a dome of night |
+
+**Light is the rule.**
+- **No shadow, no power.** Shadow Step needs a shadow at both ends; Bind needs a shadow to touch. Overhead noon sun leaves short shadows and little reach; dawn, dusk, torchlight, and lanterns throw long ones. Total darkness is everything at once: Step anywhere in it, but there are no separate shadows to Bind.
+- **Reach is the shadow's length.** The character's own shadow touches what it falls on, so light behind them stretches their reach toward the enemy. A clever foe keeps a light behind themselves, or puts the torch out.
+- **Light breaks it.** If a bound target's shadow vanishes (a cloud, a doused torch, a flash), the hold ends. Shadow constructs are half strength in bright sunlight. **Holy light** (a priest's blessing, the Sevenfold Light, an Inquisitor's lantern) shatters constructs, ends a Bind, and burns the character if they are inside a shadow when it lands (2-4 HP).
+
+**Bind.**
+- Roll \`skill_check\` on Shadow Master against the target: a hornrabbit trivial, a wolf easy, a man medium, an ogre or a knight-captain hard, a dragon or another Candidate very hard. Will matters: a strong-willed person resists every turn after the first (a fresh check). On a failure, the target feels cold hands on them and knows exactly where the character is.
+- **Puppets are awake.** They see, hear, and remember everything, and they cannot be made to speak or to use skills below Lv9. Bound beasts remember who bound them; bound people tell everyone.
+- Anything that breaks the character's concentration (a heavy hit, losing sight of the shadow) ends every hold.
+
+**Cost.** Every turn holding a Bind, carrying passengers, or keeping a construct solid costs mana; there is no pool to count down, so add up the scene and turn it into "Mana-Drained", the same as Gravity: a short Step or a one-turn hold is free; a few turns of puppetry or a held shield is all -1 for 5 turns; binding several targets, long shadow-road trips, or a fight's worth of blades is all -2 for 8 turns; Eclipse, or anything bigger, is all -3 for 10 turns plus HP (\`adjust_hp\`) every further turn. Using Eclipse adds "Eclipse Spent" (no modifiers), removed when the day advances.
+
+**Side effects.**
+- **Loosened Shadow.** Overuse (stepping or binding again while Mana-Drained, or a day spent mostly in shadow) adds rank to a permanent "Loosened Shadow" condition (rank 1 to 5 in its description; perception -1 at rank 3, all -1 at rank 5). The character's shadow lags, points the wrong way, and at rank 4+ moves on its own when they sleep. At rank 5 it sometimes acts on what the character wants without asking. Priests stare; the Inquisition takes notes.
+- **Shade-Chill.** Coming out of a long shadow-road trip brings "Shade-Chill" (agility -1, 3 turns): cold to the bone, frost on the eyelashes.
+- **Being seen.** A bound person is a witness who felt it. Binding someone in public, or binding anyone with a title, costs Inquisition and Crown standing faster than any other skill: mind-control is what the Inquisition fears most from the Returned, and binding a noble is treason.
+
+**XP.** Checks with the skill pay their XP automatically. For uses without a check, grant Shadow Master skill XP: 5 for paid work outside combat, 10 for creative use (stretching a shadow with a well-placed torch, stepping through an enemy's own shadow, turning a bound beast on its pack), and 15 for binding a stronger target. You decide what counts as creative.
+
+**Uses to reward:** walking out of a locked cell through the shadow under the door; a thief's dream of a job done by torchlight; holding a wounded wolf still so it can be treated; making a bandit drop his crossbow; an escort job where the caravan's lanterns become the character's reach; a shadow shield thrown over a child.
+
+**Push back:** enemies learn to fight under bright light, carry lanterns, and stand with the sun behind them; guild halls and chapels are lit for a reason; Inquisitors' lanterns with black glass were made for Returned like this; bound people and beasts come back for revenge. If the player chose Shadow Master, Brother Tobiah (Time Stop) can walk out of a Bind in stopped time, and Rhea Valcourt (Meteor) lights up a whole field.
+
+**Hooks:**
+- The Inquisition's archives describe a Returned of the last cohort who "walked in the dark and wore men like gloves". The church's lamps-at-night law in Solhaven was written because of them.
+- The shadow-road runs alongside the Hollowing: deep in it, the character sees the rot moving under the land before it reaches the surface, and something in the dark sees them back.
+- Thieves on the Saltmarsh Coast and Princess Seraphine's spymaster both pay well for someone who can go anywhere at night and make guards look away.
+
 ## The Kingdom of Aldermere
 A feudal human kingdom of river valleys, walled towns, and old roads, bordered by wilds, dungeons, and contested frontiers. **King Aldric III** rules from **Solhaven**; he is old and failing, and his daughter **Princess Seraphine** is gathering power and strong adventurers. Nobles feud, merchant houses buy influence, and the Church of the Sevenfold Light crowns kings and shelters the poor.
 
@@ -349,7 +409,7 @@ The character's standing with four factions is tracked (Faction reputation, in t
 NPCs react to **how openly the character uses their skill**. Use in front of witnesses spreads rumors: add or update a permanent "Rumors" condition with what people are saying (no modifiers at first; Stealth -1 or -2 once the character is widely recognized), and adjust Inquisition and Crown reputation. Rumors travel: Millbrook in a day, Solhaven in a week. The Church and the Crown both keep track of the character from the first time they hear.
 
 ## The central mystery (background, optional)
-The character is not the only Candidate. The skills they did not choose were given to other Returned reincarnated in this same era: METEOR, TIME STOP, DRAGON LORD, CREATION, and INFINITE TREASURY each have a holder, and GRAVITY, if passed over, went to no one (yet). \`lock_choice\` creates the holders of the skills passed over as NPCs (offscreen, not met). Each has their own goals; some serve the church, the crown, or only themselves. Bring them in over the course of the campaign, one at a time, when the story gives a natural opening: a rumor first, then a sighting, then a meeting. They can become rivals, allies, or both. The "The Candidate Question" mission is the player's record of what they've learned; it stays offered until the player chooses to pursue it.
+The character is not the only Candidate. The skills they did not choose were given to other Returned reincarnated in this same era: METEOR, TIME STOP, DRAGON LORD, CREATION, and INFINITE TREASURY each have a holder, and GRAVITY and SHADOW MASTER, if passed over, went to no one (yet). \`lock_choice\` creates the holders of the skills passed over as NPCs (offscreen, not met). Each has their own goals; some serve the church, the crown, or only themselves. Bring them in over the course of the campaign, one at a time, when the story gives a natural opening: a rumor first, then a sighting, then a meeting. They can become rivals, allies, or both. The "The Candidate Question" mission is the player's record of what they've learned; it stays offered until the player chooses to pursue it.
 
 ## GM ONLY: the truth
 Reveal none of this early. Clues come from the Sunken Abbey, the cathedral archives, System glitches, and the other Candidates.

@@ -38,9 +38,9 @@ const result = (call: Anthropic.MessageStreamParams, i = 0) => toolResultsIn(cal
 const dynamicContext = (call: Anthropic.MessageStreamParams) => (call.system as Anthropic.TextBlockParam[])[1]!.text;
 const pick = (option: string): Step[] => [{ tools: [{ name: 'lock_choice', input: { option } }] }, { text: 'You fall into light.' }];
 
-const SKILLS = { meteor: 'Meteor', time_stop: 'Time Stop', dragon_lord: 'Dragon Lord', creation: 'Creation', infinite_treasury: 'Infinite Treasury', gravity: 'Gravity' };
-/** Skills another Candidate holds when the player passes them over (nobody else was given Gravity). */
-const HELD_BY_RIVALS = Object.values(SKILLS).filter((s) => s !== 'Gravity');
+const SKILLS = { meteor: 'Meteor', time_stop: 'Time Stop', dragon_lord: 'Dragon Lord', creation: 'Creation', infinite_treasury: 'Infinite Treasury', gravity: 'Gravity', shadow_master: 'Shadow Master' };
+/** Skills another Candidate holds when the player passes them over (nobody else was given Gravity or Shadow Master). */
+const HELD_BY_RIVALS = Object.values(SKILLS).filter((s) => s !== 'Gravity' && s !== 'Shadow Master');
 
 describe('The Candidate (Aldermere)', () => {
   it('starts outside Millbrook with no money, skills, or items, a pending skill choice, and four factions at 0', async () => {
@@ -70,6 +70,7 @@ describe('The Candidate (Aldermere)', () => {
       ['CREATION', 'Create objects from nothing.'],
       ['INFINITE TREASURY', 'Access an endless treasury.'],
       ['GRAVITY', 'Make the world heavier or lighter.'],
+      ['SHADOW MASTER', 'Walk through shadows and command what casts them.'],
     ]);
     // Who the passed-over skills go to is the narrator's secret.
     expect(JSON.stringify(state.campaign.choices)).not.toContain('Rhea Valcourt');
@@ -141,7 +142,7 @@ describe('The Candidate (Aldermere)', () => {
     await play(id, `I choose ${skill}.`, pick(option));
     const rivals = (await t.db.select().from(npcs).where(eq(npcs.campaignId, id))).filter((n) => n.shortDescription.startsWith('Returned Candidate'));
     const held = rivals.map((n) => /^Returned Candidate \(([^)]+)\)/.exec(n.shortDescription)![1]);
-    // Four rivals, or all five when the player took Gravity.
+    // Four rivals, or all five when the player took Gravity or Shadow Master.
     expect(held.sort()).toEqual(HELD_BY_RIVALS.filter((s) => s !== skill).sort());
     const owned = await t.db.select({ name: skills.name }).from(skills).where(eq(skills.campaignId, id));
     expect(owned).toEqual([{ name: skill }]);
