@@ -13,6 +13,9 @@ import {
   relationships,
   skills,
   stateEvents,
+  storyEventEntities,
+  storyEvents,
+  storyThreads,
 } from '../db/schema';
 
 /**
@@ -33,6 +36,9 @@ const TABLES = {
   missions: { table: missions, key: ['id'] },
   campaigns: { table: campaigns, key: ['id'] },
   messages: { table: messages, key: ['id'] },
+  story_events: { table: storyEvents, key: ['id'] },
+  story_event_entities: { table: storyEventEntities, key: ['id'] },
+  story_threads: { table: storyThreads, key: ['id'] },
 } as const satisfies Record<string, { table: PgTable; key: string[] }>;
 
 export type TableName = keyof typeof TABLES;

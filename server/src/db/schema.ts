@@ -15,7 +15,26 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { Attributes, CampaignChoice, ItemEnhancement, ItemUsage, MissionObjective, MissionPenalty, MissionRecurrence, MissionRewards, NarrationLength, Reputation, Routine, Ruleset, StatusEffect } from '@narrator/shared';
+import type {
+  Attributes,
+  CampaignChoice,
+  ItemEnhancement,
+  ItemUsage,
+  MissionObjective,
+  MissionPenalty,
+  MissionRecurrence,
+  MissionRewards,
+  NarrationLength,
+  NpcRole,
+  NpcStatus,
+  Reputation,
+  Routine,
+  Ruleset,
+  SceneState,
+  StatusEffect,
+  StoryEventType,
+  ThreadKind,
+} from '@narrator/shared';
 
 // Column names are derived as snake_case (see `casing` in client.ts and drizzle.config.ts).
 // Raw SQL fragments below (checks, expression indexes, generated columns) use the snake_case names.
@@ -69,6 +88,8 @@ export const campaigns = pgTable(
     reputation: jsonb().$type<Reputation>().notNull().default({}),
     /** Permanent choices (a starting power), locked once by the narrator's lock_choice. */
     choices: jsonb().$type<CampaignChoice[]>().notNull().default([]),
+    /** Where the scene stands (location, time of day, who is present), kept current by extraction. Null until the first extraction. */
+    scene: jsonb().$type<SceneState>(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -88,6 +109,8 @@ export const locations = pgTable(
     description: text().notNull().default(''),
     /** GM-only: what this place is for in the story (a mission step, a secret, a threat, a refuge). Never shown to the player. */
     purpose: text().notNull().default(''),
+    /** How the place stands now, if the story has changed it (burned, sealed, abandoned, under new owners). */
+    currentState: text().notNull().default(''),
     parentLocationId: uuid().references((): AnyPgColumn => locations.id, { onDelete: 'set null' }),
     tags: tags(),
     createdAt: createdAt(),
@@ -188,10 +211,26 @@ export const npcs = pgTable(
     locationId: uuid().references(() => locations.id, { onDelete: 'set null' }),
     alive: boolean().notNull().default(true),
     notes: text().notNull().default(''),
+    /** Other names the story uses for them: nicknames, short forms, epithets ("the old smith"). */
+    aliases: tags(),
+    /** Rank, office, or title they hold now ("Police Commissioner", "Archon"). */
+    title: text().notNull().default(''),
+    role: text().$type<NpcRole>().notNull().default('minor'),
+    /** Free, missing, imprisoned... (`alive` stays the authority on death). */
+    status: text().$type<NpcStatus>().notNull().default('active'),
+    appearance: text().notNull().default(''),
+    /** Temperament and how they talk. */
+    personality: text().notNull().default(''),
+    /** What they want and what they won't do. */
+    goals: text().notNull().default(''),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex('npcs_campaign_name_uq').on(t.campaignId, sql`lower(name)`)],
+  (t) => [
+    uniqueIndex('npcs_campaign_name_uq').on(t.campaignId, sql`lower(name)`),
+    check('npcs_role_valid', sql`role IN ('major', 'minor')`),
+    check('npcs_status_valid', sql`status IN ('active', 'missing', 'imprisoned', 'departed', 'unknown')`),
+  ],
 );
 
 export const relationships = pgTable(
@@ -321,7 +360,117 @@ export const turnDebug = pgTable(
     cacheReadTokens: integer().notNull().default(0),
     cacheCreationTokens: integer().notNull().default(0),
     latencyMs: integer().notNull().default(0),
+    /** The fully assembled prompt (system blocks and messages), stored only when DEBUG_PROMPTS is on. */
+    prompt: jsonb(),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex('turn_debug_campaign_turn_uq').on(t.campaignId, t.turnNumber)],
+);
+
+// ---------------------------------------------------------------- story memory
+
+/**
+ * The story ledger: facts established by the narration (a death, a betrayal, a secret revealed),
+ * extracted after each turn. Written through the Mutator, so undoing a turn removes its facts.
+ */
+export const storyEvents = pgTable(
+  'story_events',
+  {
+    id: pk(),
+    campaignId: campaignRef(),
+    turnNumber: integer().notNull(),
+    type: text().$type<StoryEventType>().notNull(),
+    /** One factual sentence, past tense, with names. */
+    summary: text().notNull(),
+    /** 1 = color, 5 = turns the whole story. */
+    importance: integer().notNull().default(2),
+    /** Hard canon: later narration must never contradict it (a death, an identity, a title held). */
+    immutable: boolean().notNull().default(false),
+    /** A later fact that replaces this one (a captive escapes, an office changes hands). */
+    supersededBy: uuid().references((): AnyPgColumn => storyEvents.id, { onDelete: 'set null' }),
+    searchVector: tsvector().generatedAlwaysAs(sql`to_tsvector('english', summary)`),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('story_events_campaign_turn_idx').on(t.campaignId, t.turnNumber),
+    index('story_events_search_gin').using('gin', t.searchVector),
+    check('story_events_importance_range', sql`importance BETWEEN 1 AND 5`),
+  ],
+);
+
+/**
+ * Who and where a story event involves. Exactly one of the entity columns is set. Items aren't linked:
+ * inventory rows come and go as things are used up, and the event summary names them anyway.
+ */
+export const storyEventEntities = pgTable(
+  'story_event_entities',
+  {
+    id: pk(),
+    campaignId: campaignRef(),
+    eventId: uuid()
+      .notNull()
+      .references(() => storyEvents.id, { onDelete: 'cascade' }),
+    npcId: uuid().references(() => npcs.id, { onDelete: 'cascade' }),
+    locationId: uuid().references(() => locations.id, { onDelete: 'cascade' }),
+  },
+  (t) => [
+    index('story_event_entities_event_idx').on(t.eventId),
+    index('story_event_entities_npc_idx').on(t.npcId),
+    index('story_event_entities_location_idx').on(t.locationId),
+    check('story_event_entities_one_target', sql`num_nonnulls(npc_id, location_id) = 1`),
+  ],
+);
+
+/** Open threads: promises, mysteries, enemies, debts. Resolved ones are kept with their resolution. */
+export const storyThreads = pgTable(
+  'story_threads',
+  {
+    id: pk(),
+    campaignId: campaignRef(),
+    kind: text().$type<ThreadKind>().notNull(),
+    summary: text().notNull(),
+    importance: integer().notNull().default(2),
+    npcIds: uuid().array().notNull().default(sql`'{}'::uuid[]`),
+    openedTurn: integer().notNull(),
+    resolvedTurn: integer(),
+    resolution: text().notNull().default(''),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('story_threads_campaign_idx').on(t.campaignId),
+    check('story_threads_importance_range', sql`importance BETWEEN 1 AND 5`),
+  ],
+);
+
+/**
+ * One row per turn the extraction pass has looked at: what it returned, and whether it was applied.
+ * Failures are kept (with the error) and retried, never silently dropped.
+ */
+export const extractionRuns = pgTable(
+  'extraction_runs',
+  {
+    id: serialPk(),
+    campaignId: campaignRef(),
+    turnNumber: integer().notNull(),
+    /** The narration it read; a different id means the turn was undone and replayed. */
+    messageId: bigint({ mode: 'number' }).notNull(),
+    status: text().$type<'applied' | 'failed' | 'stale'>().notNull(),
+    attempts: integer().notNull().default(1),
+    model: text().notNull().default(''),
+    /** The model's raw structured output (also kept when it failed validation). */
+    output: jsonb(),
+    /** What was applied, for the debug view. */
+    applied: jsonb(),
+    error: text().notNull().default(''),
+    inputTokens: integer().notNull().default(0),
+    outputTokens: integer().notNull().default(0),
+    latencyMs: integer().notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex('extraction_runs_campaign_turn_uq').on(t.campaignId, t.turnNumber),
+    check('extraction_runs_status_valid', sql`status IN ('applied', 'failed', 'stale')`),
+  ],
 );

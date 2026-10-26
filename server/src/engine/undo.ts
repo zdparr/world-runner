@@ -3,6 +3,7 @@ import type { StateChange, UndoResult } from '@narrator/shared';
 import type { Db } from '../db/client';
 import { campaigns, messages, stateEvents, turnDebug } from '../db/schema';
 import { HttpError } from '../http/errors';
+import { forgetRuns } from './extract';
 import { revertChanges, type RowChange } from './mutator';
 
 /**
@@ -30,6 +31,8 @@ export async function undoLastTurn(db: Db, campaignId: string): Promise<UndoResu
     await tx.delete(stateEvents).where(scoped(stateEvents));
     await tx.delete(messages).where(scoped(messages));
     await tx.delete(turnDebug).where(scoped(turnDebug));
+    // Its story facts were reverted with the events above; the log goes too, so a replay is extracted afresh.
+    await forgetRuns(tx, campaignId, [turn]);
     await tx.update(campaigns).set({ turnCount: turn - 1, updatedAt: sql`now()` }).where(eq(campaigns.id, campaignId));
 
     const revertedChanges: StateChange[] = events.map((e) => ({

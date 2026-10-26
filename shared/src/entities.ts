@@ -13,6 +13,8 @@ import {
   MissionRecurrence,
   MissionRewards,
   NarrationLength,
+  NpcRole,
+  NpcStatus,
   MAX_STATUS_EFFECTS,
   Reputation,
   MONEY_MAX,
@@ -20,6 +22,7 @@ import {
   RELATIONSHIP_MIN,
   Routine,
   Ruleset,
+  type SceneState,
   StatusEffect,
   Tags,
 } from './game';
@@ -84,6 +87,8 @@ export interface Campaign {
   reputation: Reputation;
   /** Permanent choices (a starting power): pending until the narrator locks one with lock_choice. */
   choices: CampaignChoice[];
+  /** Where the scene stands, kept current by the extraction pass; null until it first runs. */
+  scene: SceneState | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -206,6 +211,8 @@ const locationShape = {
   description: LongText.default(''),
   /** GM-only: what this place is for in the story. */
   purpose: z.string().max(2000).default(''),
+  /** How the place stands now, if the story has changed it. */
+  currentState: z.string().max(2000).default(''),
   parentLocationId: Id.nullable().default(null),
   tags: Tags.default([]),
 };
@@ -220,6 +227,8 @@ export interface Location {
   description: string;
   /** GM-only: what this place is for in the story. */
   purpose: string;
+  /** How the place stands now, if the story has changed it. */
+  currentState: string;
   parentLocationId: string | null;
   tags: string[];
   createdAt: string;
@@ -235,6 +244,13 @@ const npcShape = {
   locationId: Id.nullable().default(null),
   alive: z.boolean().default(true),
   notes: LongText.default(''),
+  aliases: Tags.default([]),
+  title: z.string().trim().max(120).default(''),
+  role: NpcRole.default('minor'),
+  status: NpcStatus.default('active'),
+  appearance: z.string().max(2000).default(''),
+  personality: z.string().max(2000).default(''),
+  goals: z.string().max(2000).default(''),
 };
 export const NpcCreate = z.object(npcShape).strict();
 export const NpcUpdate = updateOf(npcShape);
@@ -249,6 +265,15 @@ export interface Npc {
   locationId: string | null;
   alive: boolean;
   notes: string;
+  /** Other names the story uses for them. */
+  aliases: string[];
+  title: string;
+  role: NpcRole;
+  /** Free, missing, imprisoned... (`alive` stays the authority on death). */
+  status: NpcStatus;
+  appearance: string;
+  personality: string;
+  goals: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -388,6 +413,8 @@ export interface TurnDebug {
   cacheReadTokens: number;
   cacheCreationTokens: number;
   latencyMs: number;
+  /** The assembled prompt, when DEBUG_PROMPTS was on for the turn. */
+  prompt: unknown;
   createdAt: string;
 }
 

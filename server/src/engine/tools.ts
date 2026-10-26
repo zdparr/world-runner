@@ -18,6 +18,7 @@ import {
   MissionPenalty,
   MissionRecurrence,
   MissionRewards,
+  NpcStatus,
   POINTS_PER_ATTRIBUTE_BONUS,
   REPUTATION_MAX,
   REPUTATION_MIN,
@@ -491,11 +492,17 @@ const readTools: ToolDef[] = [
       const standing = factionStanding(await currentReputation(ctx), npc.faction);
       return {
         name: npc.name,
+        ...(npc.aliases.length > 0 ? { alsoCalled: npc.aliases } : {}),
+        ...(npc.title ? { title: npc.title } : {}),
         shortDescription: npc.shortDescription,
         faction: npc.faction,
         ...(standing ? { factionReputation: standing } : {}),
         location: loc?.name ?? null,
         alive: npc.alive,
+        ...(npc.status !== 'active' ? { status: npc.status } : {}),
+        ...(npc.appearance ? { appearance: npc.appearance } : {}),
+        ...(npc.personality ? { personality: npc.personality } : {}),
+        ...(npc.goals ? { goals: npc.goals } : {}),
         gmNotes: npc.notes,
       };
     },
@@ -961,6 +968,8 @@ const writeTools: ToolDef[] = [
       short_description: z.string().trim().min(1).max(500),
       faction: z.string().trim().max(120).default(''),
       location_name: Name.optional(),
+      title: z.string().trim().max(120).optional().describe('Office, rank, or title, e.g. "Police Commissioner"'),
+      aliases: z.array(z.string().trim().min(1).max(80)).max(8).optional().describe('Other names the story uses for them'),
       notes: z.string().trim().max(2000).default('').describe('GM-only: motives, secrets'),
       first_meeting: z
         .string()
@@ -978,6 +987,8 @@ const writeTools: ToolDef[] = [
         faction: input.faction,
         locationId: loc?.id ?? null,
         notes: input.notes,
+        title: input.title ?? '',
+        aliases: input.aliases ?? [],
       });
       const met = Boolean(input.first_meeting);
       await ctx.record({ eventType: 'npc_created', humanReadable: `${met ? 'Met' : 'New NPC:'} ${input.name}`, details: { npc: input.name, met } });
@@ -989,11 +1000,15 @@ const writeTools: ToolDef[] = [
   tool({
     name: 'update_npc',
     kind: 'write',
-    description: 'Change an NPC: move them, mark them dead (or alive), update their description, or append GM notes about new developments.',
+    description:
+      'Change an NPC: move them, mark them dead (or alive), set their status (imprisoned, missing, departed) or title, add names they go by, update their description, or append GM notes about new developments.',
     input: z.object({
       name: Name,
       location_name: Name.nullable().optional().describe('null = whereabouts unknown'),
       alive: z.boolean().optional(),
+      status: NpcStatus.optional().describe('"active" when free and about their business'),
+      title: z.string().trim().max(120).optional().describe('Office, rank, or title they hold now ("" to clear)'),
+      add_aliases: z.array(z.string().trim().min(1).max(80)).max(8).optional(),
       short_description: z.string().trim().min(1).max(500).optional(),
       append_notes: z.string().trim().max(1000).optional(),
     }),
@@ -1002,6 +1017,9 @@ const writeTools: ToolDef[] = [
       const patch: Record<string, unknown> = {};
       if (input.location_name !== undefined) patch.locationId = input.location_name ? (await findLocation(ctx, input.location_name)).id : null;
       if (input.alive !== undefined) patch.alive = input.alive;
+      if (input.status !== undefined) patch.status = input.status;
+      if (input.title !== undefined) patch.title = input.title;
+      if (input.add_aliases?.length) patch.aliases = [...new Set([...npc.aliases, ...input.add_aliases])];
       if (input.short_description) patch.shortDescription = input.short_description;
       if (input.append_notes) patch.notes = [npc.notes, input.append_notes].filter(Boolean).join('\n');
       if (Object.keys(patch).length === 0) throw new ToolError('Nothing to update.');

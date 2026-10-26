@@ -4,11 +4,13 @@ import type { MemoryReport } from '@narrator/shared';
 import type { Db } from '../db/client';
 import { campaigns, messages, npcs, playerCharacter, relationships } from '../db/schema';
 import { approxTokens, HISTORY_TOKEN_BUDGET } from './context';
+import { extractDue, type StructuredFn } from './extract';
 import { Mutator } from './mutator';
 
 /**
  * Post-turn memory maintenance, run by the utility model off the player's request path:
  *
+ *  - Story extraction (extract.ts): what each turn established, recorded first so the next turn sees it.
  *  - Rolling summary: messages older than the recent window are folded into campaigns.rolling_summary
  *    every `summaryInterval` turns, or sooner if the unsummarized history outgrows its token budget.
  *  - Relationship notes: once an NPC's history notes pile up, they are condensed to 3-6 bullets.
@@ -229,15 +231,40 @@ export interface Maintenance {
   schedule(campaignId: string): void;
   /** Run maintenance now and report what changed. `force` folds and condenses even if not yet due. */
   runNow(campaignId: string, opts?: { force?: boolean }): Promise<MemoryReport>;
+  /**
+   * Wait (at most `timeoutMs`) for the story extraction of turns already played, so the next turn's
+   * context sees what they established. Resolves true if it finished (or none was pending).
+   */
+  awaitExtraction(campaignId: string, timeoutMs: number): Promise<boolean>;
   /** Resolves once no maintenance is running (tests, shutdown). */
   idle(): Promise<void>;
   readonly enabled: boolean;
 }
 
-export function createMaintenance(opts: { db: Db; utility: UtilityFn | null; model: string; log: FastifyBaseLogger }): Maintenance {
+export function createMaintenance(opts: {
+  db: Db;
+  utility: UtilityFn | null;
+  /** Structured-output model for story extraction; null turns extraction off. */
+  structured?: StructuredFn | null;
+  model: string;
+  log: FastifyBaseLogger;
+}): Maintenance {
   // One job chain per campaign: jobs for the same campaign never overlap.
   const chains = new Map<string, Promise<unknown>>();
   const queued = new Set<string>();
+  // The extraction step of each campaign's queued or running job (resolves when it is done).
+  const extracting = new Map<string, Promise<void>>();
+  const structured = opts.structured ?? null;
+
+  async function extract(campaignId: string): Promise<void> {
+    if (!structured) return;
+    try {
+      await extractDue({ db: opts.db, structured, model: opts.model, log: opts.log }, campaignId);
+    } catch (err) {
+      // extractTurn logs model and validation failures itself; this is anything else (e.g. the database).
+      opts.log.error({ err, campaignId }, 'Story extraction failed; will retry after the next turn');
+    }
+  }
 
   async function run(campaignId: string, force: boolean): Promise<MemoryReport> {
     if (!opts.utility) return { enabled: false, summary: null, condensed: [] };
@@ -267,15 +294,34 @@ export function createMaintenance(opts: { db: Db; utility: UtilityFn | null; mod
   return {
     enabled: opts.utility !== null,
     schedule(campaignId) {
-      if (!opts.utility || queued.has(campaignId)) return; // one pending run covers any number of turns
+      if ((!opts.utility && !structured) || queued.has(campaignId)) return; // one pending run covers any number of turns
       queued.add(campaignId);
-      void enqueue(campaignId, () => {
+      let extracted!: () => void;
+      const extraction = new Promise<void>((resolve) => (extracted = resolve));
+      extracting.set(campaignId, extraction);
+      void enqueue(campaignId, async () => {
         queued.delete(campaignId);
+        // Extraction first: the next turn waits on it, not on the summary.
+        try {
+          await extract(campaignId);
+        } finally {
+          extracted();
+          if (extracting.get(campaignId) === extraction) extracting.delete(campaignId);
+        }
         return run(campaignId, false);
       }).catch((err: unknown) => opts.log.error({ err, campaignId }, 'Memory maintenance failed; will retry after the next turn'));
     },
     runNow(campaignId, { force = false } = {}) {
       return enqueue(campaignId, () => run(campaignId, force));
+    },
+    async awaitExtraction(campaignId, timeoutMs) {
+      const pending = extracting.get(campaignId);
+      if (!pending) return true;
+      let timer: NodeJS.Timeout | undefined;
+      const timedOut = new Promise<false>((resolve) => (timer = setTimeout(() => resolve(false), timeoutMs)));
+      const done = await Promise.race([pending.then(() => true as const), timedOut]);
+      clearTimeout(timer);
+      return done;
     },
     async idle() {
       while (chains.size > 0) await Promise.all([...chains.values()]);

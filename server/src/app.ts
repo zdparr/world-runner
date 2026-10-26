@@ -5,7 +5,8 @@ import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import type { Config } from './config';
 import type { Db } from './db/client';
-import { createAnthropicStream, createAnthropicUtility } from './engine/anthropic';
+import { createAnthropicStream, createAnthropicStructured, createAnthropicUtility } from './engine/anthropic';
+import type { StructuredFn } from './engine/extract';
 import { createMaintenance, type Maintenance, type UtilityFn } from './engine/memory';
 import type { StreamFn } from './engine/narrator';
 import type { EngineDeps } from './engine/turn';
@@ -25,6 +26,8 @@ export interface AppDeps {
   stream?: StreamFn | null;
   /** Utility model for memory maintenance. Omit to build one from ANTHROPIC_API_KEY; tests pass a fake. */
   utility?: UtilityFn | null;
+  /** Structured-output model for story extraction. Omit to build one from ANTHROPIC_API_KEY; tests pass a fake. */
+  structured?: StructuredFn | null;
   /** Serve the built SPA from web/dist. Off in tests. */
   serveWeb?: boolean;
 }
@@ -58,7 +61,7 @@ function readSession(request: FastifyRequest, password: string): boolean {
   return unsigned.valid && unsigned.value !== null && isSessionValueValid(unsigned.value, password);
 }
 
-export async function buildApp({ config, db, pingDb, stream, utility, serveWeb = true }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ config, db, pingDb, stream, utility, structured, serveWeb = true }: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     trustProxy: true, // Render terminates TLS in front of us.
     logger: {
@@ -88,6 +91,13 @@ export async function buildApp({ config, db, pingDb, stream, utility, serveWeb =
   const maintenance = createMaintenance({
     db,
     utility: utility !== undefined ? utility : config.ANTHROPIC_API_KEY ? createAnthropicUtility(config.ANTHROPIC_API_KEY, config.UTILITY_MODEL) : null,
+    structured: !config.EXTRACTION_ENABLED
+      ? null
+      : structured !== undefined
+        ? structured
+        : config.ANTHROPIC_API_KEY
+          ? createAnthropicStructured(config.ANTHROPIC_API_KEY, config.UTILITY_MODEL)
+          : null,
     model: config.UTILITY_MODEL,
     log: app.log.child({ component: 'memory' }),
   });
@@ -101,6 +111,9 @@ export async function buildApp({ config, db, pingDb, stream, utility, serveWeb =
     effort: config.NARRATOR_EFFORT,
     // Post-turn memory upkeep runs in the background, never in the player's request.
     afterTurn: (campaignId) => maintenance.schedule(campaignId),
+    // ...except the story extraction, which the next turn waits for (briefly) so its context is current.
+    beforeTurn: (campaignId) => maintenance.awaitExtraction(campaignId, config.EXTRACTION_WAIT_MS),
+    debugPrompts: config.DEBUG_PROMPTS,
   });
   app.decorateRequest('isAuthenticated', false);
 

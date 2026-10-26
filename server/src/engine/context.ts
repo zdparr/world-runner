@@ -69,12 +69,15 @@ function wordsOf(text: string): Set<string> {
   return new Set(text.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? []);
 }
 
-/** Does the message mention this name, in full or by a distinctive word (plurals tolerated)? */
-export function mentions(messageWords: Set<string>, messageLower: string, name: string): string | null {
+/**
+ * Does the message mention this name, in full or by a distinctive word (plurals tolerated)?
+ * Words in `shared` belong to several names ("Vane", "Mara") and identify no one on their own.
+ */
+export function mentions(messageWords: Set<string>, messageLower: string, name: string, shared?: Set<string>): string | null {
   const lower = name.toLowerCase().trim();
   if (lower.length >= 3 && new RegExp(`(^|[^\\p{L}])${escapeRegex(lower)}($|[^\\p{L}])`, 'u').test(messageLower)) return name;
   for (const token of lower.match(/[\p{L}\p{N}']+/gu) ?? []) {
-    if (token.length < 4 || STOP_WORDS.has(token)) continue;
+    if (token.length < 4 || STOP_WORDS.has(token) || shared?.has(token)) continue;
     if (messageWords.has(token) || messageWords.has(`${token}s`) || (token.endsWith('s') && messageWords.has(token.slice(0, -1)))) {
       return token;
     }
@@ -98,6 +101,37 @@ async function lastNpcWrite(db: Db, campaignId: string, npcId: string): Promise<
 
 function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+type NpcNames = { id: string; name: string; aliases: string[]; title: string };
+
+/** Name words used by more than one NPC (across names and aliases): too ambiguous to match on alone. */
+function sharedNameWords(all: NpcNames[]): Set<string> {
+  const owners = new Map<string, Set<string>>();
+  for (const n of all) {
+    for (const name of [n.name, ...n.aliases]) {
+      for (const token of name.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? []) {
+        if (!owners.has(token)) owners.set(token, new Set());
+        owners.get(token)!.add(n.id);
+      }
+    }
+  }
+  return new Set([...owners].filter(([, ids]) => ids.size > 1).map(([t]) => t));
+}
+
+/** Does the text name this NPC: their name or an alias (or a distinctive word of one), or their full title? */
+function mentionsNpc(words: Set<string>, lower: string, n: NpcNames, shared: Set<string>): string | null {
+  for (const name of [n.name, ...n.aliases]) {
+    const hit = mentions(words, lower, name, shared);
+    if (hit) return hit;
+  }
+  const title = n.title.toLowerCase().trim();
+  return title.length >= 4 && new RegExp(`(^|[^\\p{L}])${escapeRegex(title)}($|[^\\p{L}])`, 'u').test(lower) ? n.title : null;
+}
+
+/** How an NPC stands, in a few words for the known-people line ("Archon", "imprisoned", "dead"). */
+function npcStanding(n: { title: string; status: string; alive: boolean }): string[] {
+  return [n.title, n.alive ? (n.status !== 'active' ? n.status : '') : 'dead'].filter(Boolean);
 }
 
 const LIMITS = { npcs: 3, items: 5, locations: 2, lore: 3 };
@@ -357,7 +391,8 @@ export async function buildTurnContext(
       ? shownKnown
           .map((n) => {
             const where = n.locationId ? locNames.get(n.locationId) : null;
-            const tags = [relByNpc.get(n.id)?.status ?? 'met', where ? `at ${where}` : '', n.alive ? '' : 'dead'].filter(Boolean);
+            const standing = npcStanding(n);
+            const tags = [relByNpc.get(n.id)?.status ?? 'met', ...standing.filter((s) => s !== 'dead'), where ? `at ${where}` : '', n.alive ? '' : 'dead'].filter(Boolean);
             return `${n.name} (${tags.join(', ')})`;
           })
           .join('; ')
@@ -366,8 +401,9 @@ export async function buildTurnContext(
   stateLines.splice(stateLines.indexOf(placesLine) + 1, 0, knownLine);
   core.push({ slice: 'known_people', reason: 'always (names, standing, whereabouts)', approxTokens: approxTokens(knownLine), detail: knownNpcs.length });
 
+  const shared = sharedNameWords(allNpcs);
   const playerNpcHits = allNpcs
-    .map((n) => ({ n, hit: mentions(msgWords, lowerMsg, n.name), source: 'mentioned' }))
+    .map((n) => ({ n, hit: mentionsNpc(msgWords, lowerMsg, n, shared), source: 'mentioned' }))
     .filter((x) => x.hit)
     .slice(0, LIMITS.npcs);
   // The people in the scene are whoever the narrator just wrote about, named by the player or not.
@@ -381,7 +417,7 @@ export async function buildTurnContext(
   const narrationWords = wordsOf(narrationLower);
   const narrationNpcHits = allNpcs
     .filter((n) => !playerNpcHits.some((p) => p.n.id === n.id))
-    .map((n) => ({ n, hit: narrationLower ? mentions(narrationWords, narrationLower, n.name) : null, source: 'named in the last narration' }))
+    .map((n) => ({ n, hit: narrationLower ? mentionsNpc(narrationWords, narrationLower, n, shared) : null, source: 'named in the last narration' }))
     .filter((x) => x.hit)
     // Latest mention first: the end of the narration is where the scene stands now.
     .sort((a, b) => narrationLower.lastIndexOf(b.hit!.toLowerCase()) - narrationLower.lastIndexOf(a.hit!.toLowerCase()))
@@ -403,11 +439,17 @@ export async function buildTurnContext(
       const standing = factionStanding(campaign.reputation, n.faction);
       const npcRecord = {
         name: n.name,
+        ...(n.aliases.length > 0 ? { alsoCalled: n.aliases } : {}),
+        ...(n.title ? { title: n.title } : {}),
         shortDescription: n.shortDescription,
         faction: n.faction,
         ...(standing ? { factionReputation: standing } : {}),
         location: n.locationId ? (locNames.get(n.locationId) ?? null) : null,
         alive: n.alive,
+        ...(n.status !== 'active' ? { status: n.status } : {}),
+        ...(n.appearance ? { appearance: n.appearance } : {}),
+        ...(n.personality ? { personality: n.personality } : {}),
+        ...(n.goals ? { goals: n.goals } : {}),
         gmNotes: n.notes,
         recordLastUpdated: lastWritten ? `turn ${lastWritten}` : 'never, since the campaign began',
         ...(age >= STALE_NPC_TURNS

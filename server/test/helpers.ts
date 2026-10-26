@@ -4,6 +4,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { buildApp } from '../src/app';
 import { DB_CASING, type Db } from '../src/db/client';
+import type { StructuredFn } from '../src/engine/extract';
 import type { UtilityFn } from '../src/engine/memory';
 import type { StreamFn } from '../src/engine/narrator';
 import * as schema from '../src/db/schema';
@@ -32,14 +33,15 @@ export async function createTestDb(): Promise<{ db: Db; close: () => Promise<voi
  * The narrator's model is whatever was last passed to `setModel` (a scripted fake). Memory
  * maintenance is off unless a fake utility model is passed.
  */
-export async function createTestApp(opts: { utility?: UtilityFn } = {}) {
+export async function createTestApp(opts: { utility?: UtilityFn; structured?: StructuredFn; debugPrompts?: boolean } = {}) {
   const { db, close } = await createTestDb();
   let model: StreamFn | null = null;
   const stream: StreamFn = (params) => {
     if (!model) throw new Error('No model scripted: call setModel() first');
     return model(params);
   };
-  const app: FastifyInstance = await buildApp({ config: testConfig, db, pingDb: async () => {}, stream, utility: opts.utility ?? null, serveWeb: false });
+  const config = opts.debugPrompts ? { ...testConfig, DEBUG_PROMPTS: true } : testConfig;
+  const app: FastifyInstance = await buildApp({ config, db, pingDb: async () => {}, stream, utility: opts.utility ?? null, structured: opts.structured ?? null, serveWeb: false });
   const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { password: TEST_PASSWORD } });
   const cookie = login.cookies[0]!;
   const cookies = { [cookie.name]: cookie.value };

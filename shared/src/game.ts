@@ -233,3 +233,50 @@ export const MissionPenalty = z.object({
   statusEffect: StatusEffect.optional(),
 });
 export type MissionPenalty = z.infer<typeof MissionPenalty>;
+
+// ---------------------------------------------------------------- story memory
+
+/**
+ * Where an NPC stands in the story, beyond alive or dead (the `alive` flag stays the authority on
+ * death). "active" is the ordinary case: free and about their business.
+ */
+export const NPC_STATUSES = ['active', 'missing', 'imprisoned', 'departed', 'unknown'] as const;
+export const NpcStatus = z.enum(NPC_STATUSES);
+export type NpcStatus = z.infer<typeof NpcStatus>;
+
+/** How much of the story an NPC carries. */
+export const NPC_ROLES = ['major', 'minor'] as const;
+export const NpcRole = z.enum(NPC_ROLES);
+export type NpcRole = z.infer<typeof NpcRole>;
+
+/** Kinds of fact the story ledger records, extracted from each turn's narration. */
+export const STORY_EVENT_TYPES = [
+  'death',
+  'relationship_change',
+  'discovery',
+  'revelation',
+  'promise',
+  'betrayal',
+  'alliance',
+  'conflict',
+  'status_change',
+  'location_change',
+  'item_change',
+  'other',
+] as const;
+export const StoryEventType = z.enum(STORY_EVENT_TYPES);
+export type StoryEventType = z.infer<typeof StoryEventType>;
+
+/** Unresolved hooks the narrator can call back to. */
+export const THREAD_KINDS = ['promise', 'mystery', 'enemy', 'debt', 'goal', 'other'] as const;
+export const ThreadKind = z.enum(THREAD_KINDS);
+export type ThreadKind = z.infer<typeof ThreadKind>;
+
+/** The scene as of the last extracted turn: where the character is, when, and who is with them. */
+export const SceneState = z.object({
+  turn: z.number().int().min(0),
+  locationId: z.string().nullable().default(null),
+  timeOfDay: z.string().max(60).default(''),
+  presentNpcIds: z.array(z.string()).max(30).default([]),
+});
+export type SceneState = z.infer<typeof SceneState>;

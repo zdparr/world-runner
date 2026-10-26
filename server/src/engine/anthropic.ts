@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { StreamFn } from './narrator';
+import type { StructuredFn } from './extract';
 import type { UtilityFn } from './memory';
 
 const client = (apiKey: string) => new Anthropic({ apiKey, maxRetries: 3, timeout: 120_000 });
@@ -26,5 +27,27 @@ export function createAnthropicUtility(apiKey: string, model: string): UtilityFn
     }
     const text = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('').trim();
     return { text, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens };
+  };
+}
+
+/** The utility model with a forced tool call, for structured output (story extraction). */
+export function createAnthropicStructured(apiKey: string, model: string): StructuredFn {
+  const anthropic = client(apiKey);
+  return async ({ system, prompt, maxTokens, tool }) => {
+    const message = await anthropic.messages.create({
+      model,
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: 'user', content: prompt }],
+      tools: [{ name: tool.name, description: tool.description, input_schema: tool.inputSchema as Anthropic.Tool.InputSchema }],
+      tool_choice: { type: 'tool', name: tool.name },
+    });
+    // A tool call cut off by max_tokens may parse into a plausible but partial record; never apply it.
+    if (message.stop_reason === 'max_tokens' || message.stop_reason === 'refusal') {
+      throw new Error(`Utility model stopped early (${message.stop_reason})`);
+    }
+    const use = message.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use' && b.name === tool.name);
+    if (!use) throw new Error('Utility model did not call the extraction tool');
+    return { input: use.input, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens };
   };
 }

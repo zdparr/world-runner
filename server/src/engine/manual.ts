@@ -25,6 +25,9 @@ const LABELS: Record<TableName, string> = {
   missions: 'mission',
   campaigns: 'campaign',
   messages: 'message',
+  story_events: 'story event',
+  story_event_entities: 'story event link',
+  story_threads: 'story thread',
 };
 const UNLISTED_FIELDS = new Set(['id', 'campaignId', 'createdAt', 'updatedAt']);
 const MAX_DESCRIPTION = 600;

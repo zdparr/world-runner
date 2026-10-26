@@ -24,6 +24,13 @@ export interface EngineDeps {
   log: FastifyBaseLogger;
   /** Called after a turn commits (post-turn maintenance hooks in here). */
   afterTurn?: (campaignId: string, turnNumber: number) => void;
+  /**
+   * Awaited before a turn builds its context: lets the previous turn's story extraction land first.
+   * Resolves false if it gave up waiting (the turn goes ahead; extraction catches up later).
+   */
+  beforeTurn?: (campaignId: string) => Promise<boolean>;
+  /** Store the fully assembled prompt in turn_debug. */
+  debugPrompts?: boolean;
 }
 
 // One turn (or undo) at a time per campaign. The campaign row lock enforces this in the database
@@ -75,6 +82,9 @@ export async function runTurn(
   const stateChanges: StateChange[] = [];
 
   try {
+    // Outside the transaction: waiting must not hold the campaign row lock the extraction needs.
+    const extractionCaughtUp = deps.beforeTurn ? await deps.beforeTurn(campaignId) : true;
+    if (!extractionCaughtUp) deps.log.warn({ campaignId }, 'Story extraction still running; this turn goes ahead without its latest results');
     const result = await deps.db.transaction(async (tx) => {
       // Serialize turns on the campaign row.
       const [campaign] = (await tx.select().from(campaigns).where(eq(campaigns.id, campaignId)).for('update')) as CampaignRow[];
@@ -171,9 +181,11 @@ export async function runTurn(
         model: deps.model,
         contextManifest: {
           ...context.manifest,
+          ...(extractionCaughtUp ? {} : { extractionLag: 'the previous turn was still being extracted; its results were not in this context' }),
           loadedByTools: narrator.toolCalls.filter((c) => tools.byName.get(c.name)?.kind === 'read').map((c) => ({ tool: c.name, input: c.input })),
           rounds: narrator.rounds,
         },
+        ...(deps.debugPrompts ? { prompt: { system: context.system, messages: context.messages } } : {}),
         toolCalls: narrator.toolCalls.map((c) => ({
           ...c,
           result: c.result.length > MAX_RESULT_CHARS_IN_DEBUG ? `${c.result.slice(0, MAX_RESULT_CHARS_IN_DEBUG)}…` : c.result,
