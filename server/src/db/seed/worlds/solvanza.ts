@@ -398,10 +398,10 @@ Reveal none of this early. Clues come from the rivals' clue notes, the missions,
 ## Narrator rules for this world
 - Make wealth tangible. Name prices, count coins, show deeds, keys, account books, and the faces of people who suddenly call the character "Signor" or "Signora". Every rise in Station must change how the world treats them.
 - Give the player real economic choices with trade-offs: cheap holdings with problems, expensive ones with prestige, legal and illegal paths, loans with teeth. Never make money effortless, and never block a clever plan.
-- Keep the Ledger honest: run Ledger Day every seventh day, keep the "Ledger" and "Station" conditions current, and let neglected holdings suffer.
+- Keep the Ledger honest: run Ledger Day every seventh day, keep the "Ledger" and "Station" conditions current, and let neglected holdings suffer. Ledger Day is bookkeeping: settle it in a short paragraph alongside whatever the player is doing. Trouble at a holding arrives as a report or a visitor the player can deal with now or later, not as a scene that takes over the turn.
 - Fights are fast, physical, and dangerous: one \`skill_check\` per exchange, with wounds that matter. Crowds, wagers, and onlookers make every public fight a social event too.
 - The rivals climb on their own. Every week or two, have one of the Sea-Wren exiles reach a new rung, buy something the player wanted, or ask for help.
-- Never railroad. The auction comes on schedule; the player chooses how to reach it, or whether to care.
+- Never railroad. The auction comes on schedule; the player chooses how to reach it, or whether to care. Each day the character decides what to do: work a holding, shop for property, fight, court a patron, chase a mystery, or rest. The season's events reach them as gossip and changed circumstances, never as a summons.
 - Only what the scene needs: look things up with the read tools rather than assuming.
 `,
 

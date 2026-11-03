@@ -64,7 +64,7 @@ These routes are for editing, outside the fiction: they do not write `state_even
 
 The engine lives in `server/src/engine/`. Each turn:
 
-1. **Context** ([context.ts](server/src/engine/context.ts)): a cached static block (narrator prompt, world bible, style) plus a small per-turn block: the one-line character header, current location, active mission and next objective, rolling summary, always-include lore, and records whose names appear in the player's message (NPC plus relationship, items, locations, lore). Everything else stays out, and the narrator fetches it with read tools. The `turn_debug.context_manifest` records what was included and why.
+1. **Context** ([context.ts](server/src/engine/context.ts)): a cached static block (narrator prompt, world bible, style) plus a small per-turn block: the one-line character header, current location, every open mission with its next objective (and offered ones by title), rolling summary, always-include lore, and records whose names appear in the player's message (NPC plus relationship, items, locations, lore). Everything else stays out, and the narrator fetches it with read tools. The `turn_debug.context_manifest` records what was included and why.
 2. **Narrator loop** ([narrator.ts](server/src/engine/narrator.ts)): streams text, runs tool calls between rounds, and caps tool use at 6 rounds before forcing narration.
 3. **Tools** ([tools.ts](server/src/engine/tools.ts)): 9 read tools and 21 write tools, validated with zod. Invalid input goes back to the model as an error it can correct.
 4. **Writes** ([mutator.ts](server/src/engine/mutator.ts)): each tool call runs in a savepoint and records row-level before/after diffs in `state_events`, which is what makes undo exact.

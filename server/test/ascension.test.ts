@@ -69,7 +69,7 @@ describe('ascension rule set', () => {
       'Daily quests: Daily Quest: Baseline (active; to do: o1 "Carry 500 pounds of debris or equipment over the course of the day", o2 "Cover 5 miles on foot before nightfall")',
     );
     // The daily quest doesn't crowd out the story mission.
-    expect(dynamicBlock).not.toContain('Active mission: Daily Quest');
+    expect(dynamicBlock).not.toMatch(/Open missions.*Daily Quest/);
 
     const classic = await play(await newCampaign('brinecross'), 'I stretch.', [{ text: 'Gulls.' }]);
     const [classicStatic, classicDynamic] = (classic.calls[0]!.system as Anthropic.TextBlockParam[]).map((b) => b.text);

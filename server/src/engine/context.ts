@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type Anthropic from '@anthropic-ai/sdk';
 import { ATTRIBUTES, MIN_WORLD_LOCATIONS, describeEffect, factionList, factionStanding, levelBonus, reputationLabel, skillTier, type ContextManifest, type ContextSlice, type NarrationLength, type Ruleset } from '@narrator/shared';
 import type { Db } from '../db/client';
@@ -141,6 +141,8 @@ const NARRATION_NPC_LIMIT = 3;
 const STALE_NPC_TURNS = 50;
 /** Location names listed every turn; bigger worlds are summarized with a count. */
 const MAX_PLACES_LISTED = 40;
+/** Open missions shown each turn, per status; the rest are a get_mission call away. */
+const MAX_MISSIONS_LISTED = 8;
 /** Known people listed every turn; the rest are summarized with a count. */
 const MAX_KNOWN_PEOPLE_LISTED = 60;
 /** Known people at the character's location whose full records are fetched, after anyone named. */
@@ -192,14 +194,26 @@ export async function buildTurnContext(
     : [];
   const header = characterHeader(pc, location?.name ?? null);
 
-  const [mission] = await db
-    .select()
+  // Every open mission, not just the latest: the player picks what to pursue, so none is "the" mission.
+  const openMissions = await db
+    .select({ title: missions.title, status: missions.status, objectives: missions.objectives })
     .from(missions)
     // Daily quests are listed on their own line (ascension rule set).
-    .where(and(eq(missions.campaignId, cid), eq(missions.status, 'active'), isNull(missions.recurrence)))
-    .orderBy(desc(missions.updatedAt))
-    .limit(1);
-  const nextObjective = mission?.objectives.find((o) => !o.done);
+    .where(and(eq(missions.campaignId, cid), inArray(missions.status, ['active', 'offered']), isNull(missions.recurrence)))
+    .orderBy(desc(missions.updatedAt));
+  const activeMissions = openMissions.filter((m) => m.status === 'active').slice(0, MAX_MISSIONS_LISTED);
+  const offeredMissions = openMissions.filter((m) => m.status === 'offered').slice(0, MAX_MISSIONS_LISTED);
+  const missionLine = [
+    activeMissions.length > 0
+      ? `Open missions (the player's to pursue in any order, or not at all; none takes priority unless the player is working on it now): ${activeMissions
+          .map((m) => {
+            const next = m.objectives.find((o) => !o.done);
+            return `${m.title} (${next ? `next: ${next.text}` : 'all objectives done'})`;
+          })
+          .join('; ')}`
+      : 'Open missions: none',
+    ...(offeredMissions.length > 0 ? [`Offered but not taken up (leads the player may never follow): ${offeredMissions.map((m) => m.title).join('; ')}`] : []),
+  ].join('\n');
 
   // Names and levels only (descriptions via get_skills), so the narrator reuses existing skills
   // instead of inventing near-duplicates ("Swordsmanship" next to "Swordfighting").
@@ -277,9 +291,7 @@ export async function buildTurnContext(
       ? `Location: ${location.name}\n${location.description}\nPurpose (GM-only, don't reveal it directly): ${location.purpose.trim() || 'none yet; give it one with update_location'}`
       : 'Location: unknown (the character has not been placed anywhere yet)',
     placesLine,
-    mission
-      ? `Active mission: ${mission.title}${nextObjective ? ` (next: ${nextObjective.text})` : ' (all objectives done)'}`
-      : 'Active mission: none',
+    missionLine,
   ];
   if (campaign.ruleset === 'ascension') {
     const attributeLine = `${ATTRIBUTES.map((a) => `${a[0]!.toUpperCase()}${a.slice(1)} ${pc.attributes[a] ?? 0}`).join(', ')} (unspent stat points: ${pc.unspentStatPoints})`;
@@ -329,7 +341,9 @@ export async function buildTurnContext(
   core.push({ slice: 'skill_names', reason: 'always (names and levels only)', approxTokens: approxTokens(skillLine), detail: skillRows.length });
   if (location) core.push({ slice: 'location', reason: 'current location (with purpose)', approxTokens: approxTokens(location.description + location.purpose), detail: location.name });
   core.push({ slice: 'places', reason: 'always (names only)', approxTokens: approxTokens(placesLine), detail: worldLocations.length });
-  if (mission) core.push({ slice: 'active_mission', reason: 'title and next objective only', approxTokens: 20, detail: mission.title });
+  if (openMissions.length > 0) {
+    core.push({ slice: 'open_missions', reason: 'titles and next objectives only', approxTokens: approxTokens(missionLine), detail: activeMissions.length + offeredMissions.length });
+  }
 
   stateLines.push(`Narration length: ${NARRATION_LENGTH[campaign.narrationLength]}`);
   core.push({ slice: 'narration_length', reason: 'campaign setting', approxTokens: 30, detail: campaign.narrationLength });
@@ -557,7 +571,7 @@ export async function buildTurnContext(
     'skill descriptions and XP',
     prefetchedNpcs.size > 0 ? 'other relationships' : 'relationships',
     prefetchedNpcs.size > 0 ? 'other NPCs' : 'NPCs',
-    'missions other than the active one',
+    'mission descriptions and rewards',
     loreHits.length > 0 ? 'other lore' : 'lore',
     'older history (summarized; searchable with search_past_events)',
     ...(overCap > 0 ? [`${overCap} older unsummarized messages (over the history cap)`] : []),

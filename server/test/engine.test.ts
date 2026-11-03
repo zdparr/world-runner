@@ -355,11 +355,26 @@ describe('context builder', () => {
     const state = ctx.system[1]!.text;
     expect(state).not.toMatch(/\b40\b|money/i);
     expect(state).not.toMatch(/affinity|trust|historyNotes/i);
-    // What is there: the one-line header, location, and active mission (none yet).
+    // What is there: the one-line header, location, and open missions (none yet).
     expect(system).toContain('Character: Kael — Lv 2 rogue — HP 16/18 — Loc: Dockside Market');
-    expect(system).toContain('Active mission: none');
+    expect(system).toContain('Open missions: none');
     // Skill names and levels are always present so the narrator reuses them rather than inventing duplicates.
     expect(state).toMatch(/^Skills: Lockpicking 3 \(Apprentice\), .*Stealth 2 \(Novice\)/m);
+  });
+
+  it('lists every open mission, not just the latest, so none reads as the one to chase', async () => {
+    const id = await newCampaign();
+    await t.db.insert(missions).values([
+      { campaignId: id, title: 'Find the Ledger', status: 'active', objectives: [{ id: 'o1', text: 'Search the counting house', done: false }] },
+      { campaignId: id, title: 'Clear the Cellar', status: 'active', objectives: [{ id: 'o1', text: 'Kill the rats', done: true }] },
+      { campaignId: id, title: 'The Bell Tower Job', status: 'offered', objectives: [{ id: 'o1', text: 'Climb it', done: false }] },
+      { campaignId: id, title: 'Old News', status: 'completed', objectives: [] },
+    ]);
+    const state = (await contextFor(id, 'I look around.')).system[1]!.text;
+    expect(state).toMatch(/^Open missions \(the player's to pursue in any order.*\): .*Find the Ledger \(next: Search the counting house\)/m);
+    expect(state).toMatch(/^Open missions.*Clear the Cellar \(all objectives done\)/m);
+    expect(state).toMatch(/^Offered but not taken up .*: .*The Bell Tower Job/m);
+    expect(state).not.toContain('Old News');
   });
 
   it("shows the current location's purpose and names every place in the world", async () => {
