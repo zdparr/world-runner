@@ -50,10 +50,10 @@ describe('Ascension: Path of the Immortal', () => {
 
     expect(state.location?.name).toBe('Willowbrook Village');
     expect(pc).toMatchObject({ money: 2, level: 1 });
-    expect(pc!.statusEffects.map((e) => e.name)).toEqual(['Spiritual Roots', 'Cultivation Realm']);
+    expect(pc!.statusEffects.map((e) => e.name)).toEqual(['Spiritual Roots', 'Ascension Rank']);
     expect(pc!.statusEffects[0]!.description).toMatch(/^Untested/);
     expect(state.campaign).toMatchObject({
-      currencyName: 'spirit stones',
+      currencyName: 'aether shards',
       reputation: { 'Azure Cloud Sect': 0, 'Crimson Blade Hall': 0, 'Verdant Pill Pavilion': 0, 'Wandering Immortal Alliance': 0 },
     });
 
@@ -63,14 +63,14 @@ describe('Ascension: Path of the Immortal', () => {
     expect(composition).toMatchObject({ key: 'root_composition', chosen: null });
     expect(composition!.options.map((o) => o.label)).toEqual(['PURE ROOT', 'DUAL ROOT', 'MIXED ROOT']);
     // Who the stone lit for elsewhere is the narrator's secret.
-    expect(JSON.stringify(state.campaign.choices)).not.toContain('Han Xueyin');
+    expect(JSON.stringify(state.campaign.choices)).not.toContain('Ilse Harrowgate');
     expect(await rivals(id)).toEqual([]);
   });
 
   it('gives every tracked faction someone who acts on it, and seeds the cast of the province', async () => {
     const id = await newCampaign(false);
     const npcRows = (await t.api('GET', `/api/campaigns/${id}/npcs`)).json() as { name: string; faction: string }[];
-    expect(npcRows.map((n) => n.name)).toEqual(expect.arrayContaining(['Master Lu Feng', 'Granny Wen', 'Peddler Mo', 'The Moon Hermitess']));
+    expect(npcRows.map((n) => n.name)).toEqual(expect.arrayContaining(['Master Rowan Fenn', 'Granny Wren', 'Peddler Mott', 'The Moon Hermitess']));
     for (const faction of Object.keys(azureMist.reputation!)) expect(npcRows.some((n) => n.faction === faction), faction).toBe(true);
   });
 
@@ -85,7 +85,7 @@ describe('Ascension: Path of the Immortal', () => {
     const items = await t.db.select({ name: inventoryItems.name }).from(inventoryItems).where(eq(inventoryItems.campaignId, id));
     expect(items.map((i) => i.name)).toContain(item);
     const [pc] = await t.db.select().from(playerCharacter).where(eq(playerCharacter.campaignId, id));
-    expect(pc!.statusEffects.find((e) => e.name === 'Spiritual Roots')!.description).toMatch(new RegExp(`^Dominant root: ${skill.split(' ')[0]}`));
+    expect(pc!.statusEffects.find((e) => e.name === 'Spiritual Roots')!.description).toContain(`Dominant root: ${label.charAt(0)}${label.slice(1).toLowerCase()} (skill: ${skill})`);
     expect(await rivals(id)).toEqual(ROOTS.filter((r) => r.id !== option).map((r) => r.label).sort());
   });
 
@@ -101,10 +101,34 @@ describe('Ascension: Path of the Immortal', () => {
       const [pc] = await t.db.select().from(playerCharacter).where(eq(playerCharacter.campaignId, id));
       return pc!.statusEffects.find((e) => e.name === 'Root Composition')!;
     };
-    expect((await composition(pure)).modifiers).toEqual([{ target: 'Qi Cultivation', bonus: 1 }]);
-    expect((await composition(mixed)).modifiers).toEqual([{ target: 'Qi Cultivation', bonus: -1 }]);
+    expect((await composition(pure)).modifiers).toEqual([{ target: 'Channeling', bonus: 1 }]);
+    expect((await composition(mixed)).modifiers).toEqual([{ target: 'Channeling', bonus: -1 }]);
 
     const state = (await t.api('GET', `/api/campaigns/${pure}/state`)).json() as CampaignState;
     expect(state.campaign.choices.map((c) => c.chosen)).toEqual(['wind', 'pure']);
+  });
+
+  it('keeps every root its own skill: a Wind dominant with a Mixed Fire secondary has Aeromancy, Pyromancy, and Cryomancy, each rolled on its own', async () => {
+    const id = await newCampaign();
+    await play(id, 'I choose [WIND]', pick('wind'));
+    await play(id, 'I choose [MIXED ROOT]', pick('mixed'));
+    // What the composition condition tells the narrator to do for each secondary root.
+    const [pc] = await t.db.select().from(playerCharacter).where(eq(playerCharacter.campaignId, id));
+    expect(pc!.statusEffects.find((e) => e.name === 'Root Composition')!.description).toMatch(/its own skill \(.*Fire: Pyromancy.*\): start each at level 1 with grant_skill_xp 25/);
+    const { calls } = await play(id, 'Fire flickered too, and ice.', [
+      {
+        tools: [
+          { name: 'grant_skill_xp', input: { skill_name: 'Pyromancy', amount: 25, reason: 'secondary root' } },
+          { name: 'grant_skill_xp', input: { skill_name: 'Cryomancy', amount: 25, reason: 'secondary root' } },
+        ],
+      },
+      { tools: [{ name: 'skill_check', input: { skill_name: 'Pyromancy', difficulty: 'easy', action: 'a first spark' } }] },
+      { text: 'Two more lights.' },
+    ]);
+
+    // The roll went through without error (Pyromancy resolved to itself).
+    expect(String(toolResultsIn(calls[2]!)[0]!.content)).toMatch(/"skill":1/);
+    const rows = await t.db.select({ name: skills.name, level: skills.level }).from(skills).where(eq(skills.campaignId, id));
+    expect(rows).toEqual(expect.arrayContaining([{ name: 'Aeromancy', level: 1 }, { name: 'Pyromancy', level: 1 }, { name: 'Cryomancy', level: 1 }]));
   });
 });
