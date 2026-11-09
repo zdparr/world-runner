@@ -5,15 +5,16 @@ const CROWN = 'The Crown';
 const HOUSES = 'The Golden Houses';
 const CONCORD = 'The Concord of Guilds';
 const HAND = 'The Velvet Hand';
+const ASHFOLD = 'The Free Folk of the Ashfold';
 
 export const solvanza: WorldTemplate = {
   id: 'solvanza',
   name: 'Solvanza',
   description:
-    'A rags-to-riches climb through a glittering merchant capital. You step off a ship from a fallen northern kingdom with a few ducats and a foreigner\'s tally. Buy taverns, warehouses, ships, and palazzos, fight in the Pit and on the dueling ground, and climb from Outlander to the seat beside the throne before the Spice Charter goes to auction at Midsummer.',
+    'A rags-to-riches climb through a glittering merchant capital. You step off a ship from a fallen northern kingdom with a few ducats and a foreigner\'s tally. Buy taverns, warehouses, ships, and palazzos, fight in the Pit and on the dueling ground, and climb from Outlander to the seat beside the throne before the Spice Charter goes to auction at Midsummer. Or sail for the unclaimed Ashfold between Teravel and Vaskar, and found a kingdom of your own.',
   demoCampaignName: "Solvanza: The Outlander's Fortune",
   currencyName: 'ducats',
-  reputation: { [CROWN]: 0, [HOUSES]: 0, [CONCORD]: 0, [HAND]: 0 },
+  reputation: { [CROWN]: 0, [HOUSES]: 0, [CONCORD]: 0, [HAND]: 0, [ASHFOLD]: 0 },
 
   choices: [
     {
@@ -263,7 +264,7 @@ export const solvanza: WorldTemplate = {
 A rags-to-riches campaign of wealth, rank, and power in a glittering Renaissance-style merchant capital. Swords and gunpowder are both new enough to be fashionable; there is no magic. The character arrives as a foreigner with almost nothing and climbs by any means: trade, property, fighting, marriage, patronage, crime, and politics. Opportunities are everywhere, every rung has a price, and people above them on the ladder like it where they are.
 
 ## The character
-A Vaskari exile, just off the merchant ship *Sea-Wren* at the Customs Quay. Vaskar, the cold kingdom across the Amber Sea, fell to the usurper **King Radomir** last winter; the old royal family is dead, and the usurper's men have been hunting those who served it. What the character was in Vaskar is the locked choice "What you were in Vaskar" (shown as a System panel): Exiled Heir, Merchant's Factor, Sellsword, Smuggler, Physician, or Intelligencer. Lock it with \`lock_choice\` when the player picks. The five paths passed over came off the same ship as rivals (they appear as NPCs, unmet); each is climbing too, and each holds a clue.
+A Vaskari exile, just off the merchant ship *Sea-Wren* at the Customs Quay. Vaskar, the cold kingdom across the Amber Sea, fell to the usurper **King Radomir** last winter; the old royal family is dead, and the usurper's men have been hunting those who served it. What the character was in Vaskar is the locked choice "What you were in Vaskar" (shown as a System panel): Exiled Heir, Merchant's Factor, Sellsword, Smuggler, Physician, or Intelligencer. Lock it with \`lock_choice\` when the player picks. The five paths passed over came off the same ship as rivals (they appear as NPCs, unmet); each is climbing too, and each knows a piece of the city's secrets, which they share only with a player who befriends them and asks.
 
 Two permanent conditions track the climb:
 - **"Station"**: the character's legal rank (see Station, below). Update its description when they rise or fall.
@@ -282,6 +283,8 @@ In Solvanza, rank is law. Each rung has rights, and the rung below is shut out o
 | 7 | **The Hand of the Throne** | Become Lord Chancellor, the queen's consort, or Master of the Spice Charter with a Peer's title | The real power in Teravel. The top of the ladder. |
 
 Falling is possible: a conviction, bankruptcy, or the Crown's displeasure can strip a rung. A ruined Outlander can be deported back to Vaskar, and the usurper.
+
+Station is not the only way up. See **The other road: a crown in the Ashfold**, below.
 
 ## Wealth: holdings
 Properties and businesses are bought at the **Registry of Deeds** on the Lantern Exchange (from Nella Orsini, the notary), at the Exchange's auctions (Burghers and above), or privately from desperate owners. Each holding is an inventory item tagged \`holding\` and \`property\` or \`business\`; its description lists the price paid, weekly income, upkeep, manager, and condition. Use \`add_item\` when one is bought, \`update_item\` when it changes (a new manager, repairs, a fire), and remove it when it is sold, seized, or burned. Prices are haggled (a Haggling or Ledgercraft check moves them up to 20% either way).
@@ -350,7 +353,7 @@ Ducats. A meal costs 1, a bed in Little Vaskar 1 a night, a decent inn room 3, a
 ## The city and its powers
 **Solvanza** is the capital of the **Kingdom of Teravel** and the richest port on the Amber Sea: canals, bridges, bell towers, the gold-domed Mirror Court, and a harbor full of every flag. It is ruled by **Queen Isaura II** (nineteen, crowned last year), her **Lord Chancellor, Duke Ottavio Brenn**, and the **Great Council** of the patrician houses recorded in the Golden Book. Its wealth runs through the guilds and the **Lantern Exchange**, where everything from grain futures to noble titles changes hands. Foreigners are welcome to spend money and not much else.
 
-The character's standing with four factions is tracked (Faction reputation, in the current state). Change it with \`adjust_reputation\` when their deeds reach the faction. Any NPC whose faction matches acts on it.
+The character's standing with five factions is tracked (Faction reputation, in the current state). Change it with \`adjust_reputation\` when their deeds reach the faction. Any NPC whose faction matches acts on it.
 
 ### The Crown (open)
 The queen, the Chancellor, the Exchequer, and the Gonfalon Guard. They grant titles, charters, citizenship by decree, and pardons. Chancellor Brenn has been selling offices and titles to fill a treasury emptied by the Orsk war; Queen Isaura is clever, watched, and looking for people who owe Brenn nothing.
@@ -368,40 +371,76 @@ The seven great guilds (glassmakers, weavers, chandlers, vintners, shipwrights, 
 The underworld: gaming houses, smuggling, fencing, the Pit, loansharking, and protection. Led by **the Widow**, Serafina Calò, who has outlived three husbands and two rivals. Openly, they are a respectable family of moneylenders; covertly, they own Guard captains, half the docks, and House Varro's debts.
 - 20+: fair cuts, fixed bouts in your favor, the Drowned Market open to you. 40+: a partner; the Hand protects your holdings and breaks your rivals'. -20: protection money doubled, accidents at your holdings. -50: a contract on your life.
 
+### The Free Folk of the Ashfold (open)
+The fishers, herders, and hill-steaders of the unclaimed Ashfold (see below). They answer to their village headmen, and in a crisis to a Moot of all of them. Headwoman **Edda Marrow** of Brackwater speaks loudest. They have outlived a plague, brigands, and two kingdoms' claims by trusting no one who carries a banner. Their standing only moves for what the character does in the Ashfold, or for it.
+- 20+: a landing welcomed, guides, food sold fairly, a village willing to swear. 40+: levies; settlements that come over without being asked. 50+: the Moot will acclaim a king. -20: doors barred, guides who lead you into the bogs. -50: they side with whoever is fighting you, even Red Ulric.
+
+## The other road: a crown in the Ashfold
+Station is Teravel's ladder. There is another way to the top, and it leaves Teravel behind: found a kingdom of your own in **the Ashfold**, the unclaimed land between Teravel and Vaskar.
+
+**The land.** A wild coast of fjords, heath, and pine-dark highlands on the eastern rim of the Amber Sea, three days' sail north-east of Solvanza and two days south of the Vaskari coast. It was the Kingdom of Calder until the Grey Plague emptied it eighty years ago and the last king died without an heir. Teravel and Vaskar both claim it on old maps; neither has held it since. Who lives there now: a few thousand free folk in fishing villages and hill steadings who have paid no one taxes in three generations, the brigand lord **Red Ulric** in the ruins of Highcairn, wolves, and Orsk raiders who come over the eastern passes every autumn. No law and no lord, and nobody to stop a determined founder, except everyone who notices.
+
+**Getting there.** Passage for one on a coaster from the Salt Quay costs 10 ducats. Chartering a ship for an expedition costs 400 a crossing (free in a caravel the character owns). Brackwater is the only safe anchorage. The voyage takes three days each way (use \`pass_time\`).
+
+**Tracking the realm.** When the character first plants a banner, add a permanent condition **"Dominion"** with \`update_status_effect\`. Keep it current: stage, seat, settlements, subjects, armed force, weekly upkeep, legitimacy (Crown / Recognition / Acclamation), and open threats. Every settlement or work the character controls is an inventory item tagged \`holding\` and \`domain\` that pays into Ledger Day like any other holding. A settlement is run by its reeve or headman; an unmanaged one earns half.
+
+| Stage | Title | Requirements | What it unlocks |
+| 1 | **Claimant** | Land in the Ashfold with at least 20 armed followers and 1,000 ducats of provisions, tools, and seed, and plant a banner at a chosen seat. | A camp, a name on the map, and the attention of everyone who wants the land. |
+| 2 | **Holdfast Lord** | Take and hold a stronghold: Highcairn (from Red Ulric, by assault, siege, duel, or bargain), or Dunlow Tower, a smaller ruin up the coast that is easier to take and worth less. Garrison it with at least 30 and repair it (2,000 for Highcairn's gate and walls, 600 for Dunlow). | A seat that can be defended. The free folk start to listen. |
+| 3 | **Lord of the Ashfold** | Three settlements swear fealty. Each wants a deed, not a speech: protection from Ulric or the Orsk, a fair tithe (a tenth, never more), a well dug, a quarrel judged. New settlements can be founded with settlers: 100 exiles from Little Vaskar cost 500 ducats to ship and outfit, and they are desperate to come once the treaty rumor spreads (day 60). | Tithes. Levies of free folk (10 per settlement: unpaid, untrained). The Moot will hear the character. |
+| 4 | **Sovereign-elect** | A realm worth the name: five settlements or 1,500 subjects, a standing force of 100+ (the Free Company of the Bear counts), a harbor at Brackwater (3,000 for a stone mole and warehouse), a law proclaimed, and Red Ulric dealt with (killed, driven out, or sworn). | Trade ventures sail from Brackwater. Envoys from Solvanza, Vaskar, and the Free Cities come to the character. The realm can field an army. |
+| 5 | **King (or Queen) of the Ashfold** | Legitimacy, at least two of three. **The Crown:** recover the Crown of Calder from the Crownbarrow (Brother Anselm knows the way, and the danger). **Recognition:** a foreign power signs a treaty naming the character sovereign: Queen Isaura (Crown reputation 40+, and a price), the Free Cities (for trading rights), or a restored Vaskar. **Acclamation:** the Moot of the free folk raises the character on a shield (Free Folk of the Ashfold reputation 50+). Then a coronation at Highcairn. | A throne. The character is a foreign sovereign: Teravel's queen receives them as an equal, Station no longer binds them, and their realm can shelter every exile Radomir wants back. |
+
+When the character reaches a stage, update "Dominion", \`grant_xp\` (150 × the stage; 1,000 at the coronation), adjust Free Folk of the Ashfold reputation, and show the land changing: smoke from new chimneys, a market day, a banner over the gate, people kneeling who never knelt before.
+
+**Costs and income.** Soldiers: a hired sword is 20 a week, Ostrov's company 2,000 a month; levies are free and fight badly. Building: a palisade 300, a stone wall 2,000, a mill 400, a chapel 250, a road 100 a mile. Tithes: a village pays 15 to 40 a week once it is safe, and Brackwater with a harbor pays 120. A young realm runs at a loss for weeks, and the money to found it comes from Solvanza: the two games feed each other.
+
+**Two lives at once.** Holdings in Solvanza still roll on Ledger Day while the character is away, and the Ashfold's troubles do not wait while they are in the city. Station and Dominion are separate ladders: a character can climb both, or abandon Solvanza entirely. A Peer can ask Queen Isaura to grant the Ashfold as a march. It is a fast road with a catch: a vassal must break the oath, or buy it out by treaty, to be crowned.
+
+**Opposition.** Red Ulric. The Orsk raiders. The Hound, who wants the land empty. Chancellor Brenn, whose treaty quietly gives it away. Teravel, which will press its old claim the moment someone makes the land worth claiming. And a Sea-Wren rival (the Exiled Heir, if the player did not take that path) who decides the Ashfold should have a king of his own blood.
+
 ## The situation: the Midsummer Auction
 The **Spice Charter**, the Crown's monopoly on spice from the Ember Coast and the richest license in Teravel, expires at **Midsummer, about 90 days after the campaign begins** (track the countdown in your story notes). It will be auctioned on the floor of the Lantern Exchange. Only a Patrician may bid (others can bid through one, as a partner). House Varro has held it for three generations and expects to again. Everyone with money is maneuvering, and whoever wins it becomes the second power in the kingdom.
 
 ### How the season unfolds (if no one changes it)
-Show it through gossip, broadsheets, prices, and the street. The player can change any of it.
+These events happen in the background whether or not the player cares. Show each one once, as a line of gossip, a broadsheet headline, or a change in prices, then let it go unless the player picks it up. The player can change any of it.
 | Day | Event |
 | 3 | Ondrej Malek, a Vaskari exile, is pulled from the Lantern Canal with his throat cut (Drowned in the Lantern Canal). |
 | 7 | First Ledger Day. Nella Orsini mentions that a warehouse and a tavern have just come up cheap. |
 | 12 | Dockworkers strike after House Varro cuts wages. Cargo rots; a smart buyer can pick up desperate holdings. |
 | 20 | Chancellor Brenn announces three titles "for those who serve the Crown's treasury": 30,000 each. |
+| 25 | Red Ulric's brigands burn Tollen's Ford in the Ashfold. Its refugees land at the Salt Quay with stories of an empty country that has no king. |
 | 30 | The first Night of Lanterns at the Pit (and every month's end after). The champion gets a patrician's notice. |
 | 45 | The Velvet Hand moves against independent smugglers and holdings that do not pay; fires on the Salt Quay. |
+| 50 | A Vaskari cutter lands a company of the usurper's soldiers at Brackwater in the Ashfold. They start fortifying the harbor and paying Red Ulric. |
 | 60 | A Vaskari envoy arrives to negotiate a treaty. Rumor: every exile without citizenship will be handed back. |
 | 75 | Word of the lost Varro fleet breaks, or is buried. A run on Banco Sabellin. |
+| 80 | Orsk raiders come over the eastern passes into the Ashfold in force, before the harvest. |
 | 90 | The Midsummer Auction of the Spice Charter. |
 
 ## GM ONLY: the truth
-Reveal none of this early. Clues come from the rivals' clue notes, the missions, ledgers, servants, and careful investigation.
+These are background secrets, not the plot. A player can build a whole campaign without touching them. Reveal nothing unprompted: a clue surfaces only when the player goes looking (asks the right person, reads the ledgers, follows someone, takes a mission about it). Never plant a clue in a scene the player did not steer toward it, never have an NPC volunteer one, and never make solving these mysteries the price of something else the player wants.
 - **House Varro is bankrupt.** Its spice fleet was lost to a storm off the Ember Coast four months ago. Lord Matteo Varro has hidden it by selling insurance on the lost ships, by smuggling (spice bought from the Velvet Hand, landed at a Salt Quay warehouse in Varro livery), and by borrowing 60,000 ducats from the Widow. If House Varro loses the Charter, it falls, and the Widow takes everything. Matteo is also dying (see Doctor Pirc). Whoever marries Livia Varro inherits a great name, a palazzo, and a mountain of debt.
 - **The Chancellor is selling the exiles.** Ottavio Brenn has secretly agreed to a treaty with King Radomir of Vaskar: Radomir will pay off Teravel's war debt in silver, and Brenn will hand over every Vaskari exile who is not a citizen, and a list of those who are. His go-between is the "wine merchant" Pavlo Dorn. Brenn intends to use the silver to buy the Spice Charter for himself through a front.
 - **The Hound.** Pavlo Dorn is really **Count Pavel Drozd**, the usurper's spymaster, nicknamed the Hound. He killed Ondrej Malek, who had recognized him. He means to find the exiles who could rally a restoration (an heir, the old king's intelligencers, veterans) and send them home in chains, or in a box.
 - **Yaro Benesh informs for the Hound.** The friendly innkeeper of the Bear and Lantern sends Dorn the names of every Vaskari who passes through his door, because Drozd holds Yaro's daughter in a prison in Vaskar. He hates himself for it. He did not know Malek would be killed, and he gives the character the mission out of guilt. Discovered, he begs for help freeing his daughter.
 - **Queen Isaura knows Brenn is stealing, and cannot prove it.** She needs someone outside the court, owed nothing by Brenn, to find the treaty letters. Whoever brings her proof of the treaty earns her trust and a title.
 - **The Widow wants the Charter too**, through House Varro: she plans to let Matteo win it, then take it from him for his debts. If Varro's ruin comes out early, she will bid through another patrician puppet.
+- **The Ashfold is part of the price.** A secret clause of Brenn's treaty gives Teravel's old claim on the Ashfold to King Radomir, who wants Highcairn as a bridgehead on Teravel's flank. The Hound pays Red Ulric in Vaskari silver to keep anyone else from settling there until Radomir's soldiers land (day 50). The clause is in the same letters in the Office of Correspondence, and it is the strongest argument for Queen Isaura to recognize an independent Ashfold: a friendly king there is a wall between Teravel and Vaskar.
+- **The Crown of Calder** lies on the last king's bones in the Crownbarrow, sealed when the plague came. The barrow is flooded and half collapsed (hard checks to get through), and the free folk say the dead walk there. They do not; there is no magic in this world. There is bad air, deep water, and Red Ulric's men, who have been trying to loot it for a year. Brother Anselm keeps the last chronicle of Calder. It names no heir; it says the crown goes to "whoever the Moot raises and the barrow gives up".
 - **What each winner does with the Charter:** Varro limps on as the Widow's puppet. Brenn becomes a tyrant behind a young queen, and the exiles go home in chains. The Concord breaks the patricians' monopoly. The Crown (Isaura directly) refills the treasury and frees the queen. The character, if they win it, becomes the second power in the kingdom, and can turn its wealth to anything, even a fleet to retake Vaskar.
-- Endings, all valid: win the Charter; marry into House Varro and save or loot it; take over the Velvet Hand; become the queen's Chancellor or consort; build a trading empire without ever touching politics; raise a fleet and sail home to overthrow the usurper; or simply become rich and safe.
+- **If the player never engages**, the plots resolve offstage: House Varro wins the auction and limps on as the Widow's puppet, and Brenn's treaty stalls in the Great Council past the end of the season. The player hears about it as news. Ignoring the conspiracy is never punished with a forced scene or an unforeseeable disaster. A character who is a Denizen or above is safe from the treaty. An Outlander hears the rumor (day 60) with weeks to spare and plenty of ways out: citizenship, a sponsor, the Ashfold, or lying low.
+- Endings, all valid: win the Charter; marry into House Varro and save or loot it; take over the Velvet Hand; become the queen's Chancellor or consort; build a trading empire without ever touching politics; raise a fleet and sail home to overthrow the usurper; found a kingdom in the Ashfold and be crowned its king, a refuge for every exile and a wall between Teravel and Vaskar; or simply become rich and safe.
 
 ## Narrator rules for this world
 - Make wealth tangible. Name prices, count coins, show deeds, keys, account books, and the faces of people who suddenly call the character "Signor" or "Signora". Every rise in Station must change how the world treats them.
 - Give the player real economic choices with trade-offs: cheap holdings with problems, expensive ones with prestige, legal and illegal paths, loans with teeth. Never make money effortless, and never block a clever plan.
 - Keep the Ledger honest: run Ledger Day every seventh day, keep the "Ledger" and "Station" conditions current, and let neglected holdings suffer. Ledger Day is bookkeeping: settle it in a short paragraph alongside whatever the player is doing. Trouble at a holding arrives as a report or a visitor the player can deal with now or later, not as a scene that takes over the turn.
 - Fights are fast, physical, and dangerous: one \`skill_check\` per exchange, with wounds that matter. Crowds, wagers, and onlookers make every public fight a social event too.
+- The Varro collapse, Brenn's treaty, and the Hound are optional mysteries, not the main road. Do not steer scenes toward them or open a turn with them. NPCs tied to them (Lucrezia Sabellin, Yaro Benesh, Matteo and Livia Varro, Brenn, Queen Isaura, Pavlo Dorn, the Sea-Wren rivals) talk about their own business, not the conspiracy, unless the player raises it. Offer a related mission at most once, as something the player can turn down, and drop it if they do. At most one passing hint every week or two, as background texture, and none at all if the player has shown no interest. When the player is busy with trade, fighting, romance, or the Ashfold, keep the story there.
 - The rivals climb on their own. Every week or two, have one of the Sea-Wren exiles reach a new rung, buy something the player wanted, or ask for help.
 - Never railroad. The auction comes on schedule; the player chooses how to reach it, or whether to care. Each day the character decides what to do: work a holding, shop for property, fight, court a patron, chase a mystery, or rest. The season's events reach them as gossip and changed circumstances, never as a summons.
+- The Ashfold is a road the player can choose, never one they are pushed down. Let it surface through rumor: the Tollen's Ford refugees, Ruslan Ostrov, exiles frightened of the treaty. If the player takes it up, make founding a realm slow, expensive, and contested, with every stage a turning point.
 - Only what the scene needs: look things up with the read tools rather than assuming.
 `,
 
@@ -541,6 +580,50 @@ Reveal none of this early. Clues come from the rivals' clue notes, the missions,
       tags: ['countryside', 'estates', 'coast'],
       parent: 'Solvanza',
     },
+    {
+      name: 'The Ashfold',
+      description:
+        'A wild coast of fjords, heath, and pine-dark highlands on the eastern rim of the Amber Sea, three days\' sail from Solvanza: the old Kingdom of Calder, emptied by plague eighty years ago. Ruined keeps on the headlands, free villages in the valleys, and no king.',
+      purpose:
+        'The unclaimed land between Teravel and Vaskar, and the other road to the top: founding a kingdom (see the world bible, "The other road"). Contested by Red Ulric, the Orsk, the Hound, and both kingdoms\' paper claims.',
+      tags: ['region', 'wilderness', 'unclaimed', 'frontier'],
+    },
+    {
+      name: 'Brackwater',
+      description:
+        'A fishing village of turf-roofed stone houses around the only safe anchorage on the Ashfold coast: drying racks of cod, tarred boats on the shingle, a broken stone mole from Calder\'s days, and a hundred wary faces.',
+      purpose:
+        'The landing point for any expedition, and home of Headwoman Edda Marrow, who speaks first at the Moot. The first settlement to win, and the harbor a realm needs. The usurper\'s soldiers land here around day 50.',
+      tags: ['village', 'harbor', 'settlement'],
+      parent: 'The Ashfold',
+    },
+    {
+      name: 'Highcairn',
+      description:
+        'The ruined royal castle of Calder on a crag above the sea: a broken curtain wall, a roofless great hall with a stone throne, a gatehouse patched with timber, and the smoke of Red Ulric\'s brigands in the courtyard.',
+      purpose:
+        'The natural seat of an Ashfold king, held by Red Ulric and his sixty brigands. Taking and holding it makes a Holdfast Lord, and a coronation happens here. Radomir wants it as his bridgehead.',
+      tags: ['castle', 'ruin', 'stronghold', 'seat'],
+      parent: 'The Ashfold',
+    },
+    {
+      name: "Tollen's Ford",
+      description:
+        'A market village where the coast road crosses the river Tollen: a timber bridge, a mill, a market green with a standing stone, and the Ashfold\'s only inn, the Leaping Salmon.',
+      purpose:
+        'The heart of the Ashfold\'s little trade, and Red Ulric\'s next target: it burns on day 25 unless someone stops it. Saved or rebuilt, it is a settlement whose fealty is worth having.',
+      tags: ['village', 'market', 'settlement'],
+      parent: 'The Ashfold',
+    },
+    {
+      name: 'The Crownbarrow',
+      description:
+        'A great grassed mound on a lonely headland, ringed by standing stones, with a sealed stone door half under the turf. A hermit\'s hut and a goat pen lean against the nearest stone.',
+      purpose:
+        'Tomb of the kings of Calder, where the Crown of Calder lies (one of the three roads to legitimacy). Flooded and half collapsed inside. Brother Anselm keeps its chronicle; Red Ulric\'s looters keep trying the door.',
+      tags: ['tomb', 'ruin', 'dungeon', 'sacred'],
+      parent: 'The Ashfold',
+    },
   ],
 
   npcs: [
@@ -560,7 +643,7 @@ Reveal none of this early. Clues come from the rivals' clue notes, the missions,
       faction: '',
       location: 'The Bear and Lantern',
       notes:
-        "**Public face:** the heart of Little Vaskar. Writes to exiles before they sail, meets their ships, finds them beds and work. **Secret (GM only):** informs for the Hound (Pavlo Dorn), sending him the name and past of every Vaskari through his door, because the Hound holds Yaro's daughter Katya in a prison in Vaskar. He did not know Ondrej Malek would be killed and is sick with guilt. **Gives:** the Drowned in the Lantern Canal mission. **Toward the player:** truly fond of them, and reporting on them. Discovered, he confesses and begs for help freeing Katya.",
+        "**Public face:** the heart of Little Vaskar. Writes to exiles before they sail, meets their ships, finds them beds and work. **Secret (GM only):** informs for the Hound (Pavlo Dorn), sending him the name and past of every Vaskari through his door, because the Hound holds Yaro's daughter Katya in a prison in Vaskar. He did not know Ondrej Malek would be killed and is sick with guilt. **Gives:** the Drowned in the Lantern Canal mission, only if the player asks about Malek or shows interest; otherwise Malek's death is just sad news at the bar. **Toward the player:** truly fond of them, and reporting on them. Discovered, he confesses and begs for help freeing Katya.",
     },
     {
       name: 'Nella Orsini',
@@ -578,7 +661,7 @@ Reveal none of this early. Clues come from the rivals' clue notes, the missions,
       faction: HOUSES,
       location: 'The Lantern Exchange',
       notes:
-        "**Offers:** loans (10% a month against collateral), letters of credit, deposits, and introductions to the Golden Houses for clients she rates. **Want:** to know whether House Varro can repay the 40,000 it owes her before the auction, without starting a run on her own bank by asking. **Gives:** The Varro Question. **Toward the player:** courteous interest; she backs promising newcomers the way others back racehorses. She never says yes or no, only 'perhaps'.",
+        "**Offers:** loans (10% a month against collateral), letters of credit, deposits, and introductions to the Golden Houses for clients she rates. **Want:** to know whether House Varro can repay the 40,000 it owes her before the auction, without starting a run on her own bank by asking. **Gives:** The Varro Question, once, and only to a client who already does business with Banco Sabellin; she takes no for an answer and never asks again. **Toward the player:** courteous interest; she backs promising newcomers the way others back racehorses. She never says yes or no, only 'perhaps'.",
     },
     {
       name: 'Lord Matteo Varro',
@@ -605,7 +688,7 @@ Reveal none of this early. Clues come from the rivals' clue notes, the missions,
       faction: CROWN,
       location: 'The Mirror Court',
       notes:
-        "**Public face:** the generous, practical minister who keeps the kingdom solvent. Sells offices and titles (30,000 for a barony) to fund the Orsk war. **Secret (GM only):** has agreed a treaty with the usurper King Radomir: Vaskari silver for Teravel's war debt, in exchange for every non-citizen exile and the names of the rest. The letters pass through Pavlo Dorn; copies are in the Office of Correspondence. He plans to buy the Spice Charter through a front. **Toward the player:** delighted to sell them anything; once they matter, he wants to own them.",
+        "**Public face:** the generous, practical minister who keeps the kingdom solvent. Sells offices and titles (30,000 for a barony) to fund the Orsk war. **Secret (GM only):** has agreed a treaty with the usurper King Radomir: Vaskari silver for Teravel's war debt, in exchange for every non-citizen exile and the names of the rest. The letters pass through Pavlo Dorn; copies are in the Office of Correspondence. He plans to buy the Spice Charter through a front. **Toward the player:** delighted to sell them anything; once they matter, he offers them a deal, and does not chase anyone who turns it down.",
     },
     {
       name: 'Queen Isaura II',
@@ -614,7 +697,7 @@ Reveal none of this early. Clues come from the rivals' clue notes, the missions,
       faction: CROWN,
       location: 'The Mirror Court',
       notes:
-        "**Want:** to rule in fact, not just in name, which means breaking Brenn. She knows he is stealing and cannot prove it; she does not yet know about the treaty. **Offers:** to someone who owes Brenn nothing and brings her proof: citizenship, a title, a royal decree into the Golden Book, or a place at her side. **Toward the player:** unreachable at first (an audience needs Crown standing 40+ or a remarkable deed). In private, startlingly blunt.",
+        "**Want:** to rule in fact, not just in name, which means breaking Brenn. She knows he is stealing and cannot prove it; she does not yet know about the treaty. **Offers:** to someone who owes Brenn nothing and brings her proof: citizenship, a title, a royal decree into the Golden Book, or a place at her side. **Toward the player:** unreachable at first (an audience needs Crown standing 40+ or a remarkable deed). In private, startlingly blunt. She never seeks the character out about Brenn; they must come to her.",
     },
     {
       name: 'Benedetta Fusari',
@@ -659,7 +742,7 @@ Reveal none of this early. Clues come from the rivals' clue notes, the missions,
       faction: '',
       location: 'Little Vaskar',
       notes:
-        "**Runs:** the Free Company of the Bear, eighty Vaskari veterans of the old king's army, out of work and drinking their pay. Hire: 2,000 a month, or a share of a venture. **Want:** a cause, and a way home to fight the usurper. **Knows:** veterans who would follow a leader with a fleet. **Toward the player:** curt and testing; respects courage and money, in that order. Can lead the character to the Orsk Marches (citizenship by service) or, late in the game, to a restoration.",
+        "**Runs:** the Free Company of the Bear, eighty Vaskari veterans of the old king's army, out of work and drinking their pay. Hire: 2,000 a month, or a share of a venture. **Want:** a cause, and a way home to fight the usurper. **Knows:** veterans who would follow a leader with a fleet. **Toward the player:** curt and testing; respects courage and money, in that order. Can lead the character to the Orsk Marches (citizenship by service), to a restoration late in the game, or to the Ashfold: he would follow a founder who gives the exiles a country no treaty can hand back (gives A Crown in the Ashfold). His company counts as a standing force there.",
     },
     {
       name: 'Pavlo Dorn',
@@ -668,7 +751,34 @@ Reveal none of this early. Clues come from the rivals' clue notes, the missions,
       faction: '',
       location: 'The Salt Quay',
       notes:
-        "**Secret (GM only):** Count Pavel Drozd, King Radomir's spymaster, 'the Hound'. Killed Ondrej Malek, who recognized him. Carries Brenn's treaty letters to the usurper's cutter at the Saltmarsh Reach. Hunts exiles who could rally a restoration: an heir, intelligencers, veterans. Gets names from Yaro Benesh and Inspector Grisetti. **Want:** the character's name on his list, if their origin makes them dangerous. **Toward the player:** friendly, helpful, a generous buyer of anything Vaskari; offers to fund their first venture so he can watch them.",
+        "**Secret (GM only):** Count Pavel Drozd, King Radomir's spymaster, 'the Hound'. Killed Ondrej Malek, who recognized him. Carries Brenn's treaty letters to the usurper's cutter at the Saltmarsh Reach. Hunts exiles who could rally a restoration: an heir, intelligencers, veterans. Gets names from Yaro Benesh and Inspector Grisetti. **Want:** the character's name on his list, if their origin makes them dangerous. **Toward the player:** friendly, helpful, a generous buyer of anything Vaskari; if the character goes into business, he may offer once to fund a venture so he can watch them, and takes a refusal pleasantly.",
+    },
+    {
+      name: 'Headwoman Edda Marrow',
+      shortDescription:
+        'Headwoman of Brackwater in the Ashfold. Sixties, weathered as driftwood, a sealskin coat, a gutting knife on her belt, and a voice that carries over the surf.',
+      faction: ASHFOLD,
+      location: 'Brackwater',
+      notes:
+        "**Leads:** Brackwater, the Ashfold's only safe anchorage, and speaks first at the Moot of the free folk. **Want:** her people left alone by Ulric, the Orsk, and anyone with a banner. **Will swear:** to someone who keeps Ulric's men off her boats and takes no more than a tenth. **Knows:** every steading and headman, the paths over the hills, and that Ulric has started paying in foreign silver. **Toward the player:** flinty suspicion; she has seen founders before, and buried them. Won over, she is the realm's best counselor and the one voice that can call the Moot.",
+    },
+    {
+      name: 'Red Ulric',
+      shortDescription:
+        'Brigand lord of Highcairn. Forties, huge and red-bearded, a dead knight\'s mail under a bearskin, a two-handed axe, and a laugh like a rockfall.',
+      faction: '',
+      location: 'Highcairn',
+      notes:
+        "**Holds:** Highcairn with about sixty brigands, deserters, and runaways, and takes 'tolls' from every village in the Ashfold. **Secret (GM only):** the Hound pays him in Vaskari silver to keep the Ashfold unsettled until Radomir's soldiers land; he means to sell Highcairn to them and has not decided whether to keep his word. **Want:** to be called a lord and never pay for anything. **Toward the player:** a test of strength; he respects a duel and a bigger purse. Can be killed, driven out, bought (5,000 and a title), or, once shown that Radomir will hang him when he stops being useful, sworn as the character's man.",
+    },
+    {
+      name: 'Brother Anselm',
+      shortDescription:
+        'Hermit-monk of the Crownbarrow. Very old and nearly blind, a patched brown habit, ink-stained fingers, and a goat that follows him everywhere.',
+      faction: '',
+      location: 'The Crownbarrow',
+      notes:
+        "**Keeps:** the last chronicle of the kings of Calder, and the way into the Crownbarrow. **Want:** a king who deserves the crown, and someone to read the chronicle to him now that his eyes have gone. **Knows:** the barrow's flooded passages, the old laws of the Moot, and that the chronicle names no heir: the crown goes to 'whoever the Moot raises and the barrow gives up'. **Toward the player:** gentle and searching; he asks what they would do with a crown, and listens to the answer. He will not guide anyone who means to sell it.",
     },
   ],
 
@@ -677,7 +787,7 @@ Reveal none of this early. Clues come from the rivals' clue notes, the missions,
       title: 'Station',
       keywords: ['station', 'rank', 'outlander', 'denizen', 'burgher', 'magnate', 'patrician', 'peer', 'citizenship', 'writ', 'tally'],
       alwaysInclude: true,
-      body: "In Solvanza, rank is law. The ladder: Outlander (Foreigner's Tally; cannot own property, carry a sword in the Aureate, or challenge a citizen), Denizen (Writ of Residence: a sponsor and 200 ducats; may lease and carry a sword), Burgher (citizenship: 1,500, two sponsors, property worth 2,000+, or service in the Orsk Marches; may own outright, join a guild, bid at auctions), Magnate (a guild council seat and 15,000 in holdings), Patrician (the Golden Book: a palazzo, 25,000 to the Crown, and a marriage, three Houses' votes, or a decree; may bid on Royal Charters), Peer (a Crown title with land), and the Hand of the Throne (Chancellor, consort, or Master of the Spice Charter). The character's rank is the 'Station' condition.",
+      body: "In Solvanza, rank is law. The ladder: Outlander (Foreigner's Tally; cannot own property, carry a sword in the Aureate, or challenge a citizen), Denizen (Writ of Residence: a sponsor and 200 ducats; may lease and carry a sword), Burgher (citizenship: 1,500, two sponsors, property worth 2,000+, or service in the Orsk Marches; may own outright, join a guild, bid at auctions), Magnate (a guild council seat and 15,000 in holdings), Patrician (the Golden Book: a palazzo, 25,000 to the Crown, and a marriage, three Houses' votes, or a decree; may bid on Royal Charters), Peer (a Crown title with land), and the Hand of the Throne (Chancellor, consort, or Master of the Spice Charter). The character's rank is the 'Station' condition. Outside the ladder, a character can found a kingdom in the unclaimed Ashfold (see 'The Ashfold').",
     },
     {
       title: 'Holdings and Ledger Day',
@@ -714,6 +824,11 @@ Reveal none of this early. Clues come from the rivals' clue notes, the missions,
       title: 'The Velvet Hand',
       keywords: ['velvet hand', 'hand', 'widow', 'calò', 'drowned market', 'protection', 'smuggling'],
       body: "Solvanza's underworld: gaming houses, smuggling, fencing, the Pit, loansharking, and protection, run from the Drowned Market under the oldest bridge. Its head is the Widow, Serafina Calò, publicly a respectable moneylender. The Hand takes a fifth of every illegal deal in the city and lends without collateral at 5% a week. Its rules: pay your cut, keep your word, never talk to the Guard.",
+    },
+    {
+      title: 'The Ashfold',
+      keywords: ['ashfold', 'unclaimed', 'calder', 'highcairn', 'brackwater', 'crownbarrow', 'kingdom', 'king', 'queen', 'crown', 'realm', 'dominion', 'found', 'settle', 'settlers', 'moot', 'ulric', 'coronation'],
+      body: "The unclaimed land between Teravel and Vaskar, three days' sail north-east of Solvanza: the old Kingdom of Calder, emptied by the Grey Plague eighty years ago. Both kingdoms claim it on paper; neither holds it. A character can found a kingdom there, tracked in a 'Dominion' condition, with settlements as inventory items tagged 'holding' and 'domain'. The stages: Claimant (land with 20+ armed followers and 1,000 in supplies, plant a banner), Holdfast Lord (take and hold Highcairn or Dunlow Tower), Lord of the Ashfold (three settlements swear fealty), Sovereign-elect (five settlements or 1,500 subjects, 100+ soldiers, a harbor, a law, Red Ulric dealt with), and King or Queen (two of three: the Crown of Calder from the Crownbarrow, a foreign treaty of recognition, or the Moot's acclamation at Free Folk reputation 50+; then a coronation at Highcairn).",
     },
   ],
 
@@ -773,6 +888,27 @@ Reveal none of this early. Clues come from the rivals' clue notes, the missions,
         'Be on the floor of the Lantern Exchange on Midsummer Day',
       ],
       rewards: { xp: 1000 },
+    },
+    {
+      title: 'A Crown in the Ashfold',
+      giver: 'Captain Ruslan Ostrov',
+      description:
+        "Three days' sail north-east lies the Ashfold: an old kingdom emptied by plague, claimed by Teravel and Vaskar on paper and held by no one but brigands and wolves. Ostrov has been looking at it for months. There is land enough for every exile in Little Vaskar, somewhere no treaty could hand them back. All it needs is someone fool enough to be king.",
+      objectives: [
+        'Land in the Ashfold with a following and plant your banner',
+        'Take and hold a stronghold',
+        'Win the fealty of three settlements',
+        'Deal with Red Ulric',
+        "Win legitimacy: the Crown of Calder, a foreign treaty, or the Moot's acclamation",
+        'Be crowned at Highcairn',
+      ],
+      rewards: {
+        xp: 1500,
+        relationships: [
+          { npc: 'Captain Ruslan Ostrov', affinity: 20, trust: 25 },
+          { npc: 'Headwoman Edda Marrow', affinity: 15, trust: 20 },
+        ],
+      },
     },
   ],
 

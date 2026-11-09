@@ -3,11 +3,11 @@ import { eq } from 'drizzle-orm';
 import type { CampaignState } from '@narrator/shared';
 import { createTestApp } from './helpers';
 import { parseSse, scriptedModel, toolResultsIn, type Step } from './fake-model';
-import { inventoryItems, npcs, playerCharacter, skills } from '../src/db/schema';
+import { campaigns, inventoryItems, npcs, playerCharacter, skills } from '../src/db/schema';
 import { createFromTemplate } from '../src/db/seed/templates';
 import { solvanza } from '../src/db/seed/worlds/solvanza';
 
-// Solvanza: an exile's climb from Outlander, a permanent origin choice, Sea-Wren rivals, and four factions.
+// Solvanza: an exile's climb from Outlander, a permanent origin choice, Sea-Wren rivals, five factions, and a road to a crown in the Ashfold.
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
 beforeAll(async () => {
@@ -40,7 +40,7 @@ const rivals = async (id: string) =>
     .sort();
 
 describe('Solvanza', () => {
-  it('starts on the Customs Quay as an Outlander with a ledger, a pending origin, and four factions at 0', async () => {
+  it('starts on the Customs Quay as an Outlander with a ledger, a pending origin, and five factions at 0', async () => {
     const id = await newCampaign();
     const [pc] = await t.db.select().from(playerCharacter).where(eq(playerCharacter.campaignId, id));
     const state = (await t.api('GET', `/api/campaigns/${id}/state`)).json() as CampaignState;
@@ -51,7 +51,7 @@ describe('Solvanza', () => {
     expect(pc!.statusEffects[0]!.description).toMatch(/^Outlander/);
     expect(state.campaign).toMatchObject({
       currencyName: 'ducats',
-      reputation: { 'The Crown': 0, 'The Golden Houses': 0, 'The Concord of Guilds': 0, 'The Velvet Hand': 0 },
+      reputation: { 'The Crown': 0, 'The Golden Houses': 0, 'The Concord of Guilds': 0, 'The Velvet Hand': 0, 'The Free Folk of the Ashfold': 0 },
     });
 
     const [choice] = state.campaign.choices;
@@ -80,5 +80,20 @@ describe('Solvanza', () => {
     const items = await t.db.select({ name: inventoryItems.name }).from(inventoryItems).where(eq(inventoryItems.campaignId, id));
     expect(items.map((i) => i.name)).toContain(item);
     expect(await rivals(id)).toEqual(ORIGINS.filter((o) => o.id !== option).map((o) => o.label).sort());
+  });
+
+  it('offers a second road to the top: founding a kingdom in the unclaimed Ashfold', async () => {
+    const id = await newCampaign();
+    const [campaign] = await t.db.select().from(campaigns).where(eq(campaigns.id, id));
+    expect(campaign!.worldBible).toContain('## The other road: a crown in the Ashfold');
+    expect(campaign!.worldBible).toContain('**King (or Queen) of the Ashfold**');
+
+    const npcRows = (await t.api('GET', `/api/campaigns/${id}/npcs`)).json() as { name: string; faction: string }[];
+    expect(npcRows.map((n) => n.name)).toEqual(expect.arrayContaining(['Headwoman Edda Marrow', 'Red Ulric', 'Brother Anselm']));
+    const places = solvanza.locations.filter((l) => l.parent === 'The Ashfold').map((l) => l.name);
+    expect(places).toEqual(['Brackwater', 'Highcairn', "Tollen's Ford", 'The Crownbarrow']);
+    const quest = solvanza.missions.find((m) => m.title === 'A Crown in the Ashfold')!;
+    expect(quest).toMatchObject({ giver: 'Captain Ruslan Ostrov' });
+    expect(quest.objectives.at(-1)).toBe('Be crowned at Highcairn');
   });
 });
