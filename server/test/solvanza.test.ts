@@ -87,6 +87,9 @@ describe('Solvanza', () => {
     const [campaign] = await t.db.select().from(campaigns).where(eq(campaigns.id, id));
     expect(campaign!.worldBible).toContain('## The other road: a crown in the Ashfold');
     expect(campaign!.worldBible).toContain('**King (or Queen) of the Ashfold**');
+    // The kingdom path opens Solvanza's property ladder without citizenship.
+    expect(campaign!.worldBible).toContain('| Palazzo on the Aureate | 30,000 | -60 (upkeep) | Burgher, or Lord of the Ashfold |');
+    expect(campaign!.worldBible).toContain('**Writ of Foreign Lordship**');
 
     const npcRows = (await t.api('GET', `/api/campaigns/${id}/npcs`)).json() as { name: string; faction: string }[];
     expect(npcRows.map((n) => n.name)).toEqual(expect.arrayContaining(['Headwoman Edda Marrow', 'Red Ulric', 'Brother Anselm']));
