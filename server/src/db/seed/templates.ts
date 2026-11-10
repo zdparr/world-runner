@@ -5,6 +5,7 @@ import { insertWorld, type WorldTemplate } from './world';
 import { aldermere } from './worlds/aldermere';
 import { azureMist } from './worlds/azure-mist';
 import { breachDay } from './worlds/breach-day';
+import { emptyCrown } from './worlds/empty-crown';
 import { brinecross } from './worlds/brinecross';
 import { fiveBanners } from './worlds/five-banners';
 import { goddessBargain } from './worlds/goddess-bargain';
@@ -15,7 +16,7 @@ import { threshold } from './worlds/threshold';
 import { varenhold } from './worlds/varenhold';
 
 /** Ready-made worlds a new campaign can start from. The first is the default demo. */
-export const TEMPLATES: WorldTemplate[] = [varenhold, brinecross, harrowmere, fiveBanners, threshold, goddessBargain, aldermere, spire, breachDay, solvanza, azureMist];
+export const TEMPLATES: WorldTemplate[] = [varenhold, brinecross, harrowmere, fiveBanners, threshold, goddessBargain, aldermere, spire, breachDay, solvanza, azureMist, emptyCrown];
 
 export function findTemplate(id: string): WorldTemplate | undefined {
   return TEMPLATES.find((t) => t.id === id);
