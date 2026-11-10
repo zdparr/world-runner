@@ -3,6 +3,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import {
   AttributeName,
+  Compass,
   DIFFICULTIES,
   EffectModifier,
   ItemEnhancement,
@@ -34,6 +35,7 @@ import {
   factionStanding,
   gearBonuses,
   levelBonus,
+  offset,
   reputationLabel,
   resolveCheck,
   skillTier,
@@ -46,6 +48,7 @@ import {
   type StatusEffect,
 } from '@narrator/shared';
 import { campaigns, inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills, stateEvents } from '../db/schema';
+import { effectivePosition, nearbyPlaces, unplacedPlaces } from '../game/map';
 import { normalizeObjectives } from '../game/missions';
 import {
   addItem,
@@ -106,6 +109,43 @@ const findLocation = (ctx: EngineContext, name: string) =>
     label: 'location',
   });
 
+const allLocations = (ctx: EngineContext) => ctx.db.select().from(locations).where(eq(locations.campaignId, ctx.campaign.id));
+
+/** Where a place sits on the world map, said the way a traveller would: which way, and how far on foot. */
+const PositionInput = z
+  .object({
+    from: Name.describe('A place already on the map to measure from. If nothing is on the map yet, this place becomes its centre.'),
+    direction: Compass.describe('Compass direction from that place'),
+    hours: z.number().min(0).max(2000).describe('Travel time on foot, in hours: 0.5 a short walk, 8 a day, 16 two days'),
+  })
+  .describe(
+    'Where this place lies on the world map, relative to a place already on it. Keep it consistent with the world bible and what the story has said about distances. Skip it for places inside another (a room, a tavern in a town): they sit where their parent does.',
+  );
+
+/** Turn "8 hours west of Thornwick" into map coordinates. If nothing is on the map yet, `from` becomes its origin. */
+async function resolvePosition(ctx: EngineContext, input: z.infer<typeof PositionInput>): Promise<{ mapX: number; mapY: number }> {
+  const from = await findLocation(ctx, input.from);
+  const world = await allLocations(ctx);
+  // A room or tavern with no position of its own sits where its town does.
+  let origin = effectivePosition(world, world.find((l) => l.id === from.id) ?? from);
+  if (!origin) {
+    const placed = world.filter((l) => l.mapX !== null && l.mapY !== null);
+    if (placed.length > 0) {
+      throw new ToolError(
+        `${from.name} is not on the map yet. Measure from a place that is (${placed
+          .slice(0, 8)
+          .map((l) => l.name)
+          .join(', ')}), or place ${from.name} first with update_location.`,
+      );
+    }
+    // The first place put on the map anchors it.
+    origin = { x: 0, y: 0 };
+    await ctx.mutator.update('locations', { id: from.id }, { mapX: 0, mapY: 0 });
+  }
+  const p = offset(origin, input.direction, input.hours);
+  return { mapX: p.x, mapY: p.y };
+}
+
 const findMission = (ctx: EngineContext, title: string) =>
   findByName<MissionRow>(ctx.db, {
     table: missions,
@@ -153,6 +193,9 @@ async function locationView(ctx: EngineContext, loc: LocationRow) {
     .select({ name: npcs.name, shortDescription: npcs.shortDescription, alive: npcs.alive })
     .from(npcs)
     .where(eq(npcs.locationId, loc.id));
+  const world = await allLocations(ctx);
+  const nearby = nearbyPlaces(world, world.find((l) => l.id === loc.id) ?? loc);
+  const unplaced = !loc.parentLocationId && unplacedPlaces(world).some((l) => l.id === loc.id);
   return {
     name: loc.name,
     description: loc.description,
@@ -162,6 +205,9 @@ async function locationView(ctx: EngineContext, loc: LocationRow) {
     ...(parent ? { insideOf: parent.name } : {}),
     ...(children.length > 0 ? { contains: children.map((c) => c.name) } : {}),
     npcsHere: here.map((n) => ({ name: n.name, shortDescription: n.shortDescription, ...(n.alive ? {} : { dead: true }) })),
+    // How far, and which way, on foot. Keep travel times and directions in the story consistent with it.
+    ...(nearby.length > 0 ? { nearby } : {}),
+    ...(unplaced ? { notOnMap: 'Give it a position with update_location.' } : {}),
   };
 }
 
@@ -1063,6 +1109,7 @@ const writeTools: ToolDef[] = [
         .max(2000)
         .describe('GM-only: what this place is for in the story (a mission step, a clue or secret it holds, an NPC base, a threat, a refuge) and what can happen here'),
       parent_location_name: Name.optional().describe('The larger place this is inside of'),
+      position: PositionInput.optional(),
       tags: Tags.default([]),
     }),
     run: async (ctx, input) => {
@@ -1077,15 +1124,17 @@ const writeTools: ToolDef[] = [
         throw new ToolError(`A location named "${existing.name}" already exists. Use update_location to change it.`);
       }
       const parent = input.parent_location_name ? await findLocation(ctx, input.parent_location_name) : null;
+      const position = input.position ? await resolvePosition(ctx, input.position) : { mapX: null, mapY: null };
       await ctx.mutator.insert('locations', {
         name: input.name,
         description: input.description,
         purpose: input.purpose,
         parentLocationId: parent?.id ?? null,
+        ...position,
         tags: input.tags,
       });
       await ctx.record({ eventType: 'location_created', humanReadable: `Discovered ${input.name}`, details: { location: input.name } });
-      return { created: input.name, insideOf: parent?.name ?? null };
+      return { created: input.name, insideOf: parent?.name ?? null, ...(position.mapX !== null ? { onMap: true } : {}) };
     },
   }),
 
@@ -1093,12 +1142,13 @@ const writeTools: ToolDef[] = [
     name: 'update_location',
     kind: 'write',
     description:
-      'Change a location: give it a purpose if it lacks one, revise its purpose as the story moves (a hideout is discovered, a safe place becomes dangerous), update its description after something changes it (a fire, a siege), or change its tags.',
+      'Change a location: give it a purpose if it lacks one, revise its purpose as the story moves (a hideout is discovered, a safe place becomes dangerous), update its description after something changes it (a fire, a siege), change its tags, or put it on the world map (position).',
     input: z.object({
       name: Name,
       description: z.string().trim().min(1).max(3000).optional(),
       purpose: z.string().trim().min(1).max(2000).optional().describe('GM-only: replaces the current purpose'),
       tags: Tags.optional(),
+      position: PositionInput.optional(),
     }),
     run: async (ctx, input) => {
       const loc = await findLocation(ctx, input.name);
@@ -1106,10 +1156,16 @@ const writeTools: ToolDef[] = [
       if (input.description) patch.description = input.description;
       if (input.purpose) patch.purpose = input.purpose;
       if (input.tags) patch.tags = input.tags;
+      if (input.position) {
+        if (input.position.from.trim().toLowerCase() === loc.name.toLowerCase() && (loc.mapX === null || loc.mapY === null)) {
+          throw new ToolError(`Measure ${loc.name}'s position from another place.`);
+        }
+        Object.assign(patch, await resolvePosition(ctx, input.position));
+      }
       if (Object.keys(patch).length === 0) throw new ToolError('Nothing to update.');
       await ctx.mutator.update('locations', { id: loc.id }, patch);
       // Purpose changes are GM-only, so they stay out of the player's change log.
-      const visible = input.description !== undefined || input.tags !== undefined;
+      const visible = input.description !== undefined || input.tags !== undefined || input.position !== undefined;
       await ctx.record({
         eventType: visible ? 'location_updated' : 'location_notes',
         humanReadable: visible ? `${loc.name} changed` : 'The narrator made private notes',

@@ -25,9 +25,10 @@ export interface WorldTemplate extends CampaignTemplate {
   choices?: CampaignChoiceInput[];
   /**
    * At least MIN_WORLD_LOCATIONS, each with a purpose: why it exists in the story (GM-only).
-   * `parent` names the larger place this one sits inside.
+   * `parent` names the larger place this one sits inside. `map` places it on the world map, in hours
+   * of travel on foot from the world's origin (x east, y north); unplaced places are drawn where they fit.
    */
-  locations: { name: string; description: string; purpose: string; tags: string[]; parent?: string }[];
+  locations: { name: string; description: string; purpose: string; tags: string[]; parent?: string; map?: { x: number; y: number } }[];
   npcs: { name: string; shortDescription: string; faction: string; location: string; notes: string }[];
   lore: { title: string; keywords: string[]; body: string; alwaysInclude?: boolean }[];
   missions: {
@@ -95,7 +96,7 @@ export async function insertWorld(
   const locId = lookup(
     await tx
       .insert(locations)
-      .values(world.locations.map(({ parent: _parent, ...l }) => ({ campaignId, ...l })))
+      .values(world.locations.map(({ parent: _parent, map, ...l }) => ({ campaignId, ...l, mapX: map?.x ?? null, mapY: map?.y ?? null })))
       .returning({ id: locations.id, name: locations.name }),
     'location',
   );

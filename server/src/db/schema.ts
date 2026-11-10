@@ -5,6 +5,7 @@ import {
   boolean,
   check,
   customType,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -112,6 +113,12 @@ export const locations = pgTable(
     /** How the place stands now, if the story has changed it (burned, sealed, abandoned, under new owners). */
     currentState: text().notNull().default(''),
     parentLocationId: uuid().references((): AnyPgColumn => locations.id, { onDelete: 'set null' }),
+    /**
+     * Where the place sits on the world map, in hours of travel on foot from the map's origin: x east,
+     * y north. Null = not placed (drawn near its parent, or wherever it fits).
+     */
+    mapX: doublePrecision(),
+    mapY: doublePrecision(),
     tags: tags(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

@@ -125,6 +125,7 @@ function mapOf(
     description: l.description,
     tags: l.tags,
     parentLocationId: l.parentLocationId && known.has(l.parentLocationId) ? l.parentLocationId : null,
+    position: l.mapX !== null && l.mapY !== null ? { x: l.mapX, y: l.mapY } : null,
     visited: visited.has(l.id),
     knownNpcs: relRows.filter((r) => r.npcAlive && r.npcLocationId === l.id).map((r) => r.npcName),
   }));

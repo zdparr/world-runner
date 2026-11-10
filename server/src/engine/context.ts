@@ -6,6 +6,7 @@ import { ATTRIBUTES, MIN_WORLD_LOCATIONS, describeEffect, factionList, factionSt
 import type { Db } from '../db/client';
 import { inventoryItems, locations, loreEntries, messages, missions, npcs, relationships, skills, stateEvents } from '../db/schema';
 import { repoRoot } from '../paths';
+import { nearbyPlaces, unplacedPlaces } from '../game/map';
 import { describeGear, describeRoutine, type CampaignRow, type CharacterRow } from './game';
 import { MANUAL_EDIT_EVENT } from './manual';
 
@@ -227,7 +228,7 @@ export async function buildTurnContext(
 
   // Every place in the world, by name, so the narrator can use (and route the story through) them.
   const worldLocations = await db
-    .select({ id: locations.id, name: locations.name, purpose: locations.purpose })
+    .select({ id: locations.id, name: locations.name, purpose: locations.purpose, parentLocationId: locations.parentLocationId, mapX: locations.mapX, mapY: locations.mapY })
     .from(locations)
     .where(eq(locations.campaignId, cid))
     .orderBy(asc(locations.createdAt), asc(locations.name));
@@ -243,11 +244,22 @@ export async function buildTurnContext(
         ? `Places with no purpose yet: ${missing.join('; ')}. Give each one a purpose with update_location, starting with any the story touches this turn.`
         : '';
     })(),
+    (() => {
+      const unplaced = unplacedPlaces(worldLocations).map((l) => l.name);
+      return unplaced.length > 0
+        ? `Places not on the map yet: ${unplaced.slice(0, 8).join('; ')}${unplaced.length > 8 ? `; and ${unplaced.length - 8} more` : ''}. Give each a position with update_location (direction and hours on foot from a place on the map), consistent with the world bible, starting with any the story touches this turn.`
+        : '';
+    })(),
   ]
     .filter(Boolean)
     .join('\n');
 
   // Graded gear changes rolls, so the narrator always knows what's equipped and what it's good for.
+  // Which way, and how far, the nearest places lie, so travel in the story matches the map.
+  const here = location ? worldLocations.find((l) => l.id === location.id) : undefined;
+  const nearby = here ? nearbyPlaces(worldLocations, here) : [];
+  const nearbyLine = nearby.length > 0 ? `\nNearby (on foot; keep travel consistent with this): ${nearby.map((n) => `${n.name}, ${n.route}`).join('; ')}` : '';
+
   const gearLine = (
     await db
       .select()
@@ -288,7 +300,7 @@ export async function buildTurnContext(
       ? [`Nightly routines (trained automatically every night and during time skips; never grant their XP by hand): ${pc.routines.map(describeRoutine).join('; ')}`]
       : []),
     location
-      ? `Location: ${location.name}\n${location.description}\nPurpose (GM-only, don't reveal it directly): ${location.purpose.trim() || 'none yet; give it one with update_location'}`
+      ? `Location: ${location.name}\n${location.description}\nPurpose (GM-only, don't reveal it directly): ${location.purpose.trim() || 'none yet; give it one with update_location'}${nearbyLine}`
       : 'Location: unknown (the character has not been placed anywhere yet)',
     placesLine,
     missionLine,

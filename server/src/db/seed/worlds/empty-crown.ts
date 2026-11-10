@@ -337,6 +337,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       purpose:
         "Where the story starts, and the political crossroads of the campaign. Every faction's envoy is here, so any invention used openly in Thornwick is seen by all five crowns within a day. The Treaty Stone is where a new kingdom's recognition would be sworn. Thornwick itself could become the player's seat if the moot chooses them, and Red Oswin's tithe demand (The Ashen Tithe) threatens it first.",
       tags: ['reach', 'town', 'market', 'crossroads', 'politics', 'free'],
+      map: { x: 0, y: 0 },
     },
     {
       name: 'The Crooked Ox',
@@ -363,6 +364,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       purpose:
         "The symbol of the old kingdom and the strongest fortress in the Reach. Taking it, by siege, treachery, bargain, or a new engine of war, would give the player a seat and a claim. Red Oswin is secretly paid by Lady Corisande for Kestrany, who wants the Reach kept weak until a Kestran puppet is ready to rule it.",
       tags: ['reach', 'castle', 'fortress', 'bandits', 'ruins', 'calder'],
+      map: { x: 0, y: 16 },
     },
     {
       name: 'The Iron Hills',
@@ -371,6 +373,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       purpose:
         "The Reach's metal and chemistry: iron ore, coal, and brimstone (sulfur), all of it raw material for future inventions. Whoever controls the hills controls the Reach's iron. Nessa Coalbrook speaks for the miners. A rival forgewright may already be working here.",
       tags: ['reach', 'hills', 'mines', 'iron', 'coal', 'sulfur', 'resources'],
+      map: { x: 4, y: 28 },
     },
     {
       name: 'Greywater Fens',
@@ -379,6 +382,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       purpose:
         'Bog iron and peat (fuel and ore), a hiding place for outlaws and heretics, and the way to the Owlcrag Caves. Old Ysolt the fen-witch (no witch, only old and clever) knows the paths. A preacher may be gathering followers here.',
       tags: ['reach', 'marsh', 'fens', 'bog iron', 'peat', 'resources', 'dangerous'],
+      map: { x: 14, y: -4 },
     },
     {
       name: 'Owlcrag Caves',
@@ -388,6 +392,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
         'The Reach\'s one rich source of saltpeter, needed for gunpowder (with Iron Hills sulfur and charcoal), but only if the player works that out. Nobody in the world knows what cave-salt is good for.',
       tags: ['reach', 'caves', 'saltpeter', 'resources', 'bats'],
       parent: 'Greywater Fens',
+      map: { x: 18, y: 0 },
     },
     {
       name: "Gull's Rest",
@@ -396,6 +401,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       purpose:
         "The Reach's door to the sea: ships, trade, fish, salt, and sand fit for glass. Whoever holds the bay holds the coast, which is why Ulvhal raids it and the League buys it. Mara Feld gives Wreckers of Gull's Rest here. Any naval invention is built and tested here.",
       tags: ['reach', 'coast', 'harbor', 'village', 'fishing', 'ships', 'sand', 'salt'],
+      map: { x: -24, y: 6 },
     },
     {
       name: 'The Wending Wood',
@@ -404,6 +410,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       purpose:
         "Timber for ships, machines, and walls; yew for bows; pine for pitch and tar. Also an outlaw refuge and a place for ambushes. A mercenary captain may be taking its villages.",
       tags: ['reach', 'forest', 'timber', 'outlaws', 'resources'],
+      map: { x: 0, y: -10 },
     },
     {
       name: "Hob's Ford",
@@ -412,6 +419,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       purpose:
         "The heart of the free villages and a likely first seat for a realm: people who want protection and fairness. The river is perfect for a mill, if anyone invents one. Red Oswin's revenge is coming.",
       tags: ['reach', 'village', 'farming', 'river', 'free'],
+      map: { x: -8, y: 0 },
     },
     {
       name: 'Aubrel',
@@ -420,6 +428,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       purpose:
         'The seat of the most powerful crown, where any Calder claimant would be courted and leashed. Kestrany\'s recognition or enmity decides much. A good market for anything that helps farms or armies.',
       tags: ['kestrany', 'capital', 'city', 'court', 'foreign'],
+      map: { x: 64, y: 4 },
     },
     {
       name: 'Skarnhavn',
@@ -428,6 +437,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       purpose:
         'Home of the best shipwrights and seafighters in the world. Queen Asvor will deal with anyone strong. Sharing (or losing) a naval invention to Ulvhal makes them masters of every coast.',
       tags: ['ulvhal', 'capital', 'port', 'shipyards', 'foreign'],
+      map: { x: -14, y: 76 },
     },
     {
       name: 'Merrowgate',
@@ -436,6 +446,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       purpose:
         "Money, trade, and the market for inventions: the League will pay a fortune for exclusive rights and steal what it can't buy. Copper and tin from overseas (for bronze) are sold here. The Lantern Bank honors letters of credit.",
       tags: ['merrowgate', 'city', 'port', 'trade', 'bank', 'foreign'],
+      map: { x: -44, y: -48 },
     },
     {
       name: 'Lumen',
@@ -444,6 +455,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       purpose:
         "Where learning lives, guarded. Ysmere's scholars could spread any shared invention across the continent, or the Lamplighters could declare it unhallowed. The only glassworks on the continent are in its temples, making lamp-glass and beads.",
       tags: ['ysmere', 'holy city', 'temple', 'scholars', 'foreign'],
+      map: { x: 8, y: -60 },
     },
     {
       name: 'Khar Toru',
@@ -452,6 +464,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       purpose:
         'The strongest cavalry in the world, and the most dangerous place to share a military invention. The Tarkhan trade horses, hides, horn, and sinew. They respect gifts, courage, and hospitality.',
       tags: ['tarkhan', 'camp', 'steppe', 'horses', 'foreign'],
+      map: { x: 120, y: 10 },
     },
   ],
 

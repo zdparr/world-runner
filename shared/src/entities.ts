@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_MAP_HOURS } from './geo';
 import {
   Attributes,
   CampaignChoice,
@@ -206,6 +207,9 @@ export interface InventoryItem {
 
 // ---------------------------------------------------------------- locations
 
+/** One map axis, in hours of travel on foot from the map's origin. */
+const MapCoordinate = z.number().finite().min(-MAX_MAP_HOURS).max(MAX_MAP_HOURS);
+
 const locationShape = {
   name: Name,
   description: LongText.default(''),
@@ -214,6 +218,9 @@ const locationShape = {
   /** How the place stands now, if the story has changed it. */
   currentState: z.string().max(2000).default(''),
   parentLocationId: Id.nullable().default(null),
+  /** Map position in hours of travel on foot: x east, y north. Null = not placed. */
+  mapX: MapCoordinate.nullable().default(null),
+  mapY: MapCoordinate.nullable().default(null),
   tags: Tags.default([]),
 };
 export const LocationCreate = z.object(locationShape).strict();
@@ -230,6 +237,9 @@ export interface Location {
   /** How the place stands now, if the story has changed it. */
   currentState: string;
   parentLocationId: string | null;
+  /** Map position in hours of travel on foot: x east, y north. Null = not placed. */
+  mapX: number | null;
+  mapY: number | null;
   tags: string[];
   createdAt: string;
   updatedAt: string;
@@ -511,6 +521,8 @@ export interface MapLocation {
   description: string;
   tags: string[];
   parentLocationId: string | null;
+  /** Map position in hours of travel on foot (x east, y north), or null if the place is not placed. */
+  position: { x: number; y: number } | null;
   /** The character has been here (started here, or travelled here). */
   visited: boolean;
   /** Living NPCs the character knows (has a relationship with) who are here. */
