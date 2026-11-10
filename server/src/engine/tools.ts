@@ -882,6 +882,36 @@ const writeTools: ToolDef[] = [
   }),
 
   tool({
+    name: 'set_rank',
+    kind: 'write',
+    description:
+      "Move the character to a stage of this campaign's rank ladder (shown under Rank in the current state, and to the player in the sidebar) when they truly meet it, or back down when they lose what it rests on (the keep falls, the people scatter). Not for small progress; that belongs in the ladder's condition.",
+    input: z.object({
+      stage: Name.describe('A stage name from the ladder'),
+      reason: Reason,
+    }),
+    run: async (ctx, input) => {
+      const [row] = await ctx.db.select({ ladder: campaigns.ladder }).from(campaigns).where(eq(campaigns.id, ctx.campaign.id));
+      const ladder = row?.ladder;
+      if (!ladder) throw new ToolError('This campaign has no rank ladder. Nothing changed.');
+      const wanted = input.stage.trim().toLowerCase();
+      const index = ladder.stages.findIndex((s) => s.name.toLowerCase() === wanted);
+      if (index < 0) throw new ToolError(`"${input.stage}" is not a stage of ${ladder.title}. Stages: ${ladder.stages.map((s) => s.name).join(', ')}. Nothing changed.`);
+      const before = ladder.current === null ? ladder.unranked : ladder.stages[ladder.current]!.name;
+      if (ladder.current === index) return { [ladder.title]: before, unchanged: true };
+      await ctx.mutator.update('campaigns', { id: ctx.campaign.id }, { ladder: { ...ladder, current: index } });
+      const after = ladder.stages[index]!.name;
+      await ctx.record({
+        eventType: 'rank',
+        humanReadable: `${ladder.title}: ${before} → ${after}${input.reason ? `: ${input.reason}` : ''}`,
+        details: { ladder: ladder.title, before, after },
+      });
+      const next = ladder.stages[index + 1];
+      return { [ladder.title]: after, before, ...(next ? { next: `${next.name}: ${next.summary}` } : { next: 'none; this is the top of the ladder' }) };
+    },
+  }),
+
+  tool({
     name: 'adjust_reputation',
     kind: 'write',
     description:

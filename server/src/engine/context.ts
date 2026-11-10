@@ -326,6 +326,23 @@ export async function buildTurnContext(
     core.push({ slice: 'attributes', reason: 'ascension rule set', approxTokens: approxTokens(attributeLine), detail: pc.unspentStatPoints });
     core.push({ slice: 'daily_quests', reason: 'ascension rule set', approxTokens: approxTokens(dailyLine), detail: dailies.length });
   }
+  // The rank ladder: where the character stands, and what the next rung takes.
+  const ladder = campaign.ladder;
+  if (ladder) {
+    const at = ladder.current;
+    const stage = at === null ? null : ladder.stages[at];
+    const next = ladder.stages[at === null ? 0 : at + 1];
+    const rankLines = [
+      `Rank (${ladder.title}, shown to the player): ${stage ? `${stage.name}, stage ${at! + 1} of ${ladder.stages.length} (${stage.summary})` : `${ladder.unranked}; no stage reached yet`}. ${
+        next ? `Next: ${next.name} (${next.summary}).` : 'This is the top of the ladder.'
+      } Ladder: ${ladder.stages.map((s) => s.name).join(' → ')}. When the character truly meets a stage, or loses what their current one rests on, call set_rank.${
+        ladder.condition ? ` Keep the details in the "${ladder.condition}" condition.` : ''
+      }${at === null && campaign.turnCount > 0 ? ' If the story already gives them a stage, set it this turn.' : ''}`,
+    ];
+    stateLines.splice(3, 0, ...rankLines);
+    core.push({ slice: 'rank', reason: 'always (rank ladder)', approxTokens: approxTokens(rankLines.join('\n')), detail: stage?.name ?? ladder.unranked });
+  }
+
   // Permanent choices: a pending one shapes the whole scene; a locked one must never be reopened.
   const pending = campaign.choices.filter((c) => c.chosen === null);
   const locked = campaign.choices.filter((c) => c.chosen !== null);

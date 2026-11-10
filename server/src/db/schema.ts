@@ -28,6 +28,7 @@ import type {
   NarrationLength,
   NpcRole,
   NpcStatus,
+  RankLadder,
   Reputation,
   Routine,
   Ruleset,
@@ -89,6 +90,8 @@ export const campaigns = pgTable(
     reputation: jsonb().$type<Reputation>().notNull().default({}),
     /** Permanent choices (a starting power), locked once by the narrator's lock_choice. */
     choices: jsonb().$type<CampaignChoice[]>().notNull().default([]),
+    /** The character's rank on the world's ladder (a realm's dominion), moved by set_rank. Null = the world has none. */
+    ladder: jsonb().$type<RankLadder>(),
     /** Where the scene stands (location, time of day, who is present), kept current by extraction. Null until the first extraction. */
     scene: jsonb().$type<SceneState>(),
     createdAt: createdAt(),

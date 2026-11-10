@@ -200,10 +200,68 @@ function Chip({ children, tone = 'text-parchment-dim border-ink-600' }: { childr
 
 // ---------------------------------------------------------------- tabs
 
+/**
+ * The world's rank ladder (a realm's Dominion): every stage as a step, where the character stands, what
+ * the next stage takes, and the details the narrator keeps in the ladder's condition.
+ */
+function RankSection({ state }: { state: CampaignState }) {
+  const ladder = state.campaign.ladder;
+  if (!ladder) return null;
+  const at = ladder.current;
+  const stage = at === null ? null : ladder.stages[at];
+  const next = ladder.stages[at === null ? 0 : at + 1];
+  const wanted = ladder.condition?.toLowerCase();
+  const details = wanted ? state.character?.statusEffects.find((e) => e.name.toLowerCase() === wanted)?.description : undefined;
+  return (
+    <Section
+      title={ladder.title}
+      right={
+        <span className="text-[0.65rem] tracking-normal normal-case tabular-nums">
+          {at === null ? 0 : at + 1} of {ladder.stages.length}
+        </span>
+      }
+    >
+      <ol className="flex gap-1" aria-label={`${ladder.title}: ${stage?.name ?? ladder.unranked}`}>
+        {ladder.stages.map((s, i) => {
+          const reached = at !== null && i <= at;
+          const current = i === at;
+          return (
+            <li key={s.name} className="min-w-0 flex-1" title={s.summary || undefined} aria-current={current ? 'step' : undefined}>
+              <div className={cx('h-1.5 rounded-full', reached ? 'bg-brass' : 'bg-ink-700')} />
+              <p className={cx('mt-1 truncate text-center text-[0.62rem]', current ? 'font-semibold text-brass-bright' : reached ? 'text-parchment-dim' : 'text-parchment-faint')}>
+                {s.name}
+              </p>
+            </li>
+          );
+        })}
+      </ol>
+      <p className="mt-3 font-story text-base text-parchment">{stage?.name ?? ladder.unranked}</p>
+      {stage?.summary && <p className="text-xs leading-relaxed text-parchment-dim">{stage.summary}</p>}
+      {next && (
+        <p className="mt-2 text-xs leading-relaxed">
+          <span className="text-parchment-faint">Next: </span>
+          <span className="text-parchment">{next.name}</span>
+          {next.summary && <span className="text-parchment-dim">. {next.summary}</span>}
+        </p>
+      )}
+      {details && (
+        <div className="mt-3 rounded-md border border-ink-700 bg-ink-950/40 p-2.5">
+          <p className="mb-1 text-[0.62rem] tracking-[0.14em] text-parchment-faint uppercase">{ladder.condition}</p>
+          <p className="font-story text-sm leading-relaxed whitespace-pre-line text-parchment-dim">{details}</p>
+        </div>
+      )}
+    </Section>
+  );
+}
+
 function CharacterTab({ state }: { state: CampaignState }) {
   const pc = state.character;
   if (!pc) return <Empty>No character yet.</Empty>;
   const toNext = characterXpToNext(pc.level);
+  const ladder = state.campaign.ladder;
+  // The ladder's condition is shown in full in its own panel, not as a chip.
+  const ladderCondition = ladder?.condition?.toLowerCase();
+  const conditions = pc.statusEffects.filter((s) => s.name.toLowerCase() !== ladderCondition);
   return (
     <>
       <div className="mb-5">
@@ -220,6 +278,11 @@ function CharacterTab({ state }: { state: CampaignState }) {
           )}
           {nextLevelBonusAt(pc.level) !== null && <> · +{levelBonus(pc.level) + 1} at level {nextLevelBonusAt(pc.level)}</>}
         </p>
+        {ladder && (
+          <p className="mt-1 text-xs text-parchment-faint">
+            {ladder.title}: <span className="font-semibold text-brass">{ladder.current === null ? ladder.unranked : ladder.stages[ladder.current]!.name}</span>
+          </p>
+        )}
         {state.location && <p className="mt-1 text-xs text-parchment-faint">at {state.location.name}</p>}
         {state.campaign.ruleset === 'ascension' && <p className="mt-1 text-xs text-parchment-faint">Day {state.campaign.gameDay}</p>}
         {state.campaign.choices.some((c) => c.chosen !== null) && (
@@ -236,6 +299,8 @@ function CharacterTab({ state }: { state: CampaignState }) {
           </div>
         )}
       </div>
+
+      <RankSection state={state} />
 
       <Section title="Vitals">
         <div className="space-y-3">
@@ -309,10 +374,10 @@ function CharacterTab({ state }: { state: CampaignState }) {
         </Section>
       )}
 
-      {pc.statusEffects.length > 0 && (
+      {conditions.length > 0 && (
         <Section title="Conditions">
           <div className="flex flex-wrap gap-1.5">
-            {pc.statusEffects.map((s) => (
+            {conditions.map((s) => (
               <Chip key={s.name} tone={s.name.startsWith('Blessing:') ? 'border-brass/50 text-brass' : 'border-ember/50 text-ember'}>
                 <span title={s.description || undefined}>
                   {s.name}

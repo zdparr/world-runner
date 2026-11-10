@@ -92,6 +92,13 @@
       "when": 1794349149018,
       "tag": "0012_location_map_position",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794352229275,
+      "tag": "0013_campaign_rank_ladder",
+      "breakpoints": true
     }
   ]
 }

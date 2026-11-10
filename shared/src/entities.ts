@@ -17,6 +17,7 @@ import {
   NpcRole,
   NpcStatus,
   MAX_STATUS_EFFECTS,
+  RankLadder,
   Reputation,
   MONEY_MAX,
   RELATIONSHIP_MAX,
@@ -88,6 +89,8 @@ export interface Campaign {
   reputation: Reputation;
   /** Permanent choices (a starting power): pending until the narrator locks one with lock_choice. */
   choices: CampaignChoice[];
+  /** The character's rank on the world's ladder (e.g. a realm's dominion), if the world has one. */
+  ladder: RankLadder | null;
   /** Where the scene stands, kept current by the extraction pass; null until it first runs. */
   scene: SceneState | null;
   createdAt: string;
@@ -498,7 +501,7 @@ export type CampaignFromTemplate = z.input<typeof CampaignFromTemplate>;
 
 /** Everything the play screen's sidebar shows, in one request. */
 export interface CampaignState {
-  campaign: Pick<Campaign, 'id' | 'name' | 'currencyName' | 'turnCount' | 'rollingSummary' | 'summaryInterval' | 'ruleset' | 'gameDay' | 'narrationLength' | 'reputation' | 'choices'>;
+  campaign: Pick<Campaign, 'id' | 'name' | 'currencyName' | 'turnCount' | 'rollingSummary' | 'summaryInterval' | 'ruleset' | 'gameDay' | 'narrationLength' | 'reputation' | 'choices' | 'ladder'>;
   /** Whether post-turn memory upkeep (summary, note condensing) can run: needs an API key. */
   memoryEnabled: boolean;
   character: PlayerCharacter | null;

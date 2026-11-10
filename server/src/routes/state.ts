@@ -24,6 +24,7 @@ export function registerStateRoutes(app: FastifyInstance): void {
         narrationLength: campaigns.narrationLength,
         reputation: campaigns.reputation,
         choices: campaigns.choices,
+        ladder: campaigns.ladder,
       })
       .from(campaigns)
       .where(eq(campaigns.id, cid));

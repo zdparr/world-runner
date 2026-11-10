@@ -162,6 +162,35 @@ export const Reputation = z
   .refine((r) => Object.keys(r).length <= MAX_FACTIONS, `At most ${MAX_FACTIONS} factions`);
 export type Reputation = z.infer<typeof Reputation>;
 
+// ---------------------------------------------------------------- rank ladder
+
+/** One rung of a campaign's rank ladder, e.g. "Lordship". */
+export const RankStage = z.object({
+  name: z.string().trim().min(1).max(60),
+  /** What it takes to hold this rank, shown to the player. */
+  summary: z.string().trim().max(500).default(''),
+});
+export type RankStage = z.infer<typeof RankStage>;
+
+/**
+ * The character's standing on a ladder the world defines (a realm's dominion, a guild rank), shown in
+ * the sidebar. The narrator moves it with set_rank; it can go down as well as up.
+ */
+export const RankLadder = z.object({
+  /** The panel's title, e.g. "Dominion". */
+  title: z.string().trim().min(1).max(60),
+  /** Shown before the first stage is reached, e.g. "No realm yet". */
+  unranked: z.string().trim().max(60).default('Unranked'),
+  /** A condition whose description holds the details (what the realm holds); shown with the ladder. */
+  condition: z.string().trim().max(80).optional(),
+  stages: z.array(RankStage).min(2).max(12),
+  /** Index of the stage reached; null = none yet. */
+  current: z.number().int().min(0).nullable().default(null),
+});
+export type RankLadder = z.infer<typeof RankLadder>;
+/** A ladder as authored in world data (defaults not yet applied). */
+export type RankLadderInput = z.input<typeof RankLadder>;
+
 // ---------------------------------------------------------------- permanent choices
 
 /** One option of a permanent choice, and what picking it grants. */

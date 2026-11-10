@@ -1,4 +1,4 @@
-import type { CampaignChoiceInput } from '@narrator/shared';
+import type { CampaignChoiceInput, RankLadderInput } from '@narrator/shared';
 import type { WorldTemplate } from '../world';
 
 // Faction names double as the reputation keys: an NPC whose `faction` matches one acts on the character's standing with it.
@@ -263,6 +263,19 @@ const origin: CampaignChoiceInput = {
   ],
 };
 
+/** The main story's progress, shown to the player as the Dominion panel. Details live in the 'Your Realm' condition. */
+export const DOMINION: RankLadderInput = {
+  title: 'Dominion',
+  unranked: 'No realm yet',
+  condition: 'Your Realm',
+  stages: [
+    { name: 'Holding', summary: 'One place that is yours (a hall, a village, a keep, or a harbor) and people who follow you.' },
+    { name: 'Lordship', summary: 'Several settlements, a steady food supply, armed defenders, and laws you enforce, and it has survived a winter.' },
+    { name: 'Domain', summary: 'A real territory across much of the Reach, a seat, a banner, and a claim others must answer.' },
+    { name: 'Kingdom', summary: 'Recognized as a crown by at least two of the five powers, or held so firmly that no one can deny it.' },
+  ],
+};
+
 export const emptyCrown: WorldTemplate = {
   id: 'empty-crown',
   name: 'The Empty Crown',
@@ -272,6 +285,7 @@ export const emptyCrown: WorldTemplate = {
   currencyName: 'stags',
   reputation: { [KESTRANY]: 0, [ULVHAL]: 0, [MERROWGATE]: 0, [YSMERE]: 0, [TARKHAN]: 0, [FREE_FOLK]: 0 },
   choices: [origin],
+  ladder: DOMINION,
 
   worldBible: `# The Empty Crown
 
@@ -611,7 +625,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       title: 'Founding a Kingdom',
       keywords: ['kingdom', 'realm', 'crown', 'king', 'queen', 'found', 'founding', 'recognition', 'claim', 'land', 'holding', 'people', 'subjects', 'banner', 'legitimacy'],
       alwaysInclude: true,
-      body: "The main story. Track it in the 'Your Realm' condition (update_status_effect): seat, lands, people, fighters, stores, laws, claim, and who recognizes it. Any means are valid: conquest, purchase, marriage, a moot's election, a holy blessing, a league of villages, settling empty land, or invention-driven wealth. STAGES: (1) Holding: one place that is yours (a hall, a village, a keep, a harbor) and people who follow you. (2) Lordship: several settlements, a steady food supply, armed defenders, and laws you enforce. It must survive a winter. (3) Domain: a real territory (a large part of the Reach), a seat, a banner, and a claim (Calder blood, a moot's election, the See's blessing, a treaty, or conquest held for a year). (4) Kingdom: recognized as a crown by at least two of the five powers, sworn at the Treaty Stone in Thornwick, or held so firmly no one can deny it. Each stage brings stronger enemies: the crowns grow alarmed as the player rises, and the Treaty means any crown that moves openly against a new realm must answer to the other four. Keep counts honest: people eat, soldiers want pay, and winter comes on day 60 (snow closes the passes, and the fishing stops).",
+      body: "The main story. The stage is the Dominion rank (set_rank), shown to the player; the details go in the 'Your Realm' condition (update_status_effect): seat, lands, people, fighters, stores, laws, claim, and who recognizes it. Any means are valid: conquest, purchase, marriage, a moot's election, a holy blessing, a league of villages, settling empty land, or invention-driven wealth. STAGES: (1) Holding: one place that is yours (a hall, a village, a keep, a harbor) and people who follow you. (2) Lordship: several settlements, a steady food supply, armed defenders, and laws you enforce. It must survive a winter. (3) Domain: a real territory (a large part of the Reach), a seat, a banner, and a claim (Calder blood, a moot's election, the See's blessing, a treaty, or conquest held for a year). (4) Kingdom: recognized as a crown by at least two of the five powers, sworn at the Treaty Stone in Thornwick, or held so firmly no one can deny it. Each stage brings stronger enemies: the crowns grow alarmed as the player rises, and the Treaty means any crown that moves openly against a new realm must answer to the other four. Keep counts honest: people eat, soldiers want pay, and winter comes on day 60 (snow closes the passes, and the fishing stops).",
     },
     {
       title: 'The Treaty of the Empty Crown',

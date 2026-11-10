@@ -1,5 +1,5 @@
 import { eq, sql } from 'drizzle-orm';
-import { CampaignChoice, type Attributes, type CampaignChoiceInput, type CampaignTemplate, type MissionPenalty, type MissionRewards, type Reputation, type Ruleset, type StatusEffect } from '@narrator/shared';
+import { CampaignChoice, RankLadder, type Attributes, type CampaignChoiceInput, type CampaignTemplate, type MissionPenalty, type MissionRewards, type RankLadderInput, type Reputation, type Ruleset, type StatusEffect } from '@narrator/shared';
 import type { Db } from '../client';
 import { campaigns, inventoryItems, locations, loreEntries, missions, npcs, playerCharacter, relationships, skills } from '../schema';
 import { normalizeObjectives } from '../../game/missions';
@@ -23,6 +23,8 @@ export interface WorldTemplate extends CampaignTemplate {
    * the narrator locks it; options passed over can bring someone into the world (`ifNotChosen`).
    */
   choices?: CampaignChoiceInput[];
+  /** A rank the character climbs (a realm's dominion), shown in the sidebar and moved by set_rank. */
+  ladder?: RankLadderInput;
   /**
    * At least MIN_WORLD_LOCATIONS, each with a purpose: why it exists in the story (GM-only).
    * `parent` names the larger place this one sits inside. `map` places it on the world map, in hours
@@ -89,6 +91,7 @@ export async function insertWorld(
       ruleset: world.ruleset ?? 'classic',
       reputation: world.reputation ?? {},
       choices: (world.choices ?? []).map((c) => CampaignChoice.parse(c)),
+      ladder: world.ladder ? RankLadder.parse(world.ladder) : null,
     })
     .returning({ id: campaigns.id });
   const campaignId = campaign!.id;

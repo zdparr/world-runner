@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type Anthropic from '@anthropic-ai/sdk';
 import { eq } from 'drizzle-orm';
 import type { CampaignState } from '@narrator/shared';
 import { createTestApp } from './helpers';
@@ -91,5 +92,48 @@ describe('The Empty Crown', () => {
     expect(pc!.statusEffects.map((e) => e.name)).toEqual(['Your Realm', condition]);
     expect(await t.db.select().from(inventoryItems).where(eq(inventoryItems.campaignId, id))).not.toHaveLength(0);
     expect(await rivals(id)).toEqual(ORIGINS.filter((o) => o.id !== option).map((o) => o.label).sort());
+  });
+
+  it('shows the Dominion ladder at "No realm yet", and tells the narrator the next stage', async () => {
+    const id = await newCampaign();
+    const state = (await t.api('GET', `/api/campaigns/${id}/state`)).json() as CampaignState;
+    expect(state.campaign.ladder).toMatchObject({ title: 'Dominion', unranked: 'No realm yet', condition: 'Your Realm', current: null });
+    expect(state.campaign.ladder!.stages.map((s) => s.name)).toEqual(['Holding', 'Lordship', 'Domain', 'Kingdom']);
+
+    const { calls } = await play(id, 'Where do I start?', [{ text: 'Rain.' }]);
+    const context = (calls[0]!.system as Anthropic.TextBlockParam[])[1]!.text;
+    expect(context).toContain('Rank (Dominion, shown to the player): No realm yet; no stage reached yet. Next: Holding (One place that is yours');
+  });
+
+  it('moves the Dominion with set_rank, up or down, logs it, and refuses a stage that is not on the ladder', async () => {
+    const id = await newCampaign();
+    const { calls } = await play(id, 'The moot chooses me.', [
+      {
+        tools: [
+          { name: 'set_rank', input: { stage: 'holding', reason: 'Thornwick moot swore to you' } },
+          { name: 'set_rank', input: { stage: 'Duchy', reason: 'wishful' } },
+        ],
+      },
+      { text: 'Hester raises her cup.' },
+    ]);
+    const [ok, bad] = toolResultsIn(calls[1]!).map((r) => String(r.content));
+    expect(JSON.parse(ok!)).toMatchObject({ Dominion: 'Holding', before: 'No realm yet', next: expect.stringMatching(/^Lordship: /) });
+    expect(bad).toMatch(/"Duchy" is not a stage of Dominion\. Stages: Holding, Lordship, Domain, Kingdom/);
+
+    let state = (await t.api('GET', `/api/campaigns/${id}/state`)).json() as CampaignState;
+    expect(state.campaign.ladder!.current).toBe(0);
+    const log = (await t.api('GET', `/api/campaigns/${id}/events`)).json() as { items?: { humanReadable: string }[] } | { humanReadable: string }[];
+    const entries = Array.isArray(log) ? log : (log.items ?? []);
+    expect(entries.map((e) => e.humanReadable)).toContain('Dominion: No realm yet → Holding: Thornwick moot swore to you');
+
+    await play(id, 'Oswin burns the town.', [{ tools: [{ name: 'set_rank', input: { stage: 'Holding', reason: 'still yours' } }] }, { text: 'Smoke.' }]);
+    state = (await t.api('GET', `/api/campaigns/${id}/state`)).json() as CampaignState;
+    expect(state.campaign.ladder!.current).toBe(0);
+
+    // Undo puts the ladder back.
+    expect((await t.api('POST', `/api/campaigns/${id}/turns/undo`)).statusCode).toBe(200);
+    expect((await t.api('POST', `/api/campaigns/${id}/turns/undo`)).statusCode).toBe(200);
+    state = (await t.api('GET', `/api/campaigns/${id}/state`)).json() as CampaignState;
+    expect(state.campaign.ladder!.current).toBeNull();
   });
 });
