@@ -8,7 +8,7 @@ import { inventoryItems, loreEntries, npcs, playerCharacter, skills } from '../s
 import { createFromTemplate } from '../src/db/seed/templates';
 import { emptyCrown } from '../src/db/seed/worlds/empty-crown';
 
-// The Empty Crown: no magic, six tracked factions, an origin choice whose passed-over paths become rival founders, and invention rules the narrator always sees.
+// The Empty Crown: no magic, six tracked factions (three crowns, the League, the See, and the Free Folk), an origin choice whose passed-over paths become rival founders, and invention rules the narrator always sees.
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
 beforeAll(async () => {

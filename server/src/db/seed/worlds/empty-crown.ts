@@ -4,9 +4,11 @@ import type { WorldTemplate } from '../world';
 // Faction names double as the reputation keys: an NPC whose `faction` matches one acts on the character's standing with it.
 const KESTRANY = 'Crown of Kestrany';
 const ULVHAL = 'Kingdom of Ulvhal';
-const MERROWGATE = 'Merrowgate League';
+const CARTHEN = 'Kingdom of Carthen';
+/** Serves no crown: trades and lends in all three kingdoms from its free port of Corsal. */
+const LEAGUE = 'Corsal League';
+/** Serves no crown: the Sun Lamp faith, preached in all three kingdoms from its holy mountain of Ysmere. */
 const YSMERE = 'Hallowed See of Ysmere';
-const TARKHAN = 'Tarkhan Hosts';
 const FREE_FOLK = 'Free Folk of the Reach';
 /** Untracked: the bandit lord's men. Reputation with them is personal, not a faction score. */
 const ASHEN = 'Ashen Company';
@@ -96,34 +98,34 @@ const origin: CampaignChoiceInput = {
           faction: '',
           location: 'The Wending Wood',
           notes:
-            "**Path:** conquest. Commands the Black Hounds, eighty seasoned mercenaries, and has taken three woodland villages on the southern edge of the Reach by 'protecting' them. **Want:** to make his company a dynasty before his knees give out. **Method:** take land, fortify it, marry his son to the local gentry, and dare the five crowns to break the Treaty to stop him. **Toward the player:** sizes them up as a recruit, a rival, or a meal. Respects strength and kept bargains. **Weakness:** he cannot pay eighty men through a winter on three villages; he must expand by spring or go bankrupt, and he is eyeing Thornwick.",
+            "**Path:** conquest. Commands the Black Hounds, eighty seasoned mercenaries, and has taken three woodland villages on the southern edge of the Reach by 'protecting' them. **Want:** to make his company a dynasty before his knees give out. **Method:** take land, fortify it, marry his son to the local gentry, and dare the three crowns to break the Treaty to stop him. **Toward the player:** sizes them up as a recruit, a rival, or a meal. Respects strength and kept bargains. **Weakness:** he cannot pay eighty men through a winter on three villages; he must expand by spring or go bankrupt, and he is eyeing Thornwick.",
         },
       },
     },
     {
       id: 'merchant',
       label: "MERCHANT'S HEIR",
-      summary: 'The disinherited child of a Merrowgate trading house. Ledgers, contacts, and a letter of credit nobody has cancelled yet.',
+      summary: 'The disinherited child of a Corsal trading house. Ledgers, contacts, and a letter of credit nobody has cancelled yet.',
       grants: {
         skills: [
           { name: 'Haggling', level: 3, description: 'Buying low, selling high, and knowing what a thing is worth to the person across the table.' },
-          { name: 'Reckoning', level: 2, description: 'Numbers, ledgers, weights, measures, and spotting a forged tally. Merrowgate counting-house training.' },
+          { name: 'Reckoning', level: 2, description: 'Numbers, ledgers, weights, measures, and spotting a forged tally. Corsal counting-house training.' },
         ],
         items: [
           {
             name: 'Letter of credit',
             description:
-              "Sealed by your late father on the Lantern Bank of Merrowgate, good for 400 stags to the bearer in Merrowgate or from any League factor who trusts it. Your uncle, who now runs House Tessaro, would very much like it back.",
-            tags: ['document', 'money', 'merrowgate'],
+              "Sealed by your late father on the Lantern Bank of Corsal, good for 400 stags to the bearer in Corsal or from any League factor who trusts it. Your uncle, who now runs House Tessaro, would very much like it back.",
+            tags: ['document', 'money', 'corsal'],
           },
           { name: 'Merchant scales', description: 'A folding brass balance with a set of honest weights and one dishonest one.', tags: ['tool', 'trade'] },
-          { name: 'Good wool cloak', description: 'Dyed Merrowgate blue, lined with rabbit fur. It says money even when you have none.', tags: ['clothing'] },
+          { name: 'Good wool cloak', description: 'Dyed Corsal blue, lined with rabbit fur. It says money even when you have none.', tags: ['clothing'] },
         ],
         statusEffects: [
           {
             name: 'Trade Connections',
             description:
-              'You know League factors in every port and which of them owe House Tessaro favors. You can buy and sell at fair prices anywhere the League trades, and hear market rumors first. Your uncle Benedetto Tessaro wants you discredited before you can contest his inheritance.',
+              'You know League factors in every port and royal city of the three kingdoms, and which of them owe House Tessaro favors. You can buy and sell at fair prices anywhere the League trades, and hear market rumors first. Your uncle Benedetto Tessaro wants you discredited before you can contest his inheritance.',
             turnsRemaining: null,
             modifiers: [{ target: 'Haggling', bonus: 1 }],
           },
@@ -134,10 +136,10 @@ const origin: CampaignChoiceInput = {
           name: 'Ilsabet Quill',
           shortDescription:
             'Rival founder (MERCHANT\'S HEIR). Thirty-two, sharp-featured and always smiling, ringed fingers stained with ink, a League factor\'s chain worn like a necklace.',
-          faction: MERROWGATE,
+          faction: LEAGUE,
           location: "Gull's Rest",
           notes:
-            "**Path:** purchase. Buying the Reach one charter, debt, and harbor at a time. She has bought the debts of half the fishing families in Gull's Rest and means to own the bay by midsummer. **Want:** a merchant kingdom, Merrowgate's rules without Merrowgate's council. **Method:** loans, grain sold cheap in a famine, bribes, and patience. **Toward the player:** charming, generous, and always writing down what they owe her. **Danger to the player's inventions:** she buys anything clever and sells it to the highest bidder; anything she sees in use she will try to buy from the workers who build it.",
+            "**Path:** purchase. Buying the Reach one charter, debt, and harbor at a time. She has bought the debts of half the fishing families in Gull's Rest and means to own the bay by midsummer. **Want:** a merchant kingdom, Corsal's rules without Corsal's council. **Method:** loans, grain sold cheap in a famine, bribes, and patience. **Toward the player:** charming, generous, and always writing down what they owe her. **Danger to the player's inventions:** she buys anything clever and sells it to the highest bidder; anything she sees in use she will try to buy from the workers who build it.",
         },
       },
     },
@@ -178,7 +180,7 @@ const origin: CampaignChoiceInput = {
           faction: ULVHAL,
           location: 'The Iron Hills',
           notes:
-            "**Path:** iron. Has opened a bloomery in the Iron Hills and sells spearheads to every side, and the hill miners are starting to call her 'lady'. **Want:** a mountain kingdom of smiths and miners. **She cannot invent anything new** (only the player can), but she is the fastest copier in the world: given an example she can handle and a week, she will reproduce any simple or moderate invention, and she will sell it to Queen Asvor of Ulvhal. **Toward the player:** fascinated by them the moment she sees anything new; she will offer partnership, buy secrets, bribe workers, or steal. Honest about all of it.",
+            "**Path:** iron. Has opened a bloomery in the Iron Hills and sells spearheads to every side, and the hill miners are starting to call her 'lady'. **Want:** a mountain kingdom of smiths and miners. **She cannot invent anything new** (only the player can), but she is the fastest copier in the world: given an example she can handle and a week, she will reproduce any simple or moderate invention, and she will sell it to Queen Asvor of Ulvhal, her own queen. **Toward the player:** fascinated by them the moment she sees anything new; she will offer partnership, buy secrets, bribe workers, or steal. Honest about all of it.",
         },
       },
     },
@@ -206,7 +208,7 @@ const origin: CampaignChoiceInput = {
           {
             name: 'Apostate of Ysmere',
             description:
-              'You fled the temple school at Lumen with the Book of Measures. The Lamplighters, the See\'s inquisitors, want the book back and you burned. Ysmerans who learn who you are must report you. Your learning gives you a head start on working out how new things could work.',
+              'You fled the temple school at Lumen on the holy mountain with the Book of Measures. The Lamplighters, the See\'s inquisitors, want the book back and you burned. The faithful of all three kingdoms who learn who you are must report you. Your learning gives you a head start on working out how new things could work.',
             turnsRemaining: null,
             modifiers: [{ target: 'Philosophy', bonus: 1 }],
           },
@@ -220,7 +222,7 @@ const origin: CampaignChoiceInput = {
           faction: '',
           location: 'Greywater Fens',
           notes:
-            "**Path:** faith. Founded the Ploughmen's Covenant, a commune in the fens where all land is shared and no lord rules but 'the Light in every heart'. Three hundred followers and growing. **Want:** a holy kingdom of the poor; privately, he has begun to believe he is a prophet. **Method:** sermons, charity, and an army of fervent peasants. **Toward the player:** welcomes them as a brother or sister in the Light, then demands they kneel. Ysmere's Lamplighters want him dead. He calls every invention either a miracle or a devil's work, depending on who made it.",
+            "**Path:** faith. Founded the Ploughmen's Covenant, a commune in the fens where all land is shared and no lord rules but 'the Light in every heart'. Three hundred followers and growing. **Want:** a holy kingdom of the poor; privately, he has begun to believe he is a prophet. **Method:** sermons, charity, and an army of fervent peasants. **Toward the player:** welcomes them as a brother or sister in the Light, then demands they kneel. The See's Lamplighters want him dead. He calls every invention either a miracle or a devil's work, depending on who made it.",
         },
       },
     },
@@ -272,7 +274,7 @@ export const DOMINION: RankLadderInput = {
     { name: 'Holding', summary: 'One place that is yours (a hall, a village, a keep, or a harbor) and people who follow you.' },
     { name: 'Lordship', summary: 'Several settlements, a steady food supply, armed defenders, and laws you enforce, and it has survived a winter.' },
     { name: 'Domain', summary: 'A real territory across much of the Reach, a seat, a banner, and a claim others must answer.' },
-    { name: 'Kingdom', summary: 'Recognized as a crown by at least two of the five powers, or held so firmly that no one can deny it.' },
+    { name: 'Kingdom', summary: 'Recognized as a crown by two of the three crowns (or one crown and the See), or held so firmly that no one can deny it.' },
   ],
 };
 
@@ -280,10 +282,10 @@ export const emptyCrown: WorldTemplate = {
   id: 'empty-crown',
   name: 'The Empty Crown',
   description:
-    'Sword-and-sail low fantasy with no magic. Five kingdoms surround the Reach, open land that no crown may annex. Build a kingdom of your own by sword, coin, faith, or cunning. Every new technology in the world must be invented by you, and you decide who else gets it.',
+    'Sword-and-sail low fantasy with no magic. Three rival kingdoms, a merchant League, and a holy See surround the Reach, open land that no crown may annex. Build a kingdom of your own by sword, coin, faith, or cunning. Every new technology in the world must be invented by you, and you decide who else gets it.',
   demoCampaignName: 'The Empty Crown: A Banner of Your Own',
   currencyName: 'stags',
-  reputation: { [KESTRANY]: 0, [ULVHAL]: 0, [MERROWGATE]: 0, [YSMERE]: 0, [TARKHAN]: 0, [FREE_FOLK]: 0 },
+  reputation: { [KESTRANY]: 0, [ULVHAL]: 0, [CARTHEN]: 0, [LEAGUE]: 0, [YSMERE]: 0, [FREE_FOLK]: 0 },
   choices: [origin],
   ladder: DOMINION,
 
@@ -292,16 +294,20 @@ export const emptyCrown: WorldTemplate = {
 There is no magic in this world. There are swords, arrows, oared ships with a single square sail, and people. Everything that happens is done by human hands, and every new idea must come from somewhere. In this campaign it comes from the player.
 
 ## The Reach
-The **Reach** is a broad country of river valleys, fens, forest, and iron-rich hills in the middle of the continent, open to the sea on its western coast. It was once the **Kingdom of Calder**. Thirty-one years ago the last Calder king, **Aldred the Unready**, died childless in the plague year, and the five neighboring powers went to war over his country in the **Sundering War**. Eight years of burned harvests later, none of them had won. They signed the **Treaty of the Empty Crown** at Thornwick: no existing crown may annex the Reach, garrison it, or tax it. Any that does, the other four will fight.
+The **Reach** is a broad country of river valleys, fens, forest, and iron-rich hills in the middle of the continent, open to the sea on its western coast. It was once the **Kingdom of Calder**. Thirty-one years ago the last Calder king, **Aldred the Unready**, died childless in the plague year, and the three neighboring kingdoms went to war over his country in the **Sundering War**. Eight years of burned harvests later, none of them had won. They signed the **Treaty of the Empty Crown** at Thornwick, blessed by the See and underwritten by the League: no existing crown may annex the Reach, garrison it, or tax it. Any that does, the other two will fight, the See will preach against, and the League will lend nothing to.
 
-The Reach has been open land ever since. Its free towns and villages govern themselves through village moots. Bandit lords, mercenaries, and preachers prey on them, and all five crowns meddle through envoys, merchants, and bribes. The Treaty forbids an *existing* crown from taking the Reach. It says nothing about a **new** one. Whoever founds a kingdom in the Reach breaks the balance of the continent, and every crown will try to own, use, or destroy them.
+The Reach has been open land ever since. Its free towns and villages govern themselves through village moots. Bandit lords, mercenaries, and preachers prey on them, and all three crowns, the League, and the See meddle through envoys, factors, priests, and bribes. The Treaty forbids an *existing* crown from taking the Reach. It says nothing about a **new** one. Whoever founds a kingdom in the Reach breaks the balance of the continent, and every crown will try to own, use, or destroy them.
 
-## The five powers
-- **Kestrany** (east, river country): the oldest and richest kingdom, a breadbasket of grain, oxen, and proud nobility. **King Osric II** is sixty, shrewd, and has three quarrelsome sons. Kestrany would love a puppet on a Reach throne and is grooming one. Coin: the silver **stag**, used everywhere.
-- **Ulvhal** (north, fjords): a hard kingdom of fishermen, shipwrights, and raiders under the war-queen **Asvor Ironwake**. The best ships on the continent, longships of oak and tar. In lean years they raid; this has been a lean year. They respect strength and plain dealing.
-- **The Merrowgate League** (southwest coast): a council of merchant houses ruling a great port city and its trading posts, not a kingdom but richer than any. They trade tin, copper, dye, wine, and silk from beyond the sea. Everything has a price, and they want a monopoly on anything new.
-- **The Hallowed See of Ysmere** (south, hills): a priest-kingdom of the **Sun Lamp** faith, ruled by **High Lector Yvaine Solis** from the holy city of **Lumen**. Its temple schools hold most of the continent's writing, mathematics, and medicine, and guard them. Its inquisitors, the **Lamplighters**, judge new crafts: what the See blesses is 'hallowed craft', what it condemns is 'unhallowed' and burned along with its maker. Most of the Reach's common folk keep the Sun Lamp faith.
-- **The Tarkhan Hosts** (east, beyond Kestrany, the Sea of Grass): horse-clans under **Khagan Altan Sorgh**. Superb riders and archers who fight without stirrups, as everyone does. They trade horses, hides, and felt, they despise walls, and their young khagan is looking for a war worth fighting.
+## The three crowns
+Three proper kingdoms, each with a royal line, great lords sworn to the crown, royal law, and armies raised by those oaths. Each is loyal to itself first, and each wants the Reach.
+- **Kestrany** (east, river country): the oldest and richest kingdom, a breadbasket of grain, oxen, and proud nobility. **King Osric II** is sixty, shrewd, and has three quarrelsome sons; a dozen great earls hold their land of him and bring their levies when he calls. Kestrany would love a puppet on a Reach throne and is grooming one. Coin: the silver **stag**, used everywhere.
+- **Ulvhal** (north, fjords): a hard kingdom of fishermen, shipwrights, and seafighters under the war-queen **Asvor Ironwake**, whose jarls swear to her on the oath-ring at Skarnhavn and owe her ships and crews. The best ships on the continent, longships of oak and tar. In lean years Ulvhal raids; this has been a lean year. They respect strength and plain dealing.
+- **Carthen** (south, hill and vine country): a kingdom of castles, vineyards, and armored horsemen, the finest horse-breeders on the continent, under the young **King Brannoc**, crowned at twenty-two by the See's own hand. His barons hold the hill castles and ride to war at his summons. Carthen and Kestrany fought the longest campaigns of the Sundering War and have hated each other since. Brannoc wants a war worth fighting, and the old men of his council cannot hold him much longer.
+
+## The League and the See
+Two powers with no crown, serving none of the three and working inside all of them. Each holds one piece of ground outside every kingdom.
+- **The Corsal League**: a council of seven merchant houses ruling **Corsal**, a free island port off the southwestern coast that bought its freedom from Carthen's crown three generations ago. They trade tin, copper, dye, wine, and silk from beyond the sea, lend to kings, and want a monopoly on anything new. Their sway differs by kingdom: in **Kestrany** they hold King Osric's war debts and the grain trade, and his treasurer answers to their factors almost as much as to him; in **Ulvhal** they buy the whole amber and fish catch and sell grain in lean years, so the jarls need them and resent them; in **Carthen** King Brannoc despises merchants and taxes them hard, but his barons borrow from the League in secret. Their head is the **First Factor, Cassia Marovin**.
+- **The Hallowed See of Ysmere**: the **Sun Lamp** faith, ruled by **High Lector Yvaine Solis** from the holy city of **Lumen** on **Mount Ysmere**, a sacred mountain in the high passes between Carthen and Kestrany that all three crowns swore never to take. Its temple schools hold most of the continent's writing, mathematics, and medicine, and guard them. Its inquisitors, the **Lamplighters**, judge new crafts: what the See blesses is 'hallowed craft', what it condemns is 'unhallowed' and burned along with its maker. Its sway differs by kingdom: in **Carthen** it crowned the king, Lamplighters sit on the royal council, and its word is close to law; in **Kestrany** its abbeys hold a third of the land and the nobility is devout, but King Osric keeps the Lectors at arm's length; in **Ulvhal** the old sea-gods still rule the coast, and the See has only missions, a few converted jarls, and the queen's tolerance. Most of the Reach's common folk keep the Sun Lamp faith.
 
 ## The open lands of the Reach
 - **Thornwick**: a free market town at the crossroads of the Reach, where the Treaty was signed. Ruled by its moot and its speaker, Mother Hester Vane. Every crown keeps an envoy here. Where the story starts.
@@ -327,9 +333,10 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
 2. **The Ashen Keep**: Red Oswin's tithes grow heavier, and a crown is quietly paying him.
 3. **The puppet throne**: Kestrany wants a ruler of the Reach on its leash, ideally one with Calder blood.
 4. **Raiders from the north**: Ulvhal's lean year sends longships to Gull's Rest, and Queen Asvor wants a harbor in the Reach.
-5. **The Lamplighters**: Ysmere watches every new craft and decides whether it is holy. Its scholars would also give anything to understand them.
-6. **The young khagan**: Altan Sorgh wants a war. Whoever arms the Tarkhan Hosts with something new changes the map.
+5. **The Lamplighters**: the See watches every new craft and decides whether it is holy, and in Carthen its judgment is enforced by the king's knights. Its scholars would also give anything to understand them.
+6. **The young king**: Brannoc of Carthen wants a war with Kestrany. Whoever arms Carthen's knights with something new changes the map.
 7. **The race of knowledge**: every invention the player keeps secret is a clock; every one they share is a gift that can be turned against them.
+8. **Masters without crowns**: the League and the See owe nothing to any king, and each can make a new crown possible: the League with money, the See with an anointing. Each will want something for it.
 `,
 
   narratorStyle: `- Second person, present tense ("Rain drips from the thatch as you cross Thornwick's square...").
@@ -338,7 +345,7 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
 - Invention is the heart of the campaign. Say yes to the player's ideas: take what they want to build and what it should do, skip the technical how, and get to a working prototype quickly (see The Rules of Invention). Make the first success feel enormous. Then show the world noticing.
 - When an invention first works, always put the choice to the player: keep it secret, share it (with whom?), or sell it. Never decide for them.
 - Kingdom-building is concrete: count people, fields, spears, stores, and days to winter. Make logistics matter and let the player feel their realm grow.
-- NPCs speak in distinct voices. Mother Hester Vane is blunt, warm, and calls everyone "love." Lady Corisande Aubrel is silky, precise, and never says no directly. Garrick Dunn grunts, swears at iron, and lights up talking about how things are made. Ottavio Brask speaks in prices and compliments. Brother Anselm Corr is gentle, curious, and frightened of his own questions. Red Oswin is jovial and menacing in the same breath. Ulvhal folk talk plainly; Tarkhan riders speak in proverbs about horses and grass.
+- NPCs speak in distinct voices. Mother Hester Vane is blunt, warm, and calls everyone "love." Lady Corisande Aubrel is silky, precise, and never says no directly. Garrick Dunn grunts, swears at iron, and lights up talking about how things are made. Ottavio Brask speaks in prices and compliments. Brother Anselm Corr is gentle, curious, and frightened of his own questions. Red Oswin is jovial and menacing in the same breath. Ulvhal folk talk plainly; Carthen knights are courtly, proud, quick to take offense, and swear by the Lamp.
 - Combat is fast and deadly: a spear in the gut ends a story. Numbers, ground, armor, and surprise matter more than heroics. Telegraph threats.
 - End on something the player can act on: a choice, an offer, a problem, a rider on the road.
 `,
@@ -347,9 +354,9 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
     {
       name: 'Thornwick',
       description:
-        "A free market town of timber and thatch at the crossroads of the Reach, ringed by a ditch and a rotten palisade. The square holds the Treaty Stone, a grey slab cut with the five crowns' seals where the Treaty of the Empty Crown was signed, and every crown's envoy keeps a house within sight of it. Market days bring Kestran grain carts, Tarkhan horse-strings, League factors, and Ulvhal amber-sellers. The moot meets in the tithe barn.",
+        "A free market town of timber and thatch at the crossroads of the Reach, ringed by a ditch and a rotten palisade. The square holds the Treaty Stone, a grey slab cut with the three crowns' seals (and the Lamp and the League's ship beneath them) where the Treaty of the Empty Crown was signed, and every crown's envoy keeps a house within sight of it. Market days bring Kestran grain carts, Carthen horse-strings, League factors, and Ulvhal amber-sellers. The moot meets in the tithe barn.",
       purpose:
-        "Where the story starts, and the political crossroads of the campaign. Every faction's envoy is here, so any invention used openly in Thornwick is seen by all five crowns within a day. The Treaty Stone is where a new kingdom's recognition would be sworn. Thornwick itself could become the player's seat if the moot chooses them, and Red Oswin's tithe demand (The Ashen Tithe) threatens it first.",
+        "Where the story starts, and the political crossroads of the campaign. Every faction's envoy is here, so any invention used openly in Thornwick is seen by all three crowns, the League, and the See within a day. The Treaty Stone is where a new kingdom's recognition would be sworn. Thornwick itself could become the player's seat if the moot chooses them, and Red Oswin's tithe demand (The Ashen Tithe) threatens it first.",
       tags: ['reach', 'town', 'market', 'crossroads', 'politics', 'free'],
       map: { x: 0, y: 0 },
     },
@@ -454,31 +461,31 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       map: { x: -14, y: 76 },
     },
     {
-      name: 'Merrowgate',
+      name: 'Corsal',
       description:
-        'A crowded port city of canals and stone counting-houses on the southwestern coast, its harbor bristling with masts. Merchant houses fly their own flags; the League council meets in the Lantern Hall above the bank. Anything can be bought here.',
+        'A free island port off the southwestern coast, belonging to no crown: canals, stone counting-houses, and a harbor bristling with masts from every sea. Each of the seven houses flies its own flag; the League council meets in the Lantern Hall above the bank. Anything can be bought here.',
       purpose:
-        "Money, trade, and the market for inventions: the League will pay a fortune for exclusive rights and steal what it can't buy. Copper and tin from overseas (for bronze) are sold here. The Lantern Bank honors letters of credit.",
-      tags: ['merrowgate', 'city', 'port', 'trade', 'bank', 'foreign'],
+        "The League's seat and its one piece of ground outside every kingdom. Money, trade, and the market for inventions: the League will pay a fortune for exclusive rights and steal what it can't buy. Copper and tin from overseas (for bronze) are sold here. The Lantern Bank honors letters of credit. First Factor Cassia Marovin can open or close a kingdom's purse.",
+      tags: ['league', 'free port', 'island', 'trade', 'bank', 'foreign'],
       map: { x: -44, y: -48 },
     },
     {
       name: 'Lumen',
       description:
-        'The holy city of Ysmere on terraced hills: white temples, the great Sun Lamp burning in its glass-domed tower, temple schools, scriptoria, and libraries. Lamplighters in yellow robes walk the streets. Pilgrims everywhere.',
+        'The holy city on Mount Ysmere, in the high passes between Carthen and Kestrany, climbing the terraced slopes: white temples, the great Sun Lamp burning in its glass-domed tower, temple schools, scriptoria, and libraries. Lamplighters in yellow robes walk the streets. Pilgrims everywhere.',
       purpose:
-        "Where learning lives, guarded. Ysmere's scholars could spread any shared invention across the continent, or the Lamplighters could declare it unhallowed. The only glassworks on the continent are in its temples, making lamp-glass and beads.",
-      tags: ['ysmere', 'holy city', 'temple', 'scholars', 'foreign'],
-      map: { x: 8, y: -60 },
+        "The See's seat and its one piece of ground outside every kingdom, sworn untouchable by all three crowns. Where learning lives, guarded. The See's scholars could spread any shared invention through all three kingdoms, or the Lamplighters could declare it unhallowed. The only glassworks on the continent are in its temples, making lamp-glass and beads.",
+      tags: ['ysmere', 'holy city', 'temple', 'scholars', 'neutral', 'foreign'],
+      map: { x: 36, y: -44 },
     },
     {
-      name: 'Khar Toru',
+      name: 'Castel Varre',
       description:
-        "The great moving camp of the Tarkhan Hosts on the Sea of Grass: a city of felt tents that travels with the seasons, a hundred thousand horses on the plain around it, and the Khagan's white pavilion at its center.",
+        "Carthen's capital on a crag above the wine country of the south: a tiered fortress-city of honey-colored stone, the royal castle at its crown, a great temple of the Sun Lamp beside it, and royal horse-studs spreading across the valley below. Knights everywhere, and banners on every tower.",
       purpose:
-        'The strongest cavalry in the world, and the most dangerous place to share a military invention. The Tarkhan trade horses, hides, horn, and sinew. They respect gifts, courage, and hospitality.',
-      tags: ['tarkhan', 'camp', 'steppe', 'horses', 'foreign'],
-      map: { x: 120, y: 10 },
+        "The seat of the youngest and most warlike crown. King Brannoc holds court here with his barons and the Lamplighters on his council. The best warhorses in the world are bred in the valley, and anything that changes how a horse is ridden or how a knight fights will be wanted here at any price.",
+      tags: ['carthen', 'capital', 'city', 'court', 'castle', 'horses', 'foreign'],
+      map: { x: 4, y: -72 },
     },
   ],
 
@@ -536,8 +543,8 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
     },
     {
       name: 'Ottavio Brask',
-      shortDescription: 'Merrowgate League factor at Thornwick and Gull\'s Rest. Fifty, plump and perfumed, in a blue velvet coat with silver buttons, rings on every finger, and a sweet smile that never reaches his eyes.',
-      faction: MERROWGATE,
+      shortDescription: 'Corsal League factor at Thornwick and Gull\'s Rest. Fifty, plump and perfumed, in a blue velvet coat with silver buttons, rings on every finger, and a sweet smile that never reaches his eyes.',
+      faction: LEAGUE,
       location: 'Thornwick',
       notes:
         "**Want:** for the League to own every new thing in the Reach. **Offer:** he will buy exclusive rights to any invention for real money (hundreds or thousands of stags, depending on its value), and loan the player money at interest. **Method:** he buys debts and workers; he holds Garrick Dunn's debt. **Toward the player:** delighted, flattering, and always calculating. He keeps his written bargains to the letter and not one inch beyond.",
@@ -548,31 +555,39 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       faction: YSMERE,
       location: 'Thornwick',
       notes:
-        "**Want:** to understand how the world works, which Ysmere forbids outside the temple schools. **Secret:** he writes to a circle of quiet scholars in Lumen who would give anything for a new idea. **Duty:** he must report any new craft to the Lamplighters, who will judge it hallowed or unhallowed. **Toward the player:** fascinated and frightened. With his help an invention can be presented to Ysmere as a holy gift (hallowed), which makes it safe in the Sun Lamp lands; without it, the Lamplighters may brand the player a heretic. He can read, write, and teach.",
+        "**Want:** to understand how the world works, which the See forbids outside the temple schools. **Secret:** he writes to a circle of quiet scholars in Lumen who would give anything for a new idea. **Duty:** he must report any new craft to the Lamplighters, who will judge it hallowed or unhallowed. **Toward the player:** fascinated and frightened. With his help an invention can be presented to the See as a holy gift (hallowed), which makes it safe wherever the faith holds; without it, the Lamplighters may brand the player a heretic. He can read, write, and teach.",
     },
     {
       name: 'High Lector Yvaine Solis',
-      shortDescription: 'Ruler of the Hallowed See of Ysmere. Seventy, tiny and white-haired, in robes of cloth-of-gold, with eyes like a hawk and a soft, terrible voice.',
+      shortDescription: 'High Lector of the Hallowed See, at Lumen on Mount Ysmere. Seventy, tiny and white-haired, in robes of cloth-of-gold, with eyes like a hawk and a soft, terrible voice.',
       faction: YSMERE,
       location: 'Lumen',
       notes:
-        "**Want:** the See to remain the keeper of all knowledge. **Belief:** new knowledge unguided by faith brings ruin; knowledge guided by the See is holy. **Toward the player:** she can bless an invention (it spreads through Ysmere's schools and the See's goodwill grows) or condemn it (Lamplighters hunt it and its maker). She would very much like the player's inventions to belong to Ysmere.",
+        "Head of the See, which serves no crown. She anointed King Brannoc of Carthen and counts him her son in the faith; she tolerates King Osric of Kestrany and he tolerates her; she has sent missions to Ulvhal for twenty years with little to show. **Want:** the See to remain the keeper of all knowledge. **Belief:** new knowledge unguided by faith brings ruin; knowledge guided by the See is holy. **Toward the player:** she can bless an invention (it spreads through Ysmere's schools and the See's goodwill grows) or condemn it (Lamplighters hunt it and its maker). She would very much like the player's inventions to belong to the See. Her anointing can make a new crown lawful in the eyes of the faithful.",
     },
     {
-      name: 'Khagan Altan Sorgh',
-      shortDescription: 'Khagan of the Tarkhan Hosts. Twenty-two, lean and handsome, with a shaved head and a long black topknot, a wolfskin over lacquered leather, and a bow he never puts down.',
-      faction: TARKHAN,
-      location: 'Khar Toru',
+      name: 'King Brannoc',
+      shortDescription: 'King of Carthen. Twenty-five, golden-haired and broad-shouldered, in burnished mail under a white surcoat with the Carthen sun-and-lance, a champion of tourneys who has never fought a real war.',
+      faction: CARTHEN,
+      location: 'Castel Varre',
       notes:
-        "**Want:** a great war to prove himself to the clan elders, who chose him young. Kestrany is the obvious target. **Toward the player:** generous to guests and gifts, brutal to enemies. Give the Tarkhan stirrups or a better bow and he will conquer half the continent, possibly with the player as ally, possibly not. He trades horses beyond price.",
+        "Crowned at twenty-two by High Lector Solis, and devout. **Want:** a war with Kestrany to prove himself to the barons who still think him a boy, and the border valleys his grandfather lost. **Problem:** his treasury is empty and his barons owe the League. **Toward the player:** generous to the bold, cold to the merely clever, and unable to refuse a challenge. Give Carthen's knights stirrups or a better lance and he will ride to war within the season, possibly as the player's ally, possibly not. He will not recognize any crown the See has condemned.",
     },
     {
-      name: 'Ganzorig',
-      shortDescription: 'A Tarkhan horse-trader at the Thornwick market. Fifty, bow-legged and leathery, with a wispy beard, a fox-fur hat, and a string of twenty steppe ponies.',
-      faction: TARKHAN,
+      name: 'Ser Edric Montaine',
+      shortDescription: "Carthen's envoy to Thornwick. Fifty-five, bow-legged and leathery, a scarred old knight with a grey moustache, a faded white surcoat, and a string of Carthen horses he sells on market days.",
+      faction: CARTHEN,
       location: 'Thornwick',
       notes:
-        "Honest by Tarkhan standards: he will cheat you on a horse but never lie to a guest. **Role:** the player's way to the Khagan, and the Tarkhan's eyes in the Reach. He speaks in horse proverbs. Anything that changes how a horse is ridden, he will notice at once and send word to Khar Toru.",
+        "Honest by a knight's lights: he will drive a hard bargain on a horse but never break his word or lie to a guest. **Role:** the player's way to King Brannoc, and Carthen's eyes in the Reach. Anything that changes how a horse is ridden or a knight fights, he will notice at once and send word to Castel Varre. **Toward the player:** courteous, curious, and quietly afraid his young king will start a war he cannot finish.",
+    },
+    {
+      name: 'Cassia Marovin',
+      shortDescription: 'First Factor of the Corsal League. Fifty, silver-haired and sharp-boned, in plain black wool with a single gold chain of office; speaks quietly and never repeats herself.',
+      faction: LEAGUE,
+      location: 'Corsal',
+      notes:
+        "Head of the League, which serves no crown. **Holds:** King Osric's war debts, the Ulvhal amber trade, and the secret loans of half Carthen's barons. **Want:** every kingdom in the League's debt, and none strong enough to stop paying. A new crown in the Reach is a new borrower, or a new rival. **Toward the player:** distant until they are worth money, then very interested. League money can raise an army or end one; she will lend it for a share of whatever the player builds.",
     },
     {
       name: 'Red Oswin Marl',
@@ -619,38 +634,38 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
       title: "The World's Technology",
       keywords: ['technology', 'baseline', 'iron', 'steel', 'bow', 'crossbow', 'stirrup', 'plow', 'mill', 'ship', 'sail', 'rudder', 'compass', 'paper', 'glass', 'gunpowder', 'medicine', 'numbers'],
       alwaysInclude: true,
-      body: "EXISTS: bloomery iron (soft, worked by forge-welding; good steel is luck), bronze from imported tin and copper, swords, spears, axes, round and kite shields, mail (expensive), padded and scale armor, self bows of yew or ash, slings, javelins, rams, ladders, palisades, stone walls and lime mortar; riding without stirrups, ox-drawn scratch plows, sickles and scythes, two-field farming, hand querns, wheeled carts, simple pulleys and levers; oared galleys and longships with a single square sail, a steering oar on the side, coast-hugging navigation by landmark and sun; wool, linen, leather, natural dyes; parchment, wax tablets, ink, Ysmeran script and numerals with no zero (sums are slow, done on fingers and counting-boards); temple medicine of herbs, setting bones, cautery, and bloodletting; Ysmeran temple glass (beads and lamp glass, no clear lenses). DOES NOT EXIST (until the player invents it): steel on purpose, blast furnaces, using coal, crossbows, composite or recurved bows, longbow drill, stirrups, horseshoes, the horse collar, heavy wheeled plows, crop rotation with clover or beans, water mills, windmills, the spinning wheel, the wheelbarrow, cranes and treadwheels, torsion and counterweight siege engines, gunpowder, stern rudders, lateen sails, the compass, charts and lighthouses, paper, printing, place-value numbers and zero, double-entry bookkeeping, eyeglasses and lenses, clocks, distillation, soap that cleans well, the idea that boiling water and clean hands prevent disease, and anything more advanced. Coal, sulfur, and cave-salt exist but no one knows their uses.",
+      body: "EXISTS: bloomery iron (soft, worked by forge-welding; good steel is luck), bronze from imported tin and copper, swords, spears, axes, round and kite shields, mail (expensive), padded and scale armor, self bows of yew or ash, slings, javelins, rams, ladders, palisades, stone walls and lime mortar; riding without stirrups, ox-drawn scratch plows, sickles and scythes, two-field farming, hand querns, wheeled carts, simple pulleys and levers; oared galleys and longships with a single square sail, a steering oar on the side, coast-hugging navigation by landmark and sun; wool, linen, leather, natural dyes; parchment, wax tablets, ink, Ysmeran script and numerals with no zero (sums are slow, done on fingers and counting-boards); temple medicine of herbs, setting bones, cautery, and bloodletting; the See's temple glass (beads and lamp glass, no clear lenses). DOES NOT EXIST (until the player invents it): steel on purpose, blast furnaces, using coal, crossbows, composite or recurved bows, longbow drill, stirrups, horseshoes, the horse collar, heavy wheeled plows, crop rotation with clover or beans, water mills, windmills, the spinning wheel, the wheelbarrow, cranes and treadwheels, torsion and counterweight siege engines, gunpowder, stern rudders, lateen sails, the compass, charts and lighthouses, paper, printing, place-value numbers and zero, double-entry bookkeeping, eyeglasses and lenses, clocks, distillation, soap that cleans well, the idea that boiling water and clean hands prevent disease, and anything more advanced. Coal, sulfur, and cave-salt exist but no one knows their uses.",
     },
     {
       title: 'Founding a Kingdom',
       keywords: ['kingdom', 'realm', 'crown', 'king', 'queen', 'found', 'founding', 'recognition', 'claim', 'land', 'holding', 'people', 'subjects', 'banner', 'legitimacy'],
       alwaysInclude: true,
-      body: "The main story. The stage is the Dominion rank (set_rank), shown to the player; the details go in the 'Your Realm' condition (update_status_effect): seat, lands, people, fighters, stores, laws, claim, and who recognizes it. Any means are valid: conquest, purchase, marriage, a moot's election, a holy blessing, a league of villages, settling empty land, or invention-driven wealth. STAGES: (1) Holding: one place that is yours (a hall, a village, a keep, a harbor) and people who follow you. (2) Lordship: several settlements, a steady food supply, armed defenders, and laws you enforce. It must survive a winter. (3) Domain: a real territory (a large part of the Reach), a seat, a banner, and a claim (Calder blood, a moot's election, the See's blessing, a treaty, or conquest held for a year). (4) Kingdom: recognized as a crown by at least two of the five powers, sworn at the Treaty Stone in Thornwick, or held so firmly no one can deny it. Each stage brings stronger enemies: the crowns grow alarmed as the player rises, and the Treaty means any crown that moves openly against a new realm must answer to the other four. Keep counts honest: people eat, soldiers want pay, and winter comes on day 60 (snow closes the passes, and the fishing stops).",
+      body: "The main story. The stage is the Dominion rank (set_rank), shown to the player; the details go in the 'Your Realm' condition (update_status_effect): seat, lands, people, fighters, stores, laws, claim, and who recognizes it. Any means are valid: conquest, purchase, marriage, a moot's election, a holy blessing, a league of villages, settling empty land, or invention-driven wealth. STAGES: (1) Holding: one place that is yours (a hall, a village, a keep, a harbor) and people who follow you. (2) Lordship: several settlements, a steady food supply, armed defenders, and laws you enforce. It must survive a winter. (3) Domain: a real territory (a large part of the Reach), a seat, a banner, and a claim (Calder blood, a moot's election, the See's blessing, a treaty, or conquest held for a year). (4) Kingdom: recognized as a crown by two of the three crowns, or by one crown and anointed by the See, sworn at the Treaty Stone in Thornwick; or held so firmly no one can deny it. League money can make any of these easier but cannot replace them. Each stage brings stronger enemies: the crowns grow alarmed as the player rises, and the Treaty means any crown that moves openly against a new realm must answer to the other two. Keep counts honest: people eat, soldiers want pay, and winter comes on day 60 (snow closes the passes, and the fishing stops).",
     },
     {
       title: 'The Treaty of the Empty Crown',
-      keywords: ['treaty', 'empty crown', 'annex', 'sundering war', 'treaty stone', 'thornwick'],
-      body: "Signed at Thornwick twenty-three years ago after the eight-year Sundering War. Terms: no existing crown may annex, garrison, or tax the Reach; any that does faces the other four; envoys may reside in Thornwick; trade is free. It says nothing about a new crown arising in the Reach. Lawyers in every court have noticed this, and each crown means to make sure the new crown, when it comes, is its own. A new kingdom recognized at the Treaty Stone by two or more of the five powers would be lawful under the Treaty.",
+      keywords: ['treaty', 'empty crown', 'annex', 'sundering war', 'treaty stone', 'thornwick', 'recognition'],
+      body: "Signed at Thornwick twenty-three years ago after the eight-year Sundering War by Kestrany, Ulvhal, and Carthen, blessed by the See and underwritten by the League. Terms: no existing crown may annex, garrison, or tax the Reach; any that does faces the other two, the See's preaching, and the League's closed purse; envoys may reside in Thornwick; trade is free. It says nothing about a new crown arising in the Reach. Lawyers in every court have noticed this, and each crown means to make sure the new crown, when it comes, is its own. A new kingdom recognized at the Treaty Stone by two of the three crowns, or by one crown with the See's anointing, would be lawful under the Treaty.",
     },
     {
       title: 'The Fall of Calder',
       keywords: ['calder', 'aldred', 'plague', 'royal line', 'stag', 'ashen keep', 'heir'],
-      body: "Calder ruled the Reach for three hundred years from Ashen Keep. Its banner was a white stag beneath a tower. King Aldred the Unready died childless in the plague year thirty-one years ago; his cousins died in the war that followed, and the keep burned. Calder blood survives thinly through daughters and younger sons, and any claimant must prove descent with records (Ysmeran temple registers or Calder heraldry). Many Reach folk remember Calder fondly, as people remember better days. A Calder claim makes a new crown more acceptable to them.",
+      body: "Calder ruled the Reach for three hundred years from Ashen Keep. Its banner was a white stag beneath a tower. King Aldred the Unready died childless in the plague year thirty-one years ago; his cousins died in the war that followed, and the keep burned. Calder blood survives thinly through daughters and younger sons, and any claimant must prove descent with records (the See's temple registers or Calder heraldry). Many Reach folk remember Calder fondly, as people remember better days. A Calder claim makes a new crown more acceptable to them.",
     },
     {
-      title: 'Ysmere and Unhallowed Craft',
-      keywords: ['ysmere', 'sun lamp', 'lamplighters', 'hallowed', 'unhallowed', 'heresy', 'faith', 'temple', 'lumen', 'scholars'],
-      body: "The Sun Lamp faith holds that knowledge is light and must be kept by those who tend the Lamp. The Lamplighters judge any new craft: presented through the See (by a lector, with humility and a gift), it is usually judged hallowed, credited to the Light, and spread through the temple schools; the See's goodwill rises. Discovered on its own, especially if it is a weapon or challenges a temple monopoly (writing, medicine, glass), it may be judged unhallowed: its makers are hunted, its works burned, and the faithful told to shun them. Most Reach folk keep the faith. The See's scholars secretly crave new knowledge, and some can be won as allies.",
+      title: 'The See and Unhallowed Craft',
+      keywords: ['ysmere', 'see', 'sun lamp', 'lamplighters', 'hallowed', 'unhallowed', 'heresy', 'faith', 'temple', 'lumen', 'scholars', 'anoint', 'anointing'],
+      body: "The Hallowed See serves no crown; it rules only Lumen on Mount Ysmere, and preaches in all three kingdoms with very different weight: near-law in Carthen, rich and resented in Kestrany, a small mission in Ulvhal. The Sun Lamp faith holds that knowledge is light and must be kept by those who tend the Lamp. The Lamplighters judge any new craft: presented through the See (by a lector, with humility and a gift), it is usually judged hallowed, credited to the Light, and spread through the temple schools; the See's goodwill rises. Discovered on its own, especially if it is a weapon or challenges a temple monopoly (writing, medicine, glass), it may be judged unhallowed: its makers are hunted, its works burned, and the faithful told to shun them. A condemned invention is hunted by the king's own knights in Carthen, by abbey lords in Kestrany, and barely at all in Ulvhal. Most Reach folk keep the faith. The See's scholars secretly crave new knowledge, and some can be won as allies. The High Lector's anointing can make a new crown lawful.",
     },
     {
       title: 'Ships and the Sea',
       keywords: ['ship', 'ships', 'sea', 'longship', 'galley', 'cog', 'sail', 'navy', 'harbor', 'voyage', 'navigation', 'boat'],
-      body: "Ships are oared galleys and longships with one square sail, steered with a side oar. They hug the coast, sail by day, beach at night, and cannot sail well against the wind. No charts, no compass; sailors navigate by landmarks, sun, and stars. Winter storms close the sea from about day 60 until spring. Ulvhal builds the best longships; the League has the most ships, broad merchant galleys. Gull's Rest has fishing boats and a beach for building. Naval inventions (stern rudder, better sails, keels, compass, charts) change who rules the sea.",
+      body: "Ships are oared galleys and longships with one square sail, steered with a side oar. They hug the coast, sail by day, beach at night, and cannot sail well against the wind. No charts, no compass; sailors navigate by landmarks, sun, and stars. Winter storms close the sea from about day 60 until spring. Ulvhal builds the best longships; the Corsal League has the most ships, broad merchant galleys. Gull's Rest has fishing boats and a beach for building. Naval inventions (stern rudder, better sails, keels, compass, charts) change who rules the sea.",
     },
     {
       title: 'Resources of the Reach',
       keywords: ['resources', 'ore', 'iron', 'coal', 'sulfur', 'brimstone', 'saltpeter', 'cave-salt', 'timber', 'yew', 'pitch', 'sand', 'salt', 'peat', 'bog iron', 'copper', 'tin', 'horn', 'sinew'],
-      body: "Iron Hills: iron ore, charcoal, coal (black burning stone), sulfur at the Stinking Springs. Greywater Fens: bog iron, peat, reeds, eels. Owlcrag Caves: saltpeter (cave-salt). Gull's Rest: salt, fish, white sand (glass), harbor. Wending Wood: oak, ash, pine pitch and tar, yew for bows, charcoal. Hob's Ford and the river valleys: grain, oxen, wool, flax, fast streams. Imported: copper and tin (Merrowgate), horn and sinew and horses (Tarkhan), timber and tar and amber (Ulvhal), glass and parchment (Ysmere), grain and cloth (Kestrany).",
+      body: "Iron Hills: iron ore, charcoal, coal (black burning stone), sulfur at the Stinking Springs. Greywater Fens: bog iron, peat, reeds, eels. Owlcrag Caves: saltpeter (cave-salt). Gull's Rest: salt, fish, white sand (glass), harbor. Wending Wood: oak, ash, pine pitch and tar, yew for bows, charcoal. Hob's Ford and the river valleys: grain, oxen, wool, flax, fast streams. Imported: copper and tin (the League, from overseas through Corsal), horses, horn, sinew, and wine (Carthen), timber and tar and amber (Ulvhal), glass and parchment (the See), grain and cloth (Kestrany).",
     },
   ],
 
@@ -658,12 +673,12 @@ Grounded, earthy, political, and full of possibility. Mud, rain, woodsmoke, hung
     {
       title: 'A Banner of Your Own',
       description:
-        'The Reach belongs to no one. The Treaty forbids the five crowns from taking it, but not a new crown from rising. Make it yours, by sword, coin, faith, cunning, or invention.',
+        'The Reach belongs to no one. The Treaty forbids the three crowns from taking it, but not a new crown from rising. Make it yours, by sword, coin, faith, cunning, or invention.',
       objectives: [
         'Win a holding in the Reach: a place that is yours, and people who follow you',
         'Grow it into a lordship that can feed and defend itself through a winter',
         'Raise a banner and a claim over a real domain',
-        'Be recognized as a crown by at least two of the five powers, or hold your kingdom so firmly no one can deny it',
+        'Be recognized as a crown by two of the three crowns (or one crown and the See), or hold your kingdom so firmly no one can deny it',
       ],
       status: 'active',
       rewards: { xp: 2000 },
