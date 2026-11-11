@@ -288,6 +288,7 @@ export const emptyCrown: WorldTemplate = {
   reputation: { [KESTRANY]: 0, [ULVHAL]: 0, [CARTHEN]: 0, [LEAGUE]: 0, [YSMERE]: 0, [FREE_FOLK]: 0 },
   choices: [origin],
   ladder: DOMINION,
+  mapArt: 'empty-crown',
 
   worldBible: `# The Empty Crown
 

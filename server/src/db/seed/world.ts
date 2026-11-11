@@ -25,6 +25,8 @@ export interface WorldTemplate extends CampaignTemplate {
   choices?: CampaignChoiceInput[];
   /** A rank the character climbs (a realm's dominion), shown in the sidebar and moved by set_rank. */
   ladder?: RankLadderInput;
+  /** Id of a drawn terrain map in the web app (web/src/play/mapArt), drawn to scale under the places' `map` positions. */
+  mapArt?: string;
   /**
    * At least MIN_WORLD_LOCATIONS, each with a purpose: why it exists in the story (GM-only).
    * `parent` names the larger place this one sits inside. `map` places it on the world map, in hours
@@ -92,6 +94,7 @@ export async function insertWorld(
       reputation: world.reputation ?? {},
       choices: (world.choices ?? []).map((c) => CampaignChoice.parse(c)),
       ladder: world.ladder ? RankLadder.parse(world.ladder) : null,
+      mapArt: world.mapArt ?? null,
     })
     .returning({ id: campaigns.id });
   const campaignId = campaign!.id;

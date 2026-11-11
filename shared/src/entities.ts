@@ -91,6 +91,8 @@ export interface Campaign {
   choices: CampaignChoice[];
   /** The character's rank on the world's ladder (e.g. a realm's dominion), if the world has one. */
   ladder: RankLadder | null;
+  /** Id of the drawn terrain map shown under the places, if the world has one. */
+  mapArt: string | null;
   /** Where the scene stands, kept current by the extraction pass; null until it first runs. */
   scene: SceneState | null;
   createdAt: string;
@@ -515,6 +517,8 @@ export interface CampaignState {
     locations: MapLocation[];
     /** Journeys the character has made (from moves in the event log), one entry per pair of places. */
     travels: { fromId: string; toId: string; count: number }[];
+    /** Id of the drawn terrain map to show under the places (to scale), or null for places only. */
+    art: string | null;
   };
 }
 

@@ -25,6 +25,7 @@ export function registerStateRoutes(app: FastifyInstance): void {
         reputation: campaigns.reputation,
         choices: campaigns.choices,
         ladder: campaigns.ladder,
+        mapArt: campaigns.mapArt,
       })
       .from(campaigns)
       .where(eq(campaigns.id, cid));
@@ -63,9 +64,10 @@ export function registerStateRoutes(app: FastifyInstance): void {
     ]);
 
     // Fastify serializes Dates to ISO strings, matching the DTOs.
+    const { mapArt, ...campaignFields } = campaign!;
     return {
       // Who a passed-over option brings into the world is the narrator's secret.
-      campaign: { ...campaign!, choices: campaign!.choices.map((c) => ({ ...c, options: c.options.map(({ ifNotChosen: _secret, ...o }) => o) })) },
+      campaign: { ...campaignFields, choices: campaignFields.choices.map((c) => ({ ...c, options: c.options.map(({ ifNotChosen: _secret, ...o }) => o) })) },
       memoryEnabled: app.maintenance.enabled,
       character: character ?? null,
       location: location ?? null,
@@ -73,7 +75,7 @@ export function registerStateRoutes(app: FastifyInstance): void {
       items: itemRows,
       relationships: relRows.map((r) => ({ ...r.rel, npcName: r.npcName, npcAlive: r.npcAlive })),
       missions: missionRows.map((m) => ({ ...m.mission, giverName: m.giverName })),
-      map: mapOf(locationRows, moveRows, relRows, character?.currentLocationId ?? null),
+      map: { ...mapOf(locationRows, moveRows, relRows, character?.currentLocationId ?? null), art: mapArt },
     } as unknown as CampaignState;
   });
 
@@ -101,7 +103,7 @@ function mapOf(
   moveRows: { payload: Record<string, unknown> }[],
   relRows: { npcName: string; npcAlive: boolean; npcLocationId: string | null }[],
   currentLocationId: string | null,
-): CampaignState['map'] {
+): Omit<CampaignState['map'], 'art'> {
   const known = new Set(locationRows.map((l) => l.id));
   const visited = new Set<string>(currentLocationId ? [currentLocationId] : []);
   const travels = new Map<string, { fromId: string; toId: string; count: number }>();

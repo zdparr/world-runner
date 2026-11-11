@@ -99,6 +99,13 @@
       "when": 1794352229275,
       "tag": "0013_campaign_rank_ladder",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794436383740,
+      "tag": "0014_campaign_map_art",
+      "breakpoints": true
     }
   ]
 }

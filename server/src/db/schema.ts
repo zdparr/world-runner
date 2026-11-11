@@ -92,6 +92,8 @@ export const campaigns = pgTable(
     choices: jsonb().$type<CampaignChoice[]>().notNull().default([]),
     /** The character's rank on the world's ladder (a realm's dominion), moved by set_rank. Null = the world has none. */
     ladder: jsonb().$type<RankLadder>(),
+    /** Id of the drawn terrain map the web app shows under this world's places (e.g. 'empty-crown'). Null = places only. */
+    mapArt: text(),
     /** Where the scene stands (location, time of day, who is present), kept current by extraction. Null until the first extraction. */
     scene: jsonb().$type<SceneState>(),
     createdAt: createdAt(),

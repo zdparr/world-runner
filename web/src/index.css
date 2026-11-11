@@ -194,3 +194,12 @@
   scrollbar-width: thin;
   scrollbar-color: var(--color-ink-600) transparent;
 }
+
+/* Place names on a drawn map: a dark halo keeps them readable over coasts, rivers, and forests. */
+.map-label {
+  paint-order: stroke;
+  stroke: var(--color-ink-950);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  stroke-opacity: 0.85;
+}
