@@ -70,6 +70,20 @@ describe('The Empty Crown', () => {
     expect(always).toEqual(expect.arrayContaining(['The Rules of Invention', "The World's Technology", 'Founding a Kingdom']));
   });
 
+  it('keeps the far shore (Avandre) out of everything the player can see, and gates it in narrator-only lore', async () => {
+    const id = await newCampaign();
+    const state = (await t.api('GET', `/api/campaigns/${id}/state`)).json() as CampaignState;
+    const npcRows = (await t.api('GET', `/api/campaigns/${id}/npcs`)).json() as unknown[];
+    for (const visible of [state, npcRows]) expect(JSON.stringify(visible)).not.toMatch(/Avandre|Hearthstone|Stillwater|Ammerine/);
+
+    const lore = await t.db.select().from(loreEntries).where(eq(loreEntries.campaignId, id));
+    const secret = lore.filter((l) => ['Beyond the Western Sea', 'Avandre: Its Powers', 'Avandre: Places and the Map'].includes(l.title));
+    expect(secret).toHaveLength(3);
+    // Fetched by keyword when it matters, not shown to the narrator every turn.
+    expect(secret.every((l) => !l.alwaysInclude)).toBe(true);
+    expect(secret.find((l) => l.title === 'Beyond the Western Sea')!.body).toContain('High Kingdom');
+  });
+
   it('keeps every granted skill a distinct single word, so lookups never collide', () => {
     const names = [...emptyCrown.character.skills.map((s) => s.name), ...ORIGINS.flatMap((o) => o.skills)];
     for (const n of names) expect(n).toMatch(/^[A-Z][a-z]+$/);
@@ -98,7 +112,7 @@ describe('The Empty Crown', () => {
     const id = await newCampaign();
     const state = (await t.api('GET', `/api/campaigns/${id}/state`)).json() as CampaignState;
     expect(state.campaign.ladder).toMatchObject({ title: 'Dominion', unranked: 'No realm yet', condition: 'Your Realm', current: null });
-    expect(state.campaign.ladder!.stages.map((s) => s.name)).toEqual(['Holding', 'Lordship', 'Domain', 'Kingdom']);
+    expect(state.campaign.ladder!.stages.map((s) => s.name)).toEqual(['Holding', 'Lordship', 'Domain', 'Kingdom', 'High Kingdom']);
 
     const { calls } = await play(id, 'Where do I start?', [{ text: 'Rain.' }]);
     const context = (calls[0]!.system as Anthropic.TextBlockParam[])[1]!.text;
@@ -118,7 +132,7 @@ describe('The Empty Crown', () => {
     ]);
     const [ok, bad] = toolResultsIn(calls[1]!).map((r) => String(r.content));
     expect(JSON.parse(ok!)).toMatchObject({ Dominion: 'Holding', before: 'No realm yet', next: expect.stringMatching(/^Lordship: /) });
-    expect(bad).toMatch(/"Duchy" is not a stage of Dominion\. Stages: Holding, Lordship, Domain, Kingdom/);
+    expect(bad).toMatch(/"Duchy" is not a stage of Dominion\. Stages: Holding, Lordship, Domain, Kingdom, High Kingdom/);
 
     let state = (await t.api('GET', `/api/campaigns/${id}/state`)).json() as CampaignState;
     expect(state.campaign.ladder!.current).toBe(0);

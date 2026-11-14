@@ -5,6 +5,10 @@ import type { MapArt } from './types';
  * the east, Carthen's hills to the south, Corsal off the southwest coast, and Mount Ysmere in the
  * passes between Carthen and Kestrany. Coordinates are hours on foot from Thornwick (x east, y north),
  * the same space as the world's location `map` positions, so the places sit where the land says.
+ *
+ * Far to the west, beyond `bounds`, lie the Hearthstone Isles and Avandre, the later phase's secret
+ * continent. The map widens to fit placed places, so that land comes into view only once the narrator
+ * creates a place there (positions in the 'Avandre: Places and the Map' lore).
  */
 export const emptyCrownMap: MapArt = {
   id: 'empty-crown',
@@ -92,6 +96,63 @@ export const emptyCrownMap: MapArt = {
       [-43, -21],
       [-45, -22],
     ],
+    // The Hearthstone Isles, the League's secret midsummer anchorage far out in the Western Sea.
+    [
+      [-222, -44],
+      [-214, -40],
+      [-208, -45],
+      [-212, -52],
+      [-220, -52],
+    ],
+    [
+      [-230, -58],
+      [-226, -55],
+      [-223, -59],
+      [-227, -62],
+    ],
+    [
+      [-200, -36],
+      [-197, -34],
+      [-194, -37],
+      [-198, -39],
+    ],
+    // Avandre, across the Stillwater: its east coast from the northern pines down past Ammerine and the
+    // Ilu delta to the Greenmaw, then away west past any map's edge.
+    [
+      [-480, 400],
+      [-470, 250],
+      [-458, 214],
+      [-462, 186],
+      [-450, 160],
+      [-454, 132],
+      [-446, 104],
+      [-452, 78],
+      [-444, 52],
+      [-447, 30],
+      [-440, 14],
+      [-439, 6], // Ammerine's bay
+      [-441, -1],
+      [-446, -8],
+      [-450, -30],
+      [-445, -52],
+      [-452, -78],
+      [-446, -104],
+      [-441, -128],
+      [-434, -146],
+      [-433, -156], // the Ilu's mouth
+      [-440, -168],
+      [-452, -190],
+      [-470, -214],
+      [-496, -238],
+      [-530, -256],
+      [-560, -262],
+      [-600, -258],
+      [-640, -270],
+      [-700, -300],
+      [-760, -400],
+      [-1400, -400],
+      [-1400, 400],
+    ],
   ],
 
   realms: [
@@ -126,6 +187,31 @@ export const emptyCrownMap: MapArt = {
       area: [[36, -38], [40.2, -39.8], [42, -44], [40.2, -48.2], [36, -50], [31.8, -48.2], [30, -44], [31.8, -39.8]],
       outline: true,
     },
+    {
+      name: 'The Hearthstone Isles',
+      color: '#9db4c0',
+      area: [[-234, -30], [-190, -30], [-190, -66], [-234, -66]],
+    },
+    {
+      name: 'The Sallow Coast',
+      color: '#a3b86c',
+      area: [[-490, 140], [-400, 140], [-400, -60], [-500, -60], [-505, 0], [-495, 60]],
+    },
+    {
+      name: 'Nhal',
+      color: '#a9a3c9',
+      area: [[-495, 60], [-505, 0], [-500, -60], [-580, -60], [-590, 40], [-570, 150], [-530, 160], [-490, 140]],
+    },
+    {
+      name: 'The Amaranth Empire',
+      color: '#9a5f8f',
+      area: [[-400, -60], [-400, -400], [-1400, -400], [-1400, 40], [-590, 40], [-580, -60]],
+    },
+    {
+      name: 'The Ochre Steppe',
+      color: '#c98e4a',
+      area: [[-1400, 40], [-1400, 400], [-400, 400], [-400, 140], [-490, 140], [-530, 160], [-570, 150], [-590, 40]],
+    },
   ],
 
   borders: [
@@ -134,6 +220,10 @@ export const emptyCrownMap: MapArt = {
     [[34, 58], [32, 40], [34, 20], [32, 0], [28, -20], [30, -36]],
     [[30, -36], [18, -30], [10, -36], [-10, -38], [-39, -36]],
     [[30, -36], [44, -48], [56, -60], [70, -70], [130, -110]],
+    // Avandre: the steppe's frontier, the Sallow Coast against Nhal, and the empire's northern line.
+    [[-400, 140], [-490, 140], [-530, 160], [-570, 150], [-590, 40], [-1400, 40]],
+    [[-490, 140], [-495, 60], [-505, 0], [-500, -60]],
+    [[-400, -60], [-580, -60], [-590, 40]],
   ],
 
   rivers: [
@@ -148,6 +238,12 @@ export const emptyCrownMap: MapArt = {
     [[26, -56], [18, -62], [9, -68], [5, -70.4], [-4, -73], [-14, -75], [-23, -76]],
     // The Skarn: down from the Ulvhal spine to the fjord head.
     [[2, 96], [-4, 86], [-10, 79], [-17, 76.4]],
+    // The Ilu: the Amaranth Empire's great river, past Ilun Teshar to its delta below Sethra.
+    [[-800, -120], [-720, -138], [-660, -142], [-600, -150], [-540, -146], [-490, -150], [-433, -155]],
+    // The Amme: out of the Pale Spine to Ammerine's bay.
+    [[-528, 22], [-500, 16], [-470, 10], [-439, 6]],
+    // The Ochre: across the steppe past the Hundred Fires, away west.
+    [[-560, 200], [-600, 186], [-650, 170], [-720, 160], [-800, 150]],
   ],
 
   ranges: [
@@ -156,8 +252,11 @@ export const emptyCrownMap: MapArt = {
     // Ulvhal's spine.
     [[-4, 58], [4, 64], [12, 70], [20, 78], [26, 88], [30, 104]],
     [[-30, 90], [-22, 96], [-14, 106]],
+    // The Pale Spine, Avandre's wall between the coast and the steppe.
+    [[-512, -60], [-522, -20], [-530, 20], [-526, 60], [-538, 120], [-552, 170], [-570, 220]],
   ],
-  peaks: [[35, -41.5]],
+  // Mount Ysmere; the Veil above Nhal Amar.
+  peaks: [[35, -41.5], [-534, 102]],
 
   hills: [
     // The Iron Hills.
@@ -168,6 +267,9 @@ export const emptyCrownMap: MapArt = {
     [[-14, -50], [0, -48], [14, -52], [20, -62], [10, -64], [-4, -64], [-16, -60]],
     [[-20, -84], [-8, -82], [-4, -92], [-16, -96]],
     [[30, -76], [46, -74], [54, -86], [36, -92]],
+    // The Sootfells and the Tinward Downs.
+    [[-508, 46], [-486, 46], [-478, 60], [-490, 70], [-506, 66]],
+    [[-488, -12], [-462, -10], [-458, -30], [-480, -36], [-490, -26]],
   ],
 
   forests: [
@@ -178,11 +280,16 @@ export const emptyCrownMap: MapArt = {
     { kind: 'pine', area: [[-10, 60], [4, 62], [0, 72], [-14, 70]] },
     { kind: 'pine', area: [[14, 84], [24, 92], [16, 98], [6, 92]] },
     { kind: 'pine', area: [[-34, 86], [-24, 84], [-20, 92], [-32, 94]] },
+    // The Greenmaw, and the pines of Avandre's north coast.
+    { kind: 'broadleaf', area: [[-580, -210], [-500, -206], [-480, -236], [-560, -256], [-600, -240]] },
+    { kind: 'pine', area: [[-476, 150], [-454, 160], [-458, 206], [-484, 214], [-492, 180]] },
   ],
 
   marshes: [
     // Greywater Fens.
     [[8, -1], [16, -0.6], [22, -2], [24, -7], [16, -9], [9, -6]],
+    // The Ilu delta.
+    [[-452, -144], [-436, -146], [-436, -162], [-454, -164]],
   ],
 
   labels: [
@@ -194,5 +301,13 @@ export const emptyCrownMap: MapArt = {
     { text: 'Saltmere Bay', at: [-38, 11], kind: 'water' },
     { text: 'Skarn Fjord', at: [-38, 76], kind: 'water' },
     { text: 'The Ysmere Range', at: [60, -52], kind: 'feature', rotate: 33 },
+    { text: 'The Hearthstone Isles', at: [-212, -70], kind: 'water' },
+    { text: 'The Stillwater', at: [-330, -10], kind: 'sea' },
+    { text: 'THE SALLOW COAST', at: [-480, 120], kind: 'realm' },
+    { text: 'NHAL', at: [-560, 10], kind: 'realm' },
+    { text: 'THE AMARANTH EMPIRE', at: [-590, -95], kind: 'realm' },
+    { text: 'THE OCHRE STEPPE', at: [-610, 130], kind: 'realm' },
+    { text: 'The Pale Spine', at: [-548, 50], kind: 'feature', rotate: -75 },
+    { text: 'The Greenmaw', at: [-540, -232], kind: 'feature' },
   ],
 };
