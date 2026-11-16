@@ -31,6 +31,12 @@ const ConfigSchema = z.object({
    * is tailscaled's userspace outbound proxy, the only route to a model server on the tailnet.
    */
   LLM_PROXY_URL: z.url().optional(),
+  /**
+   * The self-hosted model's context window in tokens: must match the server's setting (Ollama's
+   * OLLAMA_CONTEXT_LENGTH). Narrator prompts over budget drop their oldest history first; past the
+   * window, Ollama would silently cut the start of the prompt, where the narrator's rules are.
+   */
+  LLM_CONTEXT_TOKENS: z.coerce.number().int().min(8_192).default(32_768),
   NARRATOR_MODEL: z.string().min(1).default('claude-sonnet-5'),
   /** Background jobs: story extraction, summaries, note condensing. */
   UTILITY_MODEL: z.string().min(1).default('claude-haiku-5-5'),

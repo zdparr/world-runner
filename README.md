@@ -193,6 +193,15 @@ Claude-specific request features don't carry over to a local model. Rather than 
 | `tool_choice: { type: 'none' }` on the final round | Ignored: the model still calls tools, leaving the turn with no narration. | The final round sends no tools at all. |
 | `thinking: adaptive`, `output_config.effort` | Not supported (Ollama accepts and ignores them). | Removed. |
 
+### Context budget and repeat guard
+
+Two safeguards cover failure modes that Claude doesn't have but a small local model does:
+
+- **Context budget** ([local.ts](server/src/engine/local.ts) `fitToContext`, local mode only). Ollama's context window is small: 32k tokens here, against Claude's 200k+. Past it, Ollama silently drops the *start* of the prompt, which is where the narrator's rules are. Before each narrator request, the adapter estimates its size (JSON characters ÷ 4, which measured ~4% above Qwen3's real count) and, if it exceeds `LLM_CONTEXT_TOKENS` minus a 3,000-token reserve for the reply, drops the **oldest history** until it fits. Older events are already in the rolling summary. The system prompt, tools, world state, the player's message and the current turn's tool rounds are never dropped. Each trim is logged as `Narrator prompt over the model context budget` (component `llm`). In a long campaign, the system prompt, tools and world state alone took ~23k tokens, leaving ~5k for history. If the world state keeps growing, raise the context window on both sides (Ollama and `LLM_CONTEXT_TOKENS`), which needs more VRAM.
+- **Repeat guard** ([repeat.ts](server/src/engine/repeat.ts), all backends). Small models sometimes reproduce their previous narration almost word for word, and once a copy is saved, the history teaches the model to keep repeating (seen in play: three repeats in a row until the turns were undone). After each turn, the narration is compared with the previous one by shared word triples. At 60% or more, the turn fails with a retryable "The narrator repeated its last response. Nothing was saved; try again." Because the turn's transaction rolls back, the copy never reaches the history. Ordinary consecutive narrations of the same scene measured 0–16%. Replies under ~20 word triples are not checked.
+- **Loop guard** (same file, all backends; output cap in local mode). A small model can also loop *within* one response, writing the same passage until it runs out of room. With the app's 16k-token output limit, that ran for 2.5 minutes in play before the request was cut off. In local mode, narrator output is capped at 2,048 tokens (`LOCAL_MAX_OUTPUT_TOKENS`; a narration is 300–600), so a loop ends within about a minute. Any narration whose own word triples are 40%+ repeats is discarded like a repeat, and nothing is saved. Real narrations measured 0–1.6%, and a passage repeated three times measures 66%.
+- **Not used: a presence penalty.** Qwen recommends `presence_penalty` against repetition, and Ollama applies it as a model setting, but in testing it stopped the narrator from calling tools (1 call in 8 turns instead of several per turn), so state stopped being tracked.
+
 `cache_control` markers are left in place; Ollama ignores them. Requests to Claude are never adapted. The SDK client for a local backend uses a 10-minute timeout and 1 retry, instead of 2 minutes and 3 retries, because a retry repeats a long prompt-processing step on the same GPU.
 
 ### Measured performance
@@ -217,6 +226,7 @@ For comparison, the hybrid-thinking `qwen3:30b-a3b` took 40–75 s per turn and 
 | --- | --- | --- |
 | `LLM_BASE_URL` | server | Base URL of the Anthropic-compatible model server, e.g. `http://tron-laptop.tail57bc3.ts.net:11434`. Setting it switches every model call to that server. |
 | `LLM_API_KEY` | server (optional) | Sent as the API key. Ollama ignores it, but an authenticating proxy in front of it may need it. Redacted in logs. |
+| `LLM_CONTEXT_TOKENS` | server (default `32768`) | The self-hosted model's context window. **Must match `OLLAMA_CONTEXT_LENGTH`** on the model host. Narrator prompts are trimmed to fit it (see [Context budget](#context-budget-and-repeat-guard)). |
 | `LLM_PROXY_URL` | server (optional) | HTTP proxy used for model calls only, through undici's `ProxyAgent` (HTTP CONNECT). On Render this is `http://127.0.0.1:1055`, tailscaled's outbound proxy. |
 | `NARRATOR_MODEL`, `UTILITY_MODEL` | server | Model names on the selected backend. For Ollama, use the same model for both. |
 | `TS_AUTHKEY` | Render (secret) | Tailscale auth key used by [deploy/start.sh](deploy/start.sh) to join the tailnet. It must be reusable, ephemeral, and tagged `tag:render`. |

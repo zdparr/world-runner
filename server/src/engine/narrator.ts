@@ -23,6 +23,8 @@ export interface NarratorResult {
 
 export class NarratorRefusal extends Error {}
 export class NarratorTruncated extends Error {}
+/** The narration copied the previous one (see repeat.ts); the turn is failed so the copy is never saved. */
+export class NarratorRepeated extends Error {}
 
 export interface NarratorOptions {
   stream: StreamFn;

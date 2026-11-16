@@ -9,7 +9,8 @@ import { buildTurnContext } from './context';
 import type { CampaignRow, EngineContext } from './game';
 import { ToolError } from './lookup';
 import { Mutator, type RecordedEvent } from './mutator';
-import { NarratorRefusal, NarratorTruncated, runNarrator, type RoundUsage, type StreamFn, type ToolOutcome } from './narrator';
+import { NarratorRefusal, NarratorRepeated, NarratorTruncated, runNarrator, type RoundUsage, type StreamFn, type ToolOutcome } from './narrator';
+import { isLooping, isRepeat } from './repeat';
 import { toolset } from './tools';
 
 export const MAX_TOOL_ROUNDS = 6;
@@ -56,6 +57,7 @@ function friendlyError(err: unknown): { message: string; retryable: boolean } {
     return { message: "The narrator won't write that. Try a different approach, or step out of character with OOC: to talk it through.", retryable: false };
   }
   if (err instanceof NarratorTruncated) return { message: 'The narrator lost the thread mid-scene. Try again.', retryable: true };
+  if (err instanceof NarratorRepeated) return { message: 'The narrator repeated its last response. Nothing was saved; try again.', retryable: true };
   if (err instanceof Anthropic.RateLimitError) return { message: 'The narrator needs a moment (rate limited). Try again shortly.', retryable: true };
   if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
     return { message: 'The server’s model API key was rejected. Check ANTHROPIC_API_KEY (or LLM_API_KEY).', retryable: false };
@@ -155,6 +157,17 @@ export async function runTurn(
         onTool: (call) => emit({ type: 'tool', name: call.name, input: call.input, ok: call.ok, summary: call.ok ? summarize(call.result) : call.result }),
       });
       if (!narrator.narration) throw new NarratorTruncated('Empty narration');
+      // A copy of the last narration must never be saved: in the history it teaches the model to repeat.
+      const previousNarration = context.messages.findLast((m) => m.role === 'assistant')?.content;
+      if (isRepeat(narrator.narration, typeof previousNarration === 'string' ? previousNarration : undefined)) {
+        deps.log.warn({ campaignId, turnNumber }, 'Narrator repeated the previous narration; turn discarded');
+        throw new NarratorRepeated('The narration repeated the previous turn');
+      }
+      // Same for a narration stuck in a loop, repeating its own passage until it runs out of room.
+      if (isLooping(narrator.narration)) {
+        deps.log.warn({ campaignId, turnNumber, chars: narrator.narration.length }, 'Narration looped on itself; turn discarded');
+        throw new NarratorRepeated('The narration looped on itself');
+      }
 
       // Timed conditions tick down once per turn and wear off at zero. Ones set or changed this
       // turn start counting next turn.

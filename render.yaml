@@ -45,6 +45,9 @@ services:
         value: http://tron-laptop.tail57bc3.ts.net:11434
       - key: LLM_PROXY_URL
         value: http://127.0.0.1:1055
+      # Must match OLLAMA_CONTEXT_LENGTH on the model host.
+      - key: LLM_CONTEXT_TOKENS
+        value: "32768"
       - key: NARRATOR_MODEL
         value: qwen3:30b-a3b-instruct-2507-q4_K_M
       - key: UTILITY_MODEL

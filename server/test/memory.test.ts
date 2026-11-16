@@ -109,10 +109,11 @@ describe('rolling summary', () => {
 
   it('folds early when the unsummarized history outgrows its token budget', async () => {
     const id = await newCampaign({ historyWindow: 2, summaryInterval: 50 });
-    const long = 'The tide rolls in. '.repeat(700); // ~13k chars (~3.3k tokens) per narration
-    await play(id, 'Turn 1', [{ text: long }]);
+    // ~14k chars (~3.5k tokens) per narration; numbered so it isn't rejected as a loop or a repeat.
+    const long = (turn: number) => Array.from({ length: 700 }, (_, i) => `Wave ${turn * 1000 + i} rolls in.`).join(' ');
+    await play(id, 'Turn 1', [{ text: long(1) }]);
     expect(summaryRequests()).toHaveLength(0);
-    await play(id, 'Turn 2', [{ text: long }]);
+    await play(id, 'Turn 2', [{ text: long(2) }]);
     expect(summaryRequests()).toHaveLength(1);
     expect(await summarizedTurns(id)).toEqual([1]);
     expect((await memoryEvents(id))[0]!.payload).toMatchObject({ details: { reason: expect.stringMatching(/budget/) } });

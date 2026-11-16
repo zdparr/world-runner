@@ -15,12 +15,19 @@ export interface LlmEndpoint {
   local: boolean;
   /** Route model calls through this HTTP proxy (tailscaled on Render). */
   proxyUrl?: string;
+  /** A self-hosted model's context window; narrator prompts are trimmed to fit it. */
+  contextTokens?: number;
 }
 
 /** The configured model endpoint, or null when neither LLM_BASE_URL nor ANTHROPIC_API_KEY is set. */
-export function llmEndpoint(config: Pick<Config, 'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_PROXY_URL' | 'ANTHROPIC_API_KEY'>): LlmEndpoint | null {
+export function llmEndpoint(
+  config: Pick<Config, 'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_PROXY_URL' | 'ANTHROPIC_API_KEY'> & Partial<Pick<Config, 'LLM_CONTEXT_TOKENS'>>,
+): LlmEndpoint | null {
   const proxy = config.LLM_PROXY_URL ? { proxyUrl: config.LLM_PROXY_URL } : {};
-  if (config.LLM_BASE_URL) return { apiKey: config.LLM_API_KEY || 'local', baseURL: config.LLM_BASE_URL, local: true, ...proxy };
+  if (config.LLM_BASE_URL) {
+    const context = config.LLM_CONTEXT_TOKENS ? { contextTokens: config.LLM_CONTEXT_TOKENS } : {};
+    return { apiKey: config.LLM_API_KEY || 'local', baseURL: config.LLM_BASE_URL, local: true, ...proxy, ...context };
+  }
   if (config.ANTHROPIC_API_KEY) return { apiKey: config.ANTHROPIC_API_KEY, local: false, ...proxy };
   return null;
 }
@@ -43,10 +50,20 @@ const client = (endpoint: LlmEndpoint) =>
     timeout: endpoint.local ? 600_000 : 120_000,
   });
 
+/** Where the stream reports trimmed history (pino's logger fits). */
+export interface LlmLog {
+  warn(obj: object, msg: string): void;
+}
+
 /** The real model stream. Retries 429/5xx/connection errors with exponential backoff before giving up. */
-export function createAnthropicStream(endpoint: LlmEndpoint): StreamFn {
+export function createAnthropicStream(endpoint: LlmEndpoint, log?: LlmLog): StreamFn {
   const anthropic = client(endpoint);
-  return (params) => anthropic.messages.stream(endpoint.local ? localizeNarratorParams(params) : params);
+  if (!endpoint.local) return (params) => anthropic.messages.stream(params);
+  return (params) => {
+    const { params: local, droppedMessages, estimatedTokens } = localizeNarratorParams(params, { contextTokens: endpoint.contextTokens });
+    if (droppedMessages > 0) log?.warn({ droppedMessages, estimatedTokens, contextTokens: endpoint.contextTokens }, 'Narrator prompt over the model context budget: dropped the oldest history');
+    return anthropic.messages.stream(local);
+  };
 }
 
 /** The utility model (summaries, note condensing): one short, non-streaming request per job. */

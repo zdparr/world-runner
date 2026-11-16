@@ -108,7 +108,7 @@ export async function buildApp({ config, db, pingDb, stream, utility, structured
   app.addHook('onClose', () => maintenance.idle());
   app.decorate('engine', {
     db,
-    stream: stream !== undefined ? stream : endpoint ? createAnthropicStream(endpoint) : null,
+    stream: stream !== undefined ? stream : endpoint ? createAnthropicStream(endpoint, app.log.child({ component: 'llm' })) : null,
     model: config.NARRATOR_MODEL,
     effort: config.NARRATOR_EFFORT,
     // Post-turn memory upkeep runs in the background, never in the player's request.

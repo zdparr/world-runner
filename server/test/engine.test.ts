@@ -167,6 +167,30 @@ describe('write tools', () => {
     expect(toolResultsIn(calls[1]!)[0]!.content).toMatch(/Several NPCs match "Mara": .*Mara (Vell|Quill).*Use the full name/);
   });
 
+  it('discards a turn whose narration copies the previous one, saving nothing', async () => {
+    const id = await newCampaign();
+    const scene =
+      'Fog rolls in off the harbor and swallows the lamps one by one. The fishwife packs up her stall, muttering about smugglers, ' +
+      'and a bell tolls twice from somewhere out on the black water where no ship should be at this hour of the night.';
+    expect(doneEvent((await play(id, 'I watch the harbor.', [{ text: scene }])).events).turnNumber).toBe(1);
+
+    const { events } = await play(id, 'I walk down to the docks.', [{ text: scene }]);
+    expect(lastError(events)).toMatchObject({ message: expect.stringMatching(/repeated its last response/), retryable: true });
+    const [campaign] = await t.db.select().from(campaigns).where(eq(campaigns.id, id));
+    expect(campaign!.turnCount).toBe(1);
+    const saved = await t.db.select().from(messages).where(eq(messages.campaignId, id));
+    expect(saved.map((m) => m.content)).toEqual(['I watch the harbor.', scene]);
+  });
+
+  it('discards a narration that loops on itself', async () => {
+    const id = await newCampaign();
+    const loop = 'The bell tolls again from the black water, and the fog presses close around the lamps of the quay. '.repeat(6);
+    const { events } = await play(id, 'I listen to the bell.', [{ text: loop }]);
+    expect(lastError(events)).toMatchObject({ message: expect.stringMatching(/repeated its last response/), retryable: true });
+    const [campaign] = await t.db.select().from(campaigns).where(eq(campaigns.id, id));
+    expect(campaign!.turnCount).toBe(0);
+  });
+
   it('does not match names on filler words like "the"', async () => {
     const id = await newCampaign();
     await t.db.insert(npcs).values([
