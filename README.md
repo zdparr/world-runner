@@ -138,15 +138,15 @@ With a self-hosted model, `NARRATOR_MODEL` and `UTILITY_MODEL` should name **the
 
 ```mermaid
 flowchart LR
-  B[Player's browser] -- HTTPS / SSE --> R
-  subgraph Render["Render web service (narrator)"]
-    R[Node server<br/>server/dist/index.js] -- "model calls only<br/>(LLM_PROXY_URL)" --> P[tailscaled<br/>userspace mode<br/>HTTP proxy 127.0.0.1:1055]
-    R -- direct --> DB[(Render Postgres)]
+  B["Player browser"] -->|"HTTPS / SSE"| R
+  subgraph RENDER["Render web service (narrator)"]
+    R["Node server<br>server/dist/index.js"] -->|"model calls only<br>(LLM_PROXY_URL)"| P["tailscaled<br>userspace mode<br>HTTP proxy 127.0.0.1:1055"]
+    R -->|"direct"| DB[("Render Postgres")]
   end
-  P -- "WireGuard over the tailnet<br/>(via DERP relay)" --> T
-  subgraph Home["Model host (tag:llm)"]
-    T[tailscale0<br/>UFW: allow only :11434] --> O[Ollama :11434<br/>/v1/messages]
-    O --> G[(GPU + RAM<br/>gemma4 26B)]
+  P -->|"WireGuard over the tailnet<br>(via DERP relay)"| T
+  subgraph HOST["Model host (tag:llm)"]
+    T["tailscale0<br>UFW: allow only port 11434"] --> O["Ollama, port 11434<br>Messages API"]
+    O --> G[("GPU + RAM<br>gemma4 26B")]
   end
 ```
 
