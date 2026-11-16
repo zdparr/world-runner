@@ -7,6 +7,11 @@ export type Pt = [number, number];
  */
 export interface MapArt {
   id: string;
+  /**
+   * Layout pixels per hour of travel (default 8, for a region or continent). A city map zooms in
+   * (e.g. 120: a 20-minute walk is 40 px). Coordinates stay in hours either way.
+   */
+  px?: number;
   bounds: { minX: number; maxX: number; minY: number; maxY: number };
   /** Closed coastlines; everything outside them is sea. */
   land: Pt[][];

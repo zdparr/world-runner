@@ -46,7 +46,8 @@ describe('map geometry', () => {
     expect(offset({ x: 0, y: 0 }, 'NE', 10)).toEqual({ x: 7.07, y: 7.07 });
     expect(bearing({ x: 0, y: 0 }, { x: -5, y: -5 })).toBe('SW');
     expect(bearing({ x: 0, y: 0 }, { x: 1, y: 10 })).toBe('N');
-    expect(describeHours(0.3)).toBe('under an hour');
+    expect(describeHours(0.3)).toBe('20 minutes');
+    expect(describeHours(0.02)).toBe('5 minutes');
     expect(describeHours(3)).toBe('3 hours');
     expect(describeHours(16)).toBe('about 2 days');
     expect(describeRoute({ x: 0, y: 0 }, { x: -8, y: 0 })).toBe('about 1 day west');

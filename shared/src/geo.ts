@@ -47,9 +47,10 @@ export function bearing(from: MapPoint, to: MapPoint): Compass {
   return COMPASS[((sector % 8) + 8) % 8]!;
 }
 
-/** "3 hours", "about 2 days": how long the trip is on foot. */
+/** "20 minutes", "3 hours", "about 2 days": how long the trip is on foot. */
 export function describeHours(hours: number): string {
-  if (hours < 0.75) return 'under an hour';
+  // Within a city, places are minutes apart, and "under an hour" says nothing.
+  if (hours < 0.75) return `${Math.max(5, Math.round((hours * 60) / 5) * 5)} minutes`;
   if (hours < HOURS_PER_DAY * 0.75) {
     const h = Math.round(hours);
     return `${h} hour${h === 1 ? '' : 's'}`;
@@ -61,6 +62,6 @@ export function describeHours(hours: number): string {
 /** "about 2 days northwest": where `to` lies from `from`. */
 export function describeRoute(from: MapPoint, to: MapPoint): string {
   const hours = distance(from, to);
-  if (hours < 0.25) return 'right here';
+  if (hours < 0.05) return 'right here';
   return `${describeHours(hours)} ${COMPASS_NAMES[bearing(from, to)]}`;
 }

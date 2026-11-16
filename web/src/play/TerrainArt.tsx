@@ -17,6 +17,8 @@ const HILL = '#6b5f4b';
 const TREE = '#34442f';
 const TREE_EDGE = '#202b1c';
 const MARSH = '#4f7466';
+/** The zoom the glyph and label sizes were drawn for (a region map: 8 px per hour). */
+const BASE_PX = 8;
 
 /** Stable pseudo-random number in [0, 1) from a string, so the map is drawn the same every time. */
 function hash01(s: string): number {
@@ -26,7 +28,7 @@ function hash01(s: string): number {
 }
 
 /** Natural-looking edges: each pass bends every segment's midpoint a little to one side. */
-function roughen(pts: Pt[], closed: boolean, seed: string, amp: number, passes = 3): Pt[] {
+function roughen(pts: Pt[], closed: boolean, seed: string, amp: number, passes = 3, unit = 1): Pt[] {
   let cur = pts;
   for (let pass = 0; pass < passes; pass++) {
     const out: Pt[] = [];
@@ -39,8 +41,8 @@ function roughen(pts: Pt[], closed: boolean, seed: string, amp: number, passes =
       const dx = b[0] - a[0];
       const dy = b[1] - a[1];
       const len = Math.hypot(dx, dy);
-      if (len < 1.2) continue;
-      const d = Math.min(1.6, len * amp) * (hash01(`${seed}:${pass}:${i}`) * 2 - 1);
+      if (len < 1.2 * unit) continue;
+      const d = Math.min(1.6 * unit, len * amp) * (hash01(`${seed}:${pass}:${i}`) * 2 - 1);
       out.push([(a[0] + b[0]) / 2 - (dy / len) * d, (a[1] + b[1]) / 2 + (dx / len) * d]);
     }
     if (!closed) out.push(cur[n - 1]!);
@@ -97,7 +99,7 @@ function scatter(area: Pt[], step: number, seed: string): { p: Pt; r: number }[]
 }
 
 /** Peaks along a mountain chain, every `step` hours, in a ragged double row. */
-function alongRange(line: Pt[], step: number, seed: string): { p: Pt; r: number }[] {
+function alongRange(line: Pt[], step: number, seed: string, unit = 1): { p: Pt; r: number }[] {
   const out: { p: Pt; r: number }[] = [];
   let k = 0;
   for (let i = 0; i < line.length - 1; i++) {
@@ -107,7 +109,7 @@ function alongRange(line: Pt[], step: number, seed: string): { p: Pt; r: number 
     const nx = -(by - ay) / len;
     const ny = (bx - ax) / len;
     for (let t = 0; t < len; t += step, k++) {
-      const side = (k % 2 === 0 ? 1 : -1) * (1.1 + hash01(`${seed}${k}s`) * 1.3);
+      const side = (k % 2 === 0 ? 1 : -1) * (1.1 + hash01(`${seed}${k}s`) * 1.3) * unit;
       const along = t / len;
       out.push({
         p: [ax + (bx - ax) * along + nx * side, ay + (by - ay) * along + ny * side],
@@ -200,17 +202,20 @@ export const TerrainArt = memo(function TerrainArt({
 }: {
   art: MapArt;
   project: (p: MapPoint) => MapPoint;
-  /** Layout pixels per hour of travel. */
+  /** Layout pixels per hour of travel (the map's zoom). */
   px: number;
   width: number;
   height: number;
 }) {
   const uid = useId().replace(/:/g, '');
+  // Hours per standard map unit: shapes are spaced and roughened in screen terms, so a zoomed-in city
+  // map gets as many trees and as ragged a shore as a continent. Glyphs and labels are a fixed size.
+  const unit = BASE_PX / px;
   const drawn = useMemo(() => {
     const P = (p: Pt) => project({ x: p[0], y: p[1] });
-    const land = art.land.map((poly, i) => smoothPath(roughen(poly, true, `land${i}`, 0.1).map(P), true));
-    const rivers = art.rivers.map((line, i) => smoothPath(roughen(line, false, `river${i}`, 0.12, 2).map(P), false));
-    const borders = art.borders.map((line, i) => smoothPath(roughen(line, false, `border${i}`, 0.08, 2).map(P), false));
+    const land = art.land.map((poly, i) => smoothPath(roughen(poly, true, `land${i}`, 0.1, 3, unit).map(P), true));
+    const rivers = art.rivers.map((line, i) => smoothPath(roughen(line, false, `river${i}`, 0.12, 2, unit).map(P), false));
+    const borders = art.borders.map((line, i) => smoothPath(roughen(line, false, `border${i}`, 0.08, 2, unit).map(P), false));
     const realms = art.realms.map((r) => ({ ...r, d: polygonPath(r.area.map(P)) }));
 
     const glyphs: Glyph[] = [];
@@ -220,15 +225,15 @@ export const TerrainArt = memo(function TerrainArt({
         glyphs.push({ kind, x: q.x, y: q.y, r });
       }
     };
-    art.hills.forEach((area, i) => add('hill', scatter(area, 3.2, `hill${i}`)));
-    art.marshes.forEach((area, i) => add('marsh', scatter(area, 2.2, `marsh${i}`)));
-    art.forests.forEach((f, i) => add(f.kind, scatter(f.area, 2.1, `forest${i}`)));
-    art.ranges.forEach((line, i) => add('mountain', alongRange(line, 2.6, `range${i}`)));
+    art.hills.forEach((area, i) => add('hill', scatter(area, 3.2 * unit, `hill${i}`)));
+    art.marshes.forEach((area, i) => add('marsh', scatter(area, 2.2 * unit, `marsh${i}`)));
+    art.forests.forEach((f, i) => add(f.kind, scatter(f.area, 2.1 * unit, `forest${i}`)));
+    art.ranges.forEach((line, i) => add('mountain', alongRange(line, 2.6 * unit, `range${i}`, unit)));
     add('peak', art.peaks.map((p) => ({ p, r: 1 })));
     // Draw from the top of the map down, so nearer (southern) shapes overlap the ones behind them.
     glyphs.sort((a, b) => a.y - b.y);
     return { land, rivers, borders, realms, glyphs, labels: art.labels.map((l) => ({ ...l, ...P(l.at) })) };
-  }, [art, project]);
+  }, [art, project, unit]);
 
   const clip = `land-${uid}`;
   return (
@@ -243,10 +248,10 @@ export const TerrainArt = memo(function TerrainArt({
       <rect x={-width} y={-height} width={width * 3} height={height * 3} fill={SEA} />
       {/* Shallow water hugging every shore. */}
       {drawn.land.map((d, i) => (
-        <path key={`s${i}`} d={d} fill="none" stroke={SHALLOWS} strokeWidth={px * 3.2} strokeLinejoin="round" opacity="0.55" />
+        <path key={`s${i}`} d={d} fill="none" stroke={SHALLOWS} strokeWidth={BASE_PX * 3.2} strokeLinejoin="round" opacity="0.55" />
       ))}
       {drawn.land.map((d, i) => (
-        <path key={`s2${i}`} d={d} fill="none" stroke={SHALLOWS} strokeWidth={px * 1.4} strokeLinejoin="round" opacity="0.8" />
+        <path key={`s2${i}`} d={d} fill="none" stroke={SHALLOWS} strokeWidth={BASE_PX * 1.4} strokeLinejoin="round" opacity="0.8" />
       ))}
       {drawn.land.map((d, i) => (
         <path key={`l${i}`} d={d} fill={LAND} />
@@ -280,13 +285,13 @@ export const TerrainArt = memo(function TerrainArt({
 
       <g clipPath={`url(#${clip})`}>
         {drawn.glyphs.map((g, i) => (
-          <GlyphShape key={i} g={g} px={px} />
+          <GlyphShape key={i} g={g} px={BASE_PX} />
         ))}
       </g>
 
       {drawn.labels.map((l) => {
         const realm = l.kind === 'realm';
-        const size = px * (realm ? 3.6 : l.kind === 'sea' ? 2.6 : 1.4);
+        const size = BASE_PX * (realm ? 3.6 : l.kind === 'sea' ? 2.6 : 1.4);
         return (
           <text
             key={l.text}

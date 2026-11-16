@@ -335,9 +335,9 @@ function scaledLayout(map: MapData, art: MapArt | null): Layout {
   return { placed, width, height, scale, compressed, nodeOf, terrain: null };
 }
 
-/** Layout pixels per hour of travel on a drawn map. */
+/** Layout pixels per hour of travel on a drawn map, unless the map sets its own zoom (MapArt.px). */
 const TERRAIN_PX = 8;
-/** Room kept around the outermost places on a drawn map, in hours. */
+/** Room kept around the outermost places on a drawn map, in hours at the default zoom. */
 const TERRAIN_MARGIN = 8;
 
 /**
@@ -354,13 +354,15 @@ function terrainLayout(
   subsOf: (l: MapLocation) => { loc: MapLocation; indent: number }[],
   pts: MapPoint[],
 ): Layout {
-  const minX = Math.min(art.bounds.minX, ...pts.map((p) => p.x - TERRAIN_MARGIN));
-  const maxX = Math.max(art.bounds.maxX, ...pts.map((p) => p.x + TERRAIN_MARGIN));
-  const minY = Math.min(art.bounds.minY, ...pts.map((p) => p.y - TERRAIN_MARGIN));
-  const maxY = Math.max(art.bounds.maxY, ...pts.map((p) => p.y + TERRAIN_MARGIN));
-  const project = (p: MapPoint): MapPoint => ({ x: (p.x - minX) * TERRAIN_PX, y: (maxY - p.y) * TERRAIN_PX });
-  const width = (maxX - minX) * TERRAIN_PX;
-  const height = (maxY - minY) * TERRAIN_PX;
+  const px = art.px ?? TERRAIN_PX;
+  const margin = (TERRAIN_MARGIN * TERRAIN_PX) / px; // the same room on screen at any zoom
+  const minX = Math.min(art.bounds.minX, ...pts.map((p) => p.x - margin));
+  const maxX = Math.max(art.bounds.maxX, ...pts.map((p) => p.x + margin));
+  const minY = Math.min(art.bounds.minY, ...pts.map((p) => p.y - margin));
+  const maxY = Math.max(art.bounds.maxY, ...pts.map((p) => p.y + margin));
+  const project = (p: MapPoint): MapPoint => ({ x: (p.x - minX) * px, y: (maxY - p.y) * px });
+  const width = (maxX - minX) * px;
+  const height = (maxY - minY) * px;
 
   const index = new Map(nodes.map((l, i) => [l.id, i]));
   const centre = project({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
@@ -383,7 +385,7 @@ function terrainLayout(
   if (free.some(Boolean)) relax(pos, springs, free, 200, 3_000, 0);
 
   const placed = nodes.map((loc, i) => ({ loc, depth: depthOf(loc), subs: subsOf(loc), x: pos[i]!.x, y: pos[i]!.y }));
-  return { placed, width, height, scale: TERRAIN_PX, compressed: false, nodeOf, terrain: { art, project } };
+  return { placed, width, height, scale: px, compressed: false, nodeOf, terrain: { art, project } };
 }
 
 // ---------------------------------------------------------------- labels
@@ -436,7 +438,7 @@ function placeLabels(placed: Placed[], k: number, important: Set<string>): Map<s
 
 /** A round scale-bar length (in hours) that draws at a readable width. */
 function scaleBar(scale: number): { px: number; label: string } {
-  const steps = [0.5, 1, 2, 4, 8, 16, 24, 40, 80, 160, 320, 800, 1600];
+  const steps = [0.25, 0.5, 1, 2, 4, 8, 16, 24, 40, 80, 160, 320, 800, 1600];
   const hours = steps.find((h) => h * scale >= 60) ?? steps[steps.length - 1]!;
   const label = hours >= HOURS_PER_DAY ? `${hours / HOURS_PER_DAY} day${hours === HOURS_PER_DAY ? '' : 's'} on foot` : `${describeHours(hours)} on foot`;
   return { px: hours * scale, label };
@@ -732,7 +734,7 @@ export function MapView({
         {...handlers}
       >
         {terrain ? (
-          <TerrainArt art={terrain.art} project={terrain.project} px={TERRAIN_PX} width={width} height={height} />
+          <TerrainArt art={terrain.art} project={terrain.project} px={terrain.art.px ?? TERRAIN_PX} width={width} height={height} />
         ) : (
           <>
             <defs>
