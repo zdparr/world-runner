@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { ProxyAgent, fetch as undiciFetch } from 'undici';
 import type { Config } from '../config';
 import type { StreamFn } from './narrator';
 import type { StructuredFn } from './extract';
@@ -12,19 +13,30 @@ export interface LlmEndpoint {
   baseURL?: string;
   /** A self-hosted model: requests are adapted (see local.ts) and given more time. */
   local: boolean;
+  /** Route model calls through this HTTP proxy (tailscaled on Render). */
+  proxyUrl?: string;
 }
 
 /** The configured model endpoint, or null when neither LLM_BASE_URL nor ANTHROPIC_API_KEY is set. */
-export function llmEndpoint(config: Pick<Config, 'LLM_BASE_URL' | 'LLM_API_KEY' | 'ANTHROPIC_API_KEY'>): LlmEndpoint | null {
-  if (config.LLM_BASE_URL) return { apiKey: config.LLM_API_KEY || 'local', baseURL: config.LLM_BASE_URL, local: true };
-  if (config.ANTHROPIC_API_KEY) return { apiKey: config.ANTHROPIC_API_KEY, local: false };
+export function llmEndpoint(config: Pick<Config, 'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_PROXY_URL' | 'ANTHROPIC_API_KEY'>): LlmEndpoint | null {
+  const proxy = config.LLM_PROXY_URL ? { proxyUrl: config.LLM_PROXY_URL } : {};
+  if (config.LLM_BASE_URL) return { apiKey: config.LLM_API_KEY || 'local', baseURL: config.LLM_BASE_URL, local: true, ...proxy };
+  if (config.ANTHROPIC_API_KEY) return { apiKey: config.ANTHROPIC_API_KEY, local: false, ...proxy };
   return null;
+}
+
+/** A fetch that sends every request through the proxy (undici's own fetch, so the agent matches). */
+function proxiedFetch(proxyUrl: string): typeof fetch {
+  const dispatcher = new ProxyAgent(proxyUrl);
+  return ((input: Parameters<typeof undiciFetch>[0], init?: Parameters<typeof undiciFetch>[1]) =>
+    undiciFetch(input, { ...init, dispatcher })) as unknown as typeof fetch;
 }
 
 const client = (endpoint: LlmEndpoint) =>
   new Anthropic({
     apiKey: endpoint.apiKey,
     baseURL: endpoint.baseURL,
+    ...(endpoint.proxyUrl ? { fetch: proxiedFetch(endpoint.proxyUrl) } : {}),
     // A local model can spend a minute on a long prompt before answering, and a retry repeats that
     // work on the same single GPU; one retry covers a dropped connection.
     maxRetries: endpoint.local ? 1 : 3,

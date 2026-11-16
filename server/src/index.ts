@@ -13,7 +13,7 @@ async function main() {
   });
 
   if (config.LLM_BASE_URL) {
-    app.log.info({ narrator: config.NARRATOR_MODEL, utility: config.UTILITY_MODEL }, 'Using the self-hosted model server at LLM_BASE_URL');
+    app.log.info({ narrator: config.NARRATOR_MODEL, utility: config.UTILITY_MODEL }, config.LLM_PROXY_URL ? 'Using the self-hosted model server at LLM_BASE_URL, through LLM_PROXY_URL' : 'Using the self-hosted model server at LLM_BASE_URL');
   } else if (!config.ANTHROPIC_API_KEY) {
     app.log.warn('Neither LLM_BASE_URL nor ANTHROPIC_API_KEY is set; the narrator will not work');
   }

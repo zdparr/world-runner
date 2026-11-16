@@ -26,6 +26,11 @@ const ConfigSchema = z.object({
   LLM_BASE_URL: z.url().optional(),
   /** Sent as the API key to LLM_BASE_URL; Ollama ignores it, a proxy in front of it may not. */
   LLM_API_KEY: z.string().optional(),
+  /**
+   * HTTP proxy for model calls only (database and everything else connect directly). On Render this
+   * is tailscaled's userspace outbound proxy, the only route to a model server on the tailnet.
+   */
+  LLM_PROXY_URL: z.url().optional(),
   NARRATOR_MODEL: z.string().min(1).default('claude-sonnet-5'),
   /** Background jobs: story extraction, summaries, note condensing. */
   UTILITY_MODEL: z.string().min(1).default('claude-haiku-5-5'),

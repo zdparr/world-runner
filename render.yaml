@@ -32,9 +32,20 @@ services:
         generateValue: true
       - key: APP_PASSWORD
         sync: false
+      # Claude fallback: used only when LLM_BASE_URL is unset.
       - key: ANTHROPIC_API_KEY
         sync: false
+      # Self-hosted model on the tailnet (Ollama on the tag:llm machine). `npm start` joins the
+      # tailnet with TS_AUTHKEY (a reusable, ephemeral auth key tagged tag:render) and model calls
+      # go through tailscaled's local proxy. Remove LLM_BASE_URL and set the Claude model names to
+      # switch back to Claude.
+      - key: TS_AUTHKEY
+        sync: false
+      - key: LLM_BASE_URL
+        value: http://tron-laptop.tail57bc3.ts.net:11434
+      - key: LLM_PROXY_URL
+        value: http://127.0.0.1:1055
       - key: NARRATOR_MODEL
-        value: claude-sonnet-5
+        value: qwen3:30b-a3b-instruct-2507-q4_K_M
       - key: UTILITY_MODEL
-        value: claude-haiku-5-5
+        value: qwen3:30b-a3b-instruct-2507-q4_K_M

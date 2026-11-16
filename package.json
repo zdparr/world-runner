@@ -12,8 +12,8 @@
   },
   "scripts": {
     "dev": "concurrently -k -n server,web -c blue,magenta \"npm run dev -w @narrator/server\" \"npm run dev -w @narrator/web\"",
-    "build": "npm run build -w @narrator/web && npm run build -w @narrator/server",
-    "start": "node server/dist/index.js",
+    "build": "npm run build -w @narrator/web && npm run build -w @narrator/server && bash deploy/tailscale-install.sh",
+    "start": "bash deploy/start.sh",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm test -w @narrator/server",
     "db:up": "docker compose up -d db",
