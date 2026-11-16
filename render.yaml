@@ -48,7 +48,10 @@ services:
       # Must match OLLAMA_CONTEXT_LENGTH on the model host.
       - key: LLM_CONTEXT_TOKENS
         value: "32768"
+      # Narrator reasoning budget: slower turns, much better prose and tool use (0 = off).
+      - key: LLM_THINKING_TOKENS
+        value: "4000"
       - key: NARRATOR_MODEL
-        value: qwen3:30b-a3b-instruct-2507-q4_K_M
+        value: gemma4:26b
       - key: UTILITY_MODEL
-        value: qwen3:30b-a3b-instruct-2507-q4_K_M
+        value: gemma4:26b

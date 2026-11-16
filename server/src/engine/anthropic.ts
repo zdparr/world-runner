@@ -17,16 +17,20 @@ export interface LlmEndpoint {
   proxyUrl?: string;
   /** A self-hosted model's context window; narrator prompts are trimmed to fit it. */
   contextTokens?: number;
+  /** A self-hosted narrator's reasoning budget (0 or unset: no thinking). */
+  thinkingTokens?: number;
 }
 
 /** The configured model endpoint, or null when neither LLM_BASE_URL nor ANTHROPIC_API_KEY is set. */
 export function llmEndpoint(
-  config: Pick<Config, 'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_PROXY_URL' | 'ANTHROPIC_API_KEY'> & Partial<Pick<Config, 'LLM_CONTEXT_TOKENS'>>,
+  config: Pick<Config, 'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_PROXY_URL' | 'ANTHROPIC_API_KEY'> &
+    Partial<Pick<Config, 'LLM_CONTEXT_TOKENS' | 'LLM_THINKING_TOKENS'>>,
 ): LlmEndpoint | null {
   const proxy = config.LLM_PROXY_URL ? { proxyUrl: config.LLM_PROXY_URL } : {};
   if (config.LLM_BASE_URL) {
     const context = config.LLM_CONTEXT_TOKENS ? { contextTokens: config.LLM_CONTEXT_TOKENS } : {};
-    return { apiKey: config.LLM_API_KEY || 'local', baseURL: config.LLM_BASE_URL, local: true, ...proxy, ...context };
+    const thinking = config.LLM_THINKING_TOKENS ? { thinkingTokens: config.LLM_THINKING_TOKENS } : {};
+    return { apiKey: config.LLM_API_KEY || 'local', baseURL: config.LLM_BASE_URL, local: true, ...proxy, ...context, ...thinking };
   }
   if (config.ANTHROPIC_API_KEY) return { apiKey: config.ANTHROPIC_API_KEY, local: false, ...proxy };
   return null;
@@ -60,11 +64,20 @@ export function createAnthropicStream(endpoint: LlmEndpoint, log?: LlmLog): Stre
   const anthropic = client(endpoint);
   if (!endpoint.local) return (params) => anthropic.messages.stream(params);
   return (params) => {
-    const { params: local, droppedMessages, estimatedTokens } = localizeNarratorParams(params, { contextTokens: endpoint.contextTokens });
+    const { params: local, droppedMessages, estimatedTokens } = localizeNarratorParams(params, {
+      contextTokens: endpoint.contextTokens,
+      thinkingTokens: endpoint.thinkingTokens,
+    });
     if (droppedMessages > 0) log?.warn({ droppedMessages, estimatedTokens, contextTokens: endpoint.contextTokens }, 'Narrator prompt over the model context budget: dropped the oldest history');
     return anthropic.messages.stream(local);
   };
 }
+
+/**
+ * Some local models (Gemma 4) think unless told not to, and the reasoning counts against max_tokens:
+ * a background job's small cap would be spent before any answer. Claude only thinks when asked.
+ */
+const noLocalThinking = (endpoint: LlmEndpoint) => (endpoint.local ? { thinking: { type: 'disabled' as const } } : {});
 
 /** The utility model (summaries, note condensing): one short, non-streaming request per job. */
 export function createAnthropicUtility(endpoint: LlmEndpoint, model: string): UtilityFn {
@@ -75,6 +88,7 @@ export function createAnthropicUtility(endpoint: LlmEndpoint, model: string): Ut
       max_tokens: maxTokens,
       system,
       messages: [{ role: 'user', content: prompt }],
+      ...noLocalThinking(endpoint),
     });
     // A cut-off or refused summary is worse than none: the job is simply retried after a later turn.
     if (message.stop_reason !== 'end_turn' && message.stop_reason !== 'stop_sequence') {
@@ -96,6 +110,7 @@ export function createAnthropicStructured(endpoint: LlmEndpoint, model: string):
       messages: [{ role: 'user', content: prompt }],
       tools: [{ name: tool.name, description: tool.description, input_schema: tool.inputSchema as Anthropic.Tool.InputSchema }],
       tool_choice: { type: 'tool', name: tool.name },
+      ...noLocalThinking(endpoint),
     });
     // A tool call cut off by max_tokens may parse into a plausible but partial record; never apply it.
     if (message.stop_reason === 'max_tokens' || message.stop_reason === 'refusal') {

@@ -16,19 +16,24 @@ import type Anthropic from '@anthropic-ai/sdk';
  *   drops the tools entirely.
  * - Claude-only parameters (adaptive thinking, effort) are removed, and the output is capped
  *   (LOCAL_MAX_OUTPUT_TOKENS) so a model stuck in a loop stops within a minute.
+ * - Thinking is set explicitly: a fixed reasoning budget when `thinkingTokens` is set (added to the
+ *   output cap, since reasoning counts against it), otherwise off. Left unset, a model like Gemma 4
+ *   thinks anyway and can spend the whole cap before writing a word.
  * - The prompt is kept inside the model's context window by dropping the oldest history (see
  *   fitToContext). Claude's window is far larger; a local one is easy to outgrow.
  */
 export function localizeNarratorParams(
   params: Anthropic.MessageStreamParams,
-  opts: { contextTokens?: number } = {},
+  opts: { contextTokens?: number; thinkingTokens?: number } = {},
 ): { params: Anthropic.MessageStreamParams; droppedMessages: number; estimatedTokens: number } {
   const { thinking: _thinking, output_config: _outputConfig, ...rest } = params;
   let out: Anthropic.MessageStreamParams = { ...rest };
 
   // A narration is 300-600 tokens. A local model that falls into a loop writes until max_tokens,
   // which at 16k would take minutes; capped, a loop ends within a minute (and repeat.ts discards it).
-  out.max_tokens = Math.min(params.max_tokens, LOCAL_MAX_OUTPUT_TOKENS);
+  const thinkingTokens = opts.thinkingTokens ?? 0;
+  out.max_tokens = Math.min(params.max_tokens, LOCAL_MAX_OUTPUT_TOKENS + thinkingTokens);
+  out.thinking = thinkingTokens > 0 ? { type: 'enabled', budget_tokens: thinkingTokens } : { type: 'disabled' };
 
   if (params.tool_choice?.type === 'none') {
     delete out.tools;
@@ -44,7 +49,7 @@ export function localizeNarratorParams(
   }
 
   let droppedMessages = 0;
-  if (opts.contextTokens) ({ params: out, droppedMessages } = fitToContext(out, playerIndex, opts.contextTokens));
+  if (opts.contextTokens) ({ params: out, droppedMessages } = fitToContext(out, playerIndex, opts.contextTokens - thinkingTokens));
   return { params: out, droppedMessages, estimatedTokens: estimateTokens(out) };
 }
 

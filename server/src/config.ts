@@ -37,6 +37,12 @@ const ConfigSchema = z.object({
    * window, Ollama would silently cut the start of the prompt, where the narrator's rules are.
    */
   LLM_CONTEXT_TOKENS: z.coerce.number().int().min(8_192).default(32_768),
+  /**
+   * Reasoning budget for a self-hosted narrator that can think before it writes (Gemma 4). Thinking
+   * makes turns slower but the prose and tool use much better. 0 turns thinking off. Background
+   * jobs never think: they are short and their output caps leave no room for it.
+   */
+  LLM_THINKING_TOKENS: z.coerce.number().int().min(0).max(16_000).default(0),
   NARRATOR_MODEL: z.string().min(1).default('claude-sonnet-5'),
   /** Background jobs: story extraction, summaries, note condensing. */
   UTILITY_MODEL: z.string().min(1).default('claude-haiku-5-5'),

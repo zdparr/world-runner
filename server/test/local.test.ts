@@ -27,11 +27,17 @@ const base = (over: Partial<Anthropic.MessageStreamParams> = {}): Anthropic.Mess
 const texts = (m: Anthropic.MessageParam) => (typeof m.content === 'string' ? [m.content] : m.content.map((b) => (b.type === 'text' ? b.text : b.type)));
 
 describe('localizeNarratorParams', () => {
-  it('drops Claude-only parameters', () => {
+  it('drops Claude-only parameters and turns thinking off explicitly', () => {
     const out = localizeNarratorParams(base());
-    expect(out).not.toHaveProperty('thinking');
+    expect(out.thinking).toEqual({ type: 'disabled' });
     expect(out).not.toHaveProperty('output_config');
     expect(out.tools).toBe(tools);
+  });
+
+  it('gives a thinking narrator its reasoning budget on top of the output cap', () => {
+    const { params } = localize(base(), { thinkingTokens: 4_000 });
+    expect(params.thinking).toEqual({ type: 'enabled', budget_tokens: 4_000 });
+    expect(params.max_tokens).toBe(LOCAL_MAX_OUTPUT_TOKENS + 4_000);
   });
 
   it('keeps only the stable system block, moving the per-turn state into the player message', () => {
@@ -97,6 +103,11 @@ describe('context budget', () => {
     expect(texts(out.params.messages[0]!)[0]).toBe(`turn ${out.droppedMessages} ` + 'x'.repeat(3_800));
   });
 
+  it('leaves room for the reasoning budget too', () => {
+    const out = localize(withHistory(40), { contextTokens: 16_384, thinkingTokens: 4_000 });
+    expect(out.estimatedTokens).toBeLessThanOrEqual(16_384 - 4_000 - OUTPUT_RESERVE_TOKENS);
+  });
+
   it("never drops this turn's tool rounds", () => {
     const params = base({
       messages: [
@@ -150,6 +161,8 @@ describe('llmEndpoint', () => {
     expect(llmEndpoint({ LLM_BASE_URL: 'http://box:11434', ANTHROPIC_API_KEY: 'sk-ant' })).toEqual({ apiKey: 'local', baseURL: 'http://box:11434', local: true });
     expect(llmEndpoint({ LLM_BASE_URL: 'http://box:11434', LLM_API_KEY: 'k' })?.apiKey).toBe('k');
     expect(llmEndpoint({ LLM_BASE_URL: 'http://box:11434', LLM_CONTEXT_TOKENS: 65_536 })?.contextTokens).toBe(65_536);
+    expect(llmEndpoint({ LLM_BASE_URL: 'http://box:11434', LLM_THINKING_TOKENS: 4_000 })?.thinkingTokens).toBe(4_000);
+    expect(llmEndpoint({ LLM_BASE_URL: 'http://box:11434', LLM_THINKING_TOKENS: 0 })).not.toHaveProperty('thinkingTokens');
   });
   it('falls back to Anthropic, or nothing', () => {
     expect(llmEndpoint({ ANTHROPIC_API_KEY: 'sk-ant' })).toEqual({ apiKey: 'sk-ant', local: false });

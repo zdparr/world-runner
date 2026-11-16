@@ -146,7 +146,7 @@ flowchart LR
   P -- "WireGuard over the tailnet<br/>(via DERP relay)" --> T
   subgraph Home["Model host (tag:llm)"]
     T[tailscale0<br/>UFW: allow only :11434] --> O[Ollama :11434<br/>/v1/messages]
-    O --> G[(GPU + RAM<br/>qwen3 30B-A3B instruct)]
+    O --> G[(GPU + RAM<br/>gemma4 26B)]
   end
 ```
 
@@ -218,7 +218,17 @@ Measured with Qwen3-30B-A3B-Instruct-2507 (Q4_K_M) on a laptop with an RTX 4070 
 | First turn after Ollama restarts | ~35 s extra (whole prompt processed once) |
 | Story extraction (background) | 13–25 s |
 
-For comparison, the hybrid-thinking `qwen3:30b-a3b` took 40–75 s per turn and rarely called tools, which is why the instruct model is used.
+For comparison, the hybrid-thinking `qwen3:30b-a3b` took 40–75 s per turn and rarely called tools, which is why the instruct model was used at first.
+
+**Gemma 4 26B with thinking (current).** In a long campaign (~430 turns, ~20k-token prompts), Qwen3 drifted within about ten turns into one-line "Not with X. With *Y*." fragments, copied its own previous reply, and almost never called tools. Replaying the same real prompt:
+
+| Model | Turn time | Paragraphs (one-liners) | Tool calls |
+| --- | --- | --- | --- |
+| Qwen3 30B-A3B instruct | 35–43 s | 27–60 (14–49) | 0 |
+| Gemma 4 26B, thinking off | 61–73 s | 8–16 (1–5) | 0 |
+| Gemma 4 26B, thinking on (4,000-token budget) | 110 s | 9 (1) | 3 |
+
+On the laptop a thinking turn takes about 1.5–2.5 minutes, and the text starts only once the reasoning ends (60–90 s). The prose and state tracking are worth the wait, so production runs `gemma4:26b` with `LLM_THINKING_TOKENS=4000`. Background jobs never think and take 2–3 s each. Without an explicit setting, Gemma thinks by default and spends the whole output cap on reasoning, so the adapter always sets thinking on or off.
 
 ### Configuration
 
@@ -227,6 +237,7 @@ For comparison, the hybrid-thinking `qwen3:30b-a3b` took 40–75 s per turn and 
 | `LLM_BASE_URL` | server | Base URL of the Anthropic-compatible model server, e.g. `http://tron-laptop.tail57bc3.ts.net:11434`. Setting it switches every model call to that server. |
 | `LLM_API_KEY` | server (optional) | Sent as the API key. Ollama ignores it, but an authenticating proxy in front of it may need it. Redacted in logs. |
 | `LLM_CONTEXT_TOKENS` | server (default `32768`) | The self-hosted model's context window. **Must match `OLLAMA_CONTEXT_LENGTH`** on the model host. Narrator prompts are trimmed to fit it (see [Context budget](#context-budget-and-repeat-guard)). |
+| `LLM_THINKING_TOKENS` | server (default `0`) | Reasoning budget for a self-hosted narrator that thinks (Gemma 4), added on top of the 2,048-token output cap and kept free in the context budget. `0` turns thinking off. Background jobs always run with thinking off. |
 | `LLM_PROXY_URL` | server (optional) | HTTP proxy used for model calls only, through undici's `ProxyAgent` (HTTP CONNECT). On Render this is `http://127.0.0.1:1055`, tailscaled's outbound proxy. |
 | `NARRATOR_MODEL`, `UTILITY_MODEL` | server | Model names on the selected backend. For Ollama, use the same model for both. |
 | `TS_AUTHKEY` | Render (secret) | Tailscale auth key used by [deploy/start.sh](deploy/start.sh) to join the tailnet. It must be reusable, ephemeral, and tagged `tag:render`. |
@@ -273,7 +284,7 @@ The auth key for Render is generated under **Settings → Keys** with **Reusable
 
 The model host is a Linux machine with an NVIDIA GPU, used only for serving the model. To rebuild it:
 
-1. **Ollama**: install with `curl -fsSL https://ollama.com/install.sh | sh`, which sets it up as a systemd service. Pull the model with `ollama pull qwen3:30b-a3b-instruct-2507-q4_K_M` (~18 GB). Then create `/etc/systemd/system/ollama.service.d/override.conf`:
+1. **Ollama**: install with `curl -fsSL https://ollama.com/install.sh | sh`, which sets it up as a systemd service. Pull the model with `ollama pull gemma4:26b` (~18 GB). Then create `/etc/systemd/system/ollama.service.d/override.conf`:
 
    ```ini
    [Service]
