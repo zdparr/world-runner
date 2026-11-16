@@ -167,6 +167,16 @@ describe('write tools', () => {
     expect(toolResultsIn(calls[1]!)[0]!.content).toMatch(/Several NPCs match "Mara": .*Mara (Vell|Quill).*Use the full name/);
   });
 
+  it('does not match names on filler words like "the"', async () => {
+    const id = await newCampaign();
+    await t.db.insert(npcs).values([
+      { campaignId: id, name: 'The Ferryman' },
+      { campaignId: id, name: 'The Widow' },
+    ]);
+    const { calls } = await play(id, 'I look for the smith.', [{ tools: [{ name: 'get_relationship', input: { npc_name: 'The Smith' } }] }, { text: 'No smith here.' }]);
+    expect(toolResultsIn(calls[1]!)[0]!.content).toMatch(/No NPC named "The Smith"/);
+  });
+
   it('rolls skill checks server-side and awards practice xp', async () => {
     const id = await newCampaign();
     const { calls, events } = await play(id, 'I pick the warehouse lock.', [

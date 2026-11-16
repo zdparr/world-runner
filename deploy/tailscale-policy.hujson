@@ -1,0 +1,63 @@
+// Tailscale access policy for world-runner.
+// Paste into https://login.tailscale.com/admin/acls (replaces the whole policy).
+//
+// Devices:
+//   tag:llm    - the local model server (tron-laptop), running Ollama on :11434
+//   tag:render - ephemeral nodes joined by the Render web service (auth key tagged tag:render)
+{
+	// Who may apply each tag to a device (via `tailscale up --advertise-tags` or a tagged auth key).
+	"tagOwners": {
+		"tag:llm":    ["zachery.parr@gmail.com", "autogroup:admin"],
+		"tag:render": ["zachery.parr@gmail.com", "autogroup:admin"],
+	},
+
+	"grants": [
+		// Your own (untagged) devices can reach everything, including the model server.
+		{
+			"src": ["autogroup:member"],
+			"dst": ["*"],
+			"ip":  ["*"],
+		},
+		// The Render app can reach ONLY the model server's Ollama port. Nothing else.
+		{
+			"src": ["tag:render"],
+			"dst": ["tag:llm"],
+			"ip":  ["tcp:11434"],
+		},
+		// No rule lets tag:llm start connections to anything: a compromised model server
+		// cannot reach your other devices or the Render node.
+	],
+
+	// Tailscale SSH: you may SSH into your own devices and the model server (with re-auth check).
+	"ssh": [
+		{
+			"action": "check",
+			"src":    ["autogroup:member"],
+			"dst":    ["autogroup:self"],
+			"users":  ["autogroup:nonroot", "root"],
+		},
+		{
+			"action": "check",
+			"src":    ["autogroup:member"],
+			"dst":    ["tag:llm"],
+			"users":  ["autogroup:nonroot", "root"],
+		},
+	],
+
+	// Checked when you save: the policy is rejected if any of these fail.
+	"tests": [
+		{
+			"src":    "tag:render",
+			"accept": ["tag:llm:11434"],
+			"deny":   ["tag:llm:22", "tag:llm:80", "tag:render:11434"],
+		},
+		{
+			"src":    "zachery.parr@gmail.com",
+			"accept": ["tag:llm:11434", "tag:llm:22"],
+		},
+		{
+			"src":  "tag:llm",
+			"deny": ["tag:render:11434", "tag:render:22"],
+		},
+	],
+}

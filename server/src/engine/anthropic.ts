@@ -1,19 +1,45 @@
 import Anthropic from '@anthropic-ai/sdk';
+import type { Config } from '../config';
 import type { StreamFn } from './narrator';
 import type { StructuredFn } from './extract';
 import type { UtilityFn } from './memory';
+import { localizeNarratorParams } from './local';
 
-const client = (apiKey: string) => new Anthropic({ apiKey, maxRetries: 3, timeout: 120_000 });
+/** Where model calls go: Anthropic, or a self-hosted server speaking the same API. */
+export interface LlmEndpoint {
+  apiKey: string;
+  /** Unset for Anthropic. */
+  baseURL?: string;
+  /** A self-hosted model: requests are adapted (see local.ts) and given more time. */
+  local: boolean;
+}
+
+/** The configured model endpoint, or null when neither LLM_BASE_URL nor ANTHROPIC_API_KEY is set. */
+export function llmEndpoint(config: Pick<Config, 'LLM_BASE_URL' | 'LLM_API_KEY' | 'ANTHROPIC_API_KEY'>): LlmEndpoint | null {
+  if (config.LLM_BASE_URL) return { apiKey: config.LLM_API_KEY || 'local', baseURL: config.LLM_BASE_URL, local: true };
+  if (config.ANTHROPIC_API_KEY) return { apiKey: config.ANTHROPIC_API_KEY, local: false };
+  return null;
+}
+
+const client = (endpoint: LlmEndpoint) =>
+  new Anthropic({
+    apiKey: endpoint.apiKey,
+    baseURL: endpoint.baseURL,
+    // A local model can spend a minute on a long prompt before answering, and a retry repeats that
+    // work on the same single GPU; one retry covers a dropped connection.
+    maxRetries: endpoint.local ? 1 : 3,
+    timeout: endpoint.local ? 600_000 : 120_000,
+  });
 
 /** The real model stream. Retries 429/5xx/connection errors with exponential backoff before giving up. */
-export function createAnthropicStream(apiKey: string): StreamFn {
-  const anthropic = client(apiKey);
-  return (params) => anthropic.messages.stream(params);
+export function createAnthropicStream(endpoint: LlmEndpoint): StreamFn {
+  const anthropic = client(endpoint);
+  return (params) => anthropic.messages.stream(endpoint.local ? localizeNarratorParams(params) : params);
 }
 
 /** The utility model (summaries, note condensing): one short, non-streaming request per job. */
-export function createAnthropicUtility(apiKey: string, model: string): UtilityFn {
-  const anthropic = client(apiKey);
+export function createAnthropicUtility(endpoint: LlmEndpoint, model: string): UtilityFn {
+  const anthropic = client(endpoint);
   return async ({ system, prompt, maxTokens }) => {
     const message = await anthropic.messages.create({
       model,
@@ -31,8 +57,8 @@ export function createAnthropicUtility(apiKey: string, model: string): UtilityFn
 }
 
 /** The utility model with a forced tool call, for structured output (story extraction). */
-export function createAnthropicStructured(apiKey: string, model: string): StructuredFn {
-  const anthropic = client(apiKey);
+export function createAnthropicStructured(endpoint: LlmEndpoint, model: string): StructuredFn {
+  const anthropic = client(endpoint);
   return async ({ system, prompt, maxTokens, tool }) => {
     const message = await anthropic.messages.create({
       model,

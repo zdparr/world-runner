@@ -7,6 +7,9 @@ export class ToolError extends Error {}
 
 const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
+/** Words too common in names to identify one: "The Armory" must not match every "The ..." place. */
+const FILLER_WORDS = new Set(['the', 'and', 'for', 'from', 'with', 'into', 'onto', 'upon', 'near']);
+
 /**
  * Find one campaign row by name, forgivingly: exact (case-insensitive), then substring, then any word.
  * The model often uses short forms ("Mara" for "Mara Vell"). Ambiguity and misses become ToolErrors
@@ -55,7 +58,7 @@ export async function findOptional<T extends Record<string, unknown>>(
   if (partial.length === 1) return partial[0]!;
   if (partial.length > 1) throw ambiguous(label, q, partial);
 
-  const words = q.split(/\s+/).filter((w) => w.length >= 3);
+  const words = q.split(/\s+/).filter((w) => w.length >= 3 && !FILLER_WORDS.has(w.toLowerCase()));
   if (words.length > 0) {
     const byWord = await select(or(...words.map((w) => ilike(nameColumn, `%${escapeLike(w)}%`))));
     if (byWord.length === 1) return byWord[0]!;

@@ -17,6 +17,15 @@ const ConfigSchema = z.object({
   SESSION_SECRET: z.string().min(32, 'must be at least 32 characters'),
   // Optional so the app still boots (and can be configured) without it; turns return 503 until it is set.
   ANTHROPIC_API_KEY: z.string().optional(),
+  /**
+   * Base URL of a self-hosted server speaking the Anthropic Messages API (e.g. Ollama,
+   * http://host:11434). When set, every model call goes there instead of Anthropic, and the
+   * requests are adapted for local models (see engine/local.ts). NARRATOR_MODEL and
+   * UTILITY_MODEL must then name models that server has.
+   */
+  LLM_BASE_URL: z.url().optional(),
+  /** Sent as the API key to LLM_BASE_URL; Ollama ignores it, a proxy in front of it may not. */
+  LLM_API_KEY: z.string().optional(),
   NARRATOR_MODEL: z.string().min(1).default('claude-sonnet-5'),
   /** Background jobs: story extraction, summaries, note condensing. */
   UTILITY_MODEL: z.string().min(1).default('claude-haiku-5-5'),

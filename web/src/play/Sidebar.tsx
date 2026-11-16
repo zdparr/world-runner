@@ -605,7 +605,7 @@ function StorySoFar({ campaignId, state }: { campaignId: string; state: Campaign
         <Empty>
           {state.memoryEnabled
             ? `Nothing summarized yet. Every ${state.campaign.summaryInterval} turns, older scenes are folded into a summary the narrator keeps in mind.`
-            : 'Memory upkeep is off until ANTHROPIC_API_KEY is set on the server.'}
+            : 'Memory upkeep is off until LLM_BASE_URL or ANTHROPIC_API_KEY is set on the server.'}
         </Empty>
       )}
       {update.isError && <p className="mt-2 text-xs text-ember">{update.error.message}</p>}

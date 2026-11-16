@@ -5,7 +5,7 @@ import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import type { Config } from './config';
 import type { Db } from './db/client';
-import { createAnthropicStream, createAnthropicStructured, createAnthropicUtility } from './engine/anthropic';
+import { createAnthropicStream, createAnthropicStructured, createAnthropicUtility, llmEndpoint } from './engine/anthropic';
 import type { StructuredFn } from './engine/extract';
 import { createMaintenance, type Maintenance, type UtilityFn } from './engine/memory';
 import type { StreamFn } from './engine/narrator';
@@ -22,11 +22,11 @@ export interface AppDeps {
   config: Config;
   db: Db;
   pingDb: () => Promise<void>;
-  /** Model stream for the narrator. Omit to build one from ANTHROPIC_API_KEY; tests pass a scripted fake. */
+  /** Model stream for the narrator. Omit to build one from LLM_BASE_URL or ANTHROPIC_API_KEY; tests pass a scripted fake. */
   stream?: StreamFn | null;
-  /** Utility model for memory maintenance. Omit to build one from ANTHROPIC_API_KEY; tests pass a fake. */
+  /** Utility model for memory maintenance. Omit to build one from LLM_BASE_URL or ANTHROPIC_API_KEY; tests pass a fake. */
   utility?: UtilityFn | null;
-  /** Structured-output model for story extraction. Omit to build one from ANTHROPIC_API_KEY; tests pass a fake. */
+  /** Structured-output model for story extraction. Omit to build one from LLM_BASE_URL or ANTHROPIC_API_KEY; tests pass a fake. */
   structured?: StructuredFn | null;
   /** Serve the built SPA from web/dist. Off in tests. */
   serveWeb?: boolean;
@@ -75,6 +75,7 @@ export async function buildApp({ config, db, pingDb, stream, utility, structured
           '*.APP_PASSWORD',
           '*.SESSION_SECRET',
           '*.ANTHROPIC_API_KEY',
+          '*.LLM_API_KEY',
         ],
         censor: '[redacted]',
       },
@@ -88,15 +89,16 @@ export async function buildApp({ config, db, pingDb, stream, utility, structured
   app.decorate('config', config);
   app.decorate('db', db);
   app.decorate('pingDb', pingDb);
+  const endpoint = llmEndpoint(config);
   const maintenance = createMaintenance({
     db,
-    utility: utility !== undefined ? utility : config.ANTHROPIC_API_KEY ? createAnthropicUtility(config.ANTHROPIC_API_KEY, config.UTILITY_MODEL) : null,
+    utility: utility !== undefined ? utility : endpoint ? createAnthropicUtility(endpoint, config.UTILITY_MODEL) : null,
     structured: !config.EXTRACTION_ENABLED
       ? null
       : structured !== undefined
         ? structured
-        : config.ANTHROPIC_API_KEY
-          ? createAnthropicStructured(config.ANTHROPIC_API_KEY, config.UTILITY_MODEL)
+        : endpoint
+          ? createAnthropicStructured(endpoint, config.UTILITY_MODEL)
           : null,
     model: config.UTILITY_MODEL,
     log: app.log.child({ component: 'memory' }),
@@ -106,7 +108,7 @@ export async function buildApp({ config, db, pingDb, stream, utility, structured
   app.addHook('onClose', () => maintenance.idle());
   app.decorate('engine', {
     db,
-    stream: stream !== undefined ? stream : config.ANTHROPIC_API_KEY ? createAnthropicStream(config.ANTHROPIC_API_KEY) : null,
+    stream: stream !== undefined ? stream : endpoint ? createAnthropicStream(endpoint) : null,
     model: config.NARRATOR_MODEL,
     effort: config.NARRATOR_EFFORT,
     // Post-turn memory upkeep runs in the background, never in the player's request.

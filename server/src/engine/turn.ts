@@ -45,7 +45,7 @@ export function claimCampaign(campaignId: string): () => void {
 
 /** Checks that must pass before the response switches to an event stream. */
 export async function assertCanTakeTurn(deps: EngineDeps, campaignId: string): Promise<StreamFn> {
-  if (!deps.stream) throw new HttpError(503, 'The narrator is not configured: set ANTHROPIC_API_KEY on the server');
+  if (!deps.stream) throw new HttpError(503, 'The narrator is not configured: set LLM_BASE_URL or ANTHROPIC_API_KEY on the server');
   const [pc] = await deps.db.select({ name: playerCharacter.name }).from(playerCharacter).where(eq(playerCharacter.campaignId, campaignId));
   if (!pc) throw new HttpError(409, 'Build a character before you start playing');
   return deps.stream;
@@ -58,10 +58,10 @@ function friendlyError(err: unknown): { message: string; retryable: boolean } {
   if (err instanceof NarratorTruncated) return { message: 'The narrator lost the thread mid-scene. Try again.', retryable: true };
   if (err instanceof Anthropic.RateLimitError) return { message: 'The narrator needs a moment (rate limited). Try again shortly.', retryable: true };
   if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
-    return { message: 'The server’s Anthropic API key was rejected. Check ANTHROPIC_API_KEY.', retryable: false };
+    return { message: 'The server’s model API key was rejected. Check ANTHROPIC_API_KEY (or LLM_API_KEY).', retryable: false };
   }
   if (err instanceof Anthropic.BadRequestError) return { message: 'The narrator could not process this turn (bad request). Check the server logs.', retryable: false };
-  if (err instanceof Anthropic.APIConnectionError) return { message: 'Could not reach the narrator. Check the connection and try again.', retryable: true };
+  if (err instanceof Anthropic.APIConnectionError) return { message: 'Could not reach the narrator’s model server. Check that it is online and try again.', retryable: true };
   if (err instanceof Anthropic.APIError) return { message: 'The narrator is overloaded right now. Try again in a moment.', retryable: true };
   return { message: 'Something went wrong running this turn. Nothing was saved; try again.', retryable: true };
 }

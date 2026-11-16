@@ -84,7 +84,7 @@ export function registerStateRoutes(app: FastifyInstance): void {
    * window into the summary and condense any relationship notes that have new entries.
    */
   app.post('/memory', async (request): Promise<MemoryReport> => {
-    if (!app.maintenance.enabled) throw new HttpError(503, 'Memory upkeep needs the utility model: set ANTHROPIC_API_KEY on the server');
+    if (!app.maintenance.enabled) throw new HttpError(503, 'Memory upkeep needs the utility model: set LLM_BASE_URL or ANTHROPIC_API_KEY on the server');
     try {
       return await app.maintenance.runNow(request.campaignId, { force: true });
     } catch (err) {
