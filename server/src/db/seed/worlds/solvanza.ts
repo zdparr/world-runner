@@ -14,6 +14,7 @@ export const solvanza: WorldTemplate = {
     'A rags-to-riches climb through a glittering merchant capital. You step off a ship from a fallen northern kingdom with a few ducats and a foreigner\'s tally. Buy taverns, warehouses, ships, and palazzos, fight in the Pit and on the dueling ground, and climb from Outlander to the seat beside the throne before the Spice Charter goes to auction at Midsummer. Or sail for the unclaimed Ashfold between Teravel and Vaskar, and found a kingdom of your own.',
   demoCampaignName: "Solvanza: The Outlander's Fortune",
   currencyName: 'ducats',
+  mapArt: 'solvanza',
   reputation: { [CROWN]: 0, [HOUSES]: 0, [CONCORD]: 0, [HAND]: 0, [ASHFOLD]: 0 },
 
   choices: [
@@ -464,6 +465,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'The campaign\'s world and the board everyone is climbing. Shows the city\'s rank and wealth in every street, and the season building to the Midsummer Auction.',
       tags: ['city', 'capital', 'harbor', 'hub'],
+      map: { x: 0.33, y: -0.22 },
     },
     {
       name: 'The Customs Quay',
@@ -472,6 +474,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'The starting location, where the character steps off the Sea-Wren and locks their origin. Inspector Grisetti issues (and renews) Foreigner\'s Tallies here, and inspects cargo, a problem for a smuggler. Ships, captains, and trade ventures can be found here too.',
       tags: ['harbor', 'customs', 'start'],
+      map: { x: 0, y: 0 },
       parent: 'Solvanza',
     },
     {
@@ -481,6 +484,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'The heart of the wealth game: buying and selling holdings at the Registry (Nella Orsini), loans and credit at Banco Sabellin (Lucrezia Sabellin), property auctions, and, at Midsummer, the auction of the Spice Charter.',
       tags: ['market', 'bank', 'registry', 'auction'],
+      map: { x: 0.231, y: 0.028 },
       parent: 'Solvanza',
     },
     {
@@ -490,6 +494,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'Home of the Golden Houses and the goal of the climb: the Varro palazzo (Matteo and Livia Varro), salons, marriages, and the palazzo a Patrician must own. Outlanders may not carry swords here.',
       tags: ['wealthy', 'patrician', 'district'],
+      map: { x: 0.055, y: 0.253 },
       parent: 'Solvanza',
     },
     {
@@ -499,6 +504,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'Seat of the Crown: Queen Isaura, Chancellor Brenn, the Exchequer, citizenship by decree, titles for sale, and the proof of Brenn\'s treaty with the usurper, kept in the Office of Correspondence.',
       tags: ['palace', 'crown', 'court'],
+      map: { x: 0.341, y: 0.253 },
       parent: 'Solvanza',
     },
     {
@@ -508,6 +514,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'Seat of the Concord of Guilds (Benedetta Fusari): guild licenses, workers, a guild seat for a Magnate, and the Concord\'s campaign to break the patricians at the auction.',
       tags: ['guild', 'politics'],
+      map: { x: 0.616, y: -0.11 },
       parent: 'Solvanza',
     },
     {
@@ -517,6 +524,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'The exile community: cheap lodging, the tenement row for sale, Captain Ostrov\'s Free Company, and the Hound\'s hunting ground. Where the character\'s countrymen help them, and where some of them sell them.',
       tags: ['district', 'poor', 'exiles'],
+      map: { x: 0.605, y: 0.363 },
       parent: 'Solvanza',
     },
     {
@@ -535,6 +543,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'Where money is made the hard way: labor, the Crooked Oar for sale, the armorer, the barber-surgeon, and the Pit beneath it all.',
       tags: ['district', 'poor', 'industry'],
+      map: { x: -0.044, y: -0.385 },
       parent: 'Solvanza',
     },
     {
@@ -553,6 +562,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'Home of the Court of the Sword: duels of honor between citizens, rapier lessons from Maestro Danti, and the place reputations are made or ended.',
       tags: ['dueling', 'training'],
+      map: { x: 0.11, y: -0.154 },
       parent: 'Solvanza',
     },
     {
@@ -562,6 +572,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'Trade ventures, warehouses for sale, ships and captains, the Varro warehouse where smuggled spice is landed, and Pavlo Dorn\'s wine business. The Velvet Hand\'s fires come here around day 45.',
       tags: ['harbor', 'warehouses', 'trade'],
+      map: { x: -0.341, y: -0.275 },
       parent: 'Solvanza',
     },
     {
@@ -571,6 +582,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'Seat of the Velvet Hand (the Widow): fences, forgers, smugglers, loans without collateral, and illegal shortcuts up the ladder, all at a price.',
       tags: ['black-market', 'criminal', 'underground'],
+      map: { x: 0.231, y: -0.341 },
       parent: 'Solvanza',
     },
     {
@@ -580,6 +592,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'Country estates for sale (vineyards), a place to hide people, and the inlet where the usurper\'s cutter lands the Hound\'s men.',
       tags: ['countryside', 'estates', 'coast'],
+      map: { x: 1.265, y: -0.11 },
       parent: 'Solvanza',
     },
     {
@@ -589,6 +602,7 @@ These are background secrets, not the plot. A player can build a whole campaign 
       purpose:
         'The unclaimed land between Teravel and Vaskar, and the other road to the top: founding a kingdom (see the world bible, "The other road"). Contested by Red Ulric, the Orsk, the Hound, and both kingdoms\' paper claims.',
       tags: ['region', 'wilderness', 'unclaimed', 'frontier'],
+      map: { x: 17, y: 17 },
     },
     {
       name: 'Brackwater',

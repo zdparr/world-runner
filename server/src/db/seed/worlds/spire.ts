@@ -15,6 +15,7 @@ export const spire: WorldTemplate = {
   currencyName: 'shards',
   ruleset: 'ascension',
   reputation: { [CROWN]: 0, [LODGE]: 0, [ORDER]: 0, [GILDED]: 0 },
+  mapArt: 'spire',
 
   choices: [
     {
@@ -527,6 +528,7 @@ Reveal none of this early. Clues come from the Gatekeepers, the Stairfolk, the H
       purpose:
         "The ground: where the character rests, sells, hires, and gets pulled into politics between floors. Surges hit it when the climb stalls, so the climb always has stakes below. The Crown, the Lodge, the Order, and the Gilded Ascent all want a piece of the character.",
       tags: ['city', 'capital', 'hub'],
+      map: { x: 0, y: 0 },
     },
     {
       name: 'The Foot of the Spire',
@@ -536,6 +538,7 @@ Reveal none of this early. Clues come from the Gatekeepers, the Stairfolk, the H
         "Where the character lands, on the sixth pedestal, in the middle of the Waking Surge. The way in and out of the Spire: the Return Glyph here leads up to any checkpoint the character has reached. Crowds gather here to cheer, mourn, and gossip about whoever comes out.",
       tags: ['plaza', 'start', 'spire-gate', 'cindral'],
       parent: 'Cindral',
+      map: { x: 0.06, y: 0.36 },
     },
     {
       name: "The Climbers' Lodge",
@@ -545,6 +548,7 @@ Reveal none of this early. Clues come from the Gatekeepers, the Stairfolk, the H
         "Registration, contracts, and hired help. Hollis Crane runs it. Fen Calloway hangs around hoping a Chosen will take him up. The dead-list makes the cost of the climb plain.",
       tags: ['guild', 'lodge', 'cindral', 'hire'],
       parent: 'Cindral',
+      map: { x: -0.25, y: 0.32 },
     },
     {
       name: 'The Gilded Exchange',
@@ -554,6 +558,7 @@ Reveal none of this early. Clues come from the Gatekeepers, the Stairfolk, the H
         "Where loot becomes shards and where Corwin Gilt offers sponsorships and contracts. The floor maps on the wall come from Ilse Varga (if she is in play) and are worth a lot to a climber who can afford them.",
       tags: ['market', 'gilded', 'cindral', 'trade'],
       parent: 'Cindral',
+      map: { x: 0.3, y: 0.2 },
     },
     {
       name: 'Temple of the Unbroken Stair',
@@ -563,6 +568,7 @@ Reveal none of this early. Clues come from the Gatekeepers, the Stairfolk, the H
         "Healing at a price in reputation, sanctuary, and the Order's politics. Exarch Tallow preaches here, and Dr. Amara Sethi (if she is in play) heals here as the Living Rung.",
       tags: ['temple', 'order', 'cindral', 'healing'],
       parent: 'Cindral',
+      map: { x: -0.4, y: 0.15 },
     },
     {
       name: 'Highcourt',
@@ -572,6 +578,7 @@ Reveal none of this early. Clues come from the Gatekeepers, the Stairfolk, the H
         "The Crown's offers and secrets. Queen Maelis receives Chosen here. The royal archive holds the record of Aurenna, the founder of Halvane, and her wish.",
       tags: ['palace', 'crown', 'cindral', 'royal'],
       parent: 'Cindral',
+      map: { x: 0.3, y: -0.8 },
     },
     {
       name: 'The Last Rung',
@@ -581,6 +588,7 @@ Reveal none of this early. Clues come from the Gatekeepers, the Stairfolk, the H
         "Rumors, hired blades, and celebrations after a climb. Where the character hears what the city says about them, and where rival climbers drink.",
       tags: ['tavern', 'cindral', 'rumors'],
       parent: 'Cindral',
+      map: { x: 0.3, y: 0.34 },
     },
     {
       name: 'The Spire',
@@ -589,6 +597,7 @@ Reveal none of this early. Clues come from the Gatekeepers, the Stairfolk, the H
       purpose:
         'The hundred floors, the rest points, and the endgame. Each stratum is a location inside it, created as the character reaches it; Landings and Waystations are their own locations.',
       tags: ['spire', 'tower', 'dungeon'],
+      map: { x: 0.04, y: 0.45 },
     },
     {
       name: 'The Verdant Stair',

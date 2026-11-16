@@ -6,7 +6,11 @@ interface MapRow {
   parentLocationId: string | null;
   mapX: number | null;
   mapY: number | null;
+  tags?: string[] | null;
 }
+
+/** Tag for a place that is not in the world's geography (a dream, the void before the story): never placed on the map. */
+export const OFF_MAP_TAG = 'off-map';
 
 /** A place's own map position, or its nearest placed parent's (a tavern sits where its town does). */
 export function effectivePosition<T extends MapRow>(rows: T[], loc: T): MapPoint | null {
@@ -45,5 +49,5 @@ export function nearbyPlaces<T extends MapRow>(rows: T[], loc: T, limit = 6): { 
 /** Top-level places with no map position, while others have one (the world is mapped, but not all of it). */
 export function unplacedPlaces<T extends MapRow>(rows: T[]): T[] {
   if (!rows.some((r) => r.mapX !== null && r.mapY !== null)) return [];
-  return rows.filter((r) => !r.parentLocationId && (r.mapX === null || r.mapY === null));
+  return rows.filter((r) => !r.parentLocationId && (r.mapX === null || r.mapY === null) && !r.tags?.includes(OFF_MAP_TAG));
 }

@@ -13,6 +13,7 @@ export const harrowmere: WorldTemplate = {
     'Wands, spells, and a hidden war in a rain-soaked harbor city. Your magic woke the night the Archon died. Now you need a wand, every spell you learn has to be bought, begged, stolen, or won, and the old families, the shapeshifter lines, the Wardens, and the syndicates are all reaching for the empty seat of power, some openly and some in the dark.',
   demoCampaignName: 'Harrowmere: The Empty Seat',
   currencyName: 'dollars',
+  mapArt: 'harrowmere',
   reputation: { [CHARTER]: 0, [ALDGRAVE]: 0, [TIDEBOUND]: 0, [TALLYMEN]: 0 },
 
   choices: [
@@ -417,6 +418,7 @@ Reveal none of this early. Clues come from the Archon's letter, the rivals' clue
       purpose:
         'The campaign\'s world and the board the factions are fighting over. Shows the faction war breaking into ordinary life and the Hush failing week by week.',
       tags: ['city', 'harbor', 'hub'],
+      map: { x: 0, y: 0 },
     },
     {
       name: 'The Lantern Arcade',
@@ -452,6 +454,7 @@ Reveal none of this early. Clues come from the Archon's letter, the rivals' clue
       purpose:
         "The Tallymen's market: restricted and forbidden spells, Third Circle scrolls, black-market draughts, debts, and jobs. Oriel Sachs deals here. Rules: no workings against another buyer, no Wardens in uniform, every deal final. Raided around Day 20.",
       tags: ['market', 'black-market', 'tallymen', 'night'],
+      map: { x: 0.38, y: -0.32 },
       parent: 'Harrowmere',
     },
     {
@@ -461,6 +464,7 @@ Reveal none of this early. Clues come from the Archon's letter, the rivals' clue
       purpose:
         "Neutral, Daylit, and safe: Ottoline tutors in the back booth, Suvi waits for the character after shifts, and nobody from the factions makes a scene in front of Mirabel. A place for quiet character scenes and secret meetings.",
       tags: ['diner', 'safe', 'daylit', 'tutoring'],
+      map: { x: 0.1, y: -0.1 },
       parent: 'Harrowmere',
     },
     {
@@ -470,6 +474,7 @@ Reveal none of this early. Clues come from the Archon's letter, the rivals' clue
       purpose:
         "The law, permits, licenses, wand registration, and binding hearings. Acting Archon Dagny Holmqvist and Priya Lindqvist (if in play) are here. The iron stair leads to the Hushstone vault, sealed with three keyholes. The Conclave meets in the council chamber upstairs.",
       tags: ['wardens', 'charter', 'government', 'hushstone'],
+      map: { x: 0.18, y: 0.22 },
       parent: 'Harrowmere',
     },
     {
@@ -479,6 +484,7 @@ Reveal none of this early. Clues come from the Archon's letter, the rivals' clue
       purpose:
         "The Aldgrave Society's seat: salons, vote-buying, private libraries of Third Circle spells, and the dueling club where the duel-right is called. Lady Cressida campaigns from Vane House and keeps the Aldgrave key on a chain under her collar. Augustin (if in play) duels here.",
       tags: ['aldgrave', 'wealthy', 'politics', 'dueling'],
+      map: { x: 0.66, y: 0.4 },
       parent: 'Harrowmere',
     },
     {
@@ -488,6 +494,7 @@ Reveal none of this early. Clues come from the Archon's letter, the rivals' clue
       purpose:
         "Tidebound territory: Brannagh Coyle and the elders negotiate here; Tamsin Hask and the Hask youth gather in the boxing gym. Ewan Hask's body is found on the rail tracks nearby (Day 3). If the Brineledger is voided (Day 40), the Skerrows close to outsiders.",
       tags: ['tidebound', 'harbor', 'territory'],
+      map: { x: -0.72, y: 0.72 },
       parent: 'Harrowmere',
     },
     {
@@ -497,6 +504,7 @@ Reveal none of this early. Clues come from the Archon's letter, the rivals' clue
       purpose:
         'The place to find spells: lost grimoires, Third Circle and Forbidden texts, and old guild treasures in the flooded cellars, guarded by old wards and things that live in the dark water. Felix Brandt (if in play) dives here. The Vesper Circle meets in its deepest dry room.',
       tags: ['ruins', 'dungeon', 'spells', 'dangerous'],
+      map: { x: -0.36, y: -0.22 },
       parent: 'Harrowmere',
     },
     {
@@ -506,6 +514,7 @@ Reveal none of this early. Clues come from the Archon's letter, the rivals' clue
       purpose:
         "Where the unbonded are said to meet their hearthkin, and where the Tidebound once kept their key in a stone box (empty since 1911). The returning tide limits any scene here.",
       tags: ['tidebound', 'hearthkin', 'tidal', 'mystery'],
+      map: { x: -1.04, y: 1.44 },
       parent: 'Harrowmere',
     },
   ],

@@ -12,6 +12,11 @@ export interface MapArt {
    * (e.g. 120: a 20-minute walk is 40 px). Coordinates stay in hours either way.
    */
   px?: number;
+  /**
+   * Keep the map to `bounds`, pinning places beyond it to its edge in their true direction, instead of
+   * widening the map to show them. For a city map whose world has places days away.
+   */
+  pinFarPlaces?: boolean;
   bounds: { minX: number; maxX: number; minY: number; maxY: number };
   /** Closed coastlines; everything outside them is sea. */
   land: Pt[][];

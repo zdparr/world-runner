@@ -228,7 +228,7 @@ export async function buildTurnContext(
 
   // Every place in the world, by name, so the narrator can use (and route the story through) them.
   const worldLocations = await db
-    .select({ id: locations.id, name: locations.name, purpose: locations.purpose, parentLocationId: locations.parentLocationId, mapX: locations.mapX, mapY: locations.mapY })
+    .select({ id: locations.id, name: locations.name, purpose: locations.purpose, parentLocationId: locations.parentLocationId, mapX: locations.mapX, mapY: locations.mapY, tags: locations.tags })
     .from(locations)
     .where(eq(locations.campaignId, cid))
     .orderBy(asc(locations.createdAt), asc(locations.name));

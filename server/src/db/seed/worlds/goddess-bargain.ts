@@ -7,6 +7,7 @@ export const goddessBargain: WorldTemplate = {
     'Isekai high fantasy. You died on Earth and wake in a starlit void before a weary goddess, who offers you one blessing for free and more for every curse you take. Then you open your eyes in the capital of a human kingdom that summoned you to win its war against the demons. The war is not what they told you.',
   demoCampaignName: "The Goddess's Bargain: Between Worlds",
   currencyName: 'marks',
+  mapArt: 'goddess-bargain',
   ruleset: 'ascension',
 
   worldBible: `# The Goddess's Bargain
@@ -258,7 +259,7 @@ Do not reveal any of this early. Let clues build over many sessions; the charact
         'Starlit nothingness in every direction, above and below, and yet you are standing. A low table of pale stone floats here, set with a brass scale whose pans hold no weight, and a woman in grey sits beside it as if she has been waiting a long time. It is very quiet and not at all cold.',
       purpose:
         "Where the campaign begins and the Bargain is made (The Goddess's Bargain mission). Ilyra lives here between worlds. It is the one place she can speak freely, within the Covenant. The character may return here only in rare dreams or near death, and if they took Divine Line, their prayers are heard here.",
-      tags: ['void', 'divine', 'start', 'safe'],
+      tags: ['void', 'divine', 'start', 'safe', 'off-map'],
     },
     {
       name: 'Aurion',
@@ -267,6 +268,7 @@ Do not reveal any of this early. Let clues build over many sessions; the charact
       purpose:
         "The training-arc city and the heart of the kingdom's power. Everything in phase two happens within its walls. The Sunforge's glow over the city is the most visible clue in the campaign: everyone admires it, and nobody asks where its power comes from.",
       tags: ['city', 'capital', 'valcrest'],
+      map: { x: 0, y: 0 },
     },
     {
       name: 'The Radiant Cathedral',
@@ -320,6 +322,7 @@ Do not reveal any of this early. Let clues build over many sessions; the charact
       purpose:
         "Where the training mission ends and the war begins: the Vanguard's staging ground and the Heroes' first command. The garrison has captured a Morvhai scout who speaks only to ask for food for her village, the first face of the enemy. The fort's quartermaster has records of grain convoys to the border that never reach the soldiers.",
       tags: ['fort', 'border', 'military', 'dangerous'],
+      map: { x: 4, y: 66 },
     },
     {
       name: 'The Ashen Marches',
@@ -328,6 +331,7 @@ Do not reveal any of this early. Let clues build over many sessions; the charact
       purpose:
         "The battlefield, and the hidden heart of the war: the Heartspring, where the Wellspring rises, lies beneath its central hills, with gold Sunforge conduits sunk into the rock around it. Morvhai war-bands under General Korrath are massing here to break the conduits. The Battle of the Burning Glass was fought here, and Aurelia's real fate can be traced from the old battlefield.",
       tags: ['wilderness', 'border', 'battlefield', 'dangerous'],
+      map: { x: 2, y: 84 },
     },
     {
       name: 'Cinderhold',
@@ -336,6 +340,7 @@ Do not reveal any of this early. Let clues build over many sessions; the charact
       purpose:
         "The other side of the war. Queen Vashti rules here. The empty granaries, the hungry children, and the withered fields around it are the proof of what the Sunforge does. Reaching Cinderhold, as a prisoner, envoy, or defector, is the campaign's great turning point.",
       tags: ['city', 'morvhal', 'capital', 'enemy'],
+      map: { x: -6, y: 118 },
     },
   ],
 

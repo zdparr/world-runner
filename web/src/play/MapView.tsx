@@ -51,10 +51,27 @@ function hash01(s: string): number {
 
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
+/** Tag for a place that is not in the world's geography (a dream, the void before the story). */
+export const OFF_MAP_TAG = 'off-map';
+
 function layout(map: MapData): Layout {
   const locs = map.locations;
   if (locs.length === 0) return { placed: [], width: 0, height: 0, scale: null, compressed: false, nodeOf: new Map(), terrain: null };
-  if (locs.some((l) => l.position)) return scaledLayout(map, findMapArt(map.art));
+  if (locs.some((l) => l.position)) {
+    // A drawn, to-scale map has nowhere to put an off-map place, or anything inside one that has no
+    // position of its own (a province is off the map; its towns, placed, are on it).
+    const byId = new Map(locs.map((l) => [l.id, l]));
+    const offMap = (l: MapLocation) => {
+      const seen = new Set<string>();
+      for (let cur: MapLocation | undefined = l; cur && !seen.has(cur.id); cur = cur.parentLocationId ? byId.get(cur.parentLocationId) : undefined) {
+        seen.add(cur.id);
+        if (cur.tags.includes(OFF_MAP_TAG)) return true;
+        if (cur.position) return false;
+      }
+      return false;
+    };
+    return scaledLayout({ ...map, locations: locs.filter((l) => !offMap(l)) }, findMapArt(map.art));
+  }
   return webLayout(map);
 }
 
@@ -356,6 +373,19 @@ function terrainLayout(
 ): Layout {
   const px = art.px ?? TERRAIN_PX;
   const margin = (TERRAIN_MARGIN * TERRAIN_PX) / px; // the same room on screen at any zoom
+  // A city map with a place days away would grow to tens of thousands of pixels of empty sea: such a
+  // map keeps its bounds, and far places sit on its edge in their true direction.
+  const b = art.bounds;
+  const inner = { minX: b.minX + margin, maxX: b.maxX - margin, minY: b.minY + margin, maxY: b.maxY - margin };
+  const mid = { x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 };
+  const pin = (p: MapPoint): MapPoint => {
+    if (!art.pinFarPlaces || (p.x >= inner.minX && p.x <= inner.maxX && p.y >= inner.minY && p.y <= inner.maxY)) return p;
+    const dx = p.x - mid.x;
+    const dy = p.y - mid.y;
+    const t = Math.min(dx ? (dx > 0 ? inner.maxX - mid.x : inner.minX - mid.x) / dx : Infinity, dy ? (dy > 0 ? inner.maxY - mid.y : inner.minY - mid.y) / dy : Infinity);
+    return { x: mid.x + dx * t, y: mid.y + dy * t };
+  };
+  pts = pts.map(pin);
   const minX = Math.min(art.bounds.minX, ...pts.map((p) => p.x - margin));
   const maxX = Math.max(art.bounds.maxX, ...pts.map((p) => p.x + margin));
   const minY = Math.min(art.bounds.minY, ...pts.map((p) => p.y - margin));
@@ -367,7 +397,7 @@ function terrainLayout(
   const index = new Map(nodes.map((l, i) => [l.id, i]));
   const centre = project({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
   const pos = nodes.map((l) => {
-    if (l.position) return project(l.position);
+    if (l.position) return project(pin(l.position));
     const angle = 2 * Math.PI * hash01(l.id);
     return { x: centre.x + Math.cos(angle) * 60, y: centre.y + Math.sin(angle) * 60 };
   });
@@ -943,7 +973,7 @@ export function PlaceDetails({ map, id, currentId }: { map: MapData; id: string;
   const fromHere = at && from && currentName ? describeRoute(from, at) : null;
   const nearby = at
     ? map.locations
-        .filter((l) => l.position && l.id !== loc.id && l.parentLocationId !== loc.id && distance(at, l.position) >= 0.25)
+        .filter((l) => l.position && l.id !== loc.id && l.parentLocationId !== loc.id && distance(at, l.position) >= 0.05)
         .map((l) => ({ l, d: distance(at, l.position!) }))
         .sort((a, b) => a.d - b.d)
         .slice(0, 4)

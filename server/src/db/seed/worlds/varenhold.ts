@@ -7,6 +7,7 @@ export const varenhold: WorldTemplate = {
     'High fantasy on a frontier at war. A fortress-city of soldiers, licensed mages, and zealous inquisitors holds the mountain pass against the armies of the dead, and the ancient wards are failing.',
   demoCampaignName: 'Varenhold: The Silent Watchtower',
   currencyName: 'gold',
+  mapArt: 'varenhold',
 
   worldBible: `# Varenhold
 
@@ -57,6 +58,7 @@ Greywatch, the nearest of the seven watchtowers, has not lit its signal fire in 
       purpose:
         "Seat of authority and mission hub: Commander Thorne gives the job and takes the report here (objective 4). On the war room's map table, two more watchtowers are marked 'dim' in Thorne's hand, a clue that the failure is wider than Greywatch. Inquisitor Soren keeps quarters here too, so the player's secret (unlicensed magic) is always one slip from exposure. Ash falling on the north wall is the first sign the dead are close.",
       tags: ['stormguard', 'military', 'fortress', 'north-wall'],
+      map: { x: 0, y: 0 },
     },
     {
       name: 'The Gilded Griffin',
@@ -65,6 +67,7 @@ Greywatch, the nearest of the seven watchtowers, has not lit its signal fire in 
       purpose:
         "Safe haven and rumor mill. Brakka is the player's friend and hears everything: off-duty soldiers talk here about the lost patrol, and a dwarven trader swears he saw a figure in white and gold on the pass road a week ago. Brakka's cellar hides two young mage-born refugees; finding them reveals that Brakka shares the player's secret, and gives the player allies with every reason to keep the Dawnwardens out.",
       tags: ['lower-city', 'inn', 'safe', 'rumors'],
+      map: { x: 0, y: -0.7 },
     },
     {
       name: 'The Silver Spire',
@@ -73,6 +76,7 @@ Greywatch, the nearest of the seven watchtowers, has not lit its signal fire in 
       purpose:
         "Knowledge and temptation (objective 1). Magister Vael explains Greywatch's ward here and believes it was broken on purpose. The turning model of the seven towers shows which wards are weakening. Vael will sense the player's gift, which opens the secret-apprenticeship thread, at the risk of the Dawnwardens who watch who comes and goes.",
       tags: ['conclave', 'magic', 'library', 'wards'],
+      map: { x: 0.25, y: -0.2 },
     },
     {
       name: "Shepherd's Rest",
@@ -81,6 +85,7 @@ Greywatch, the nearest of the seven watchtowers, has not lit its signal fire in 
       purpose:
         "The climb's midpoint and the first witness. Private Jory Tamm, last survivor of Thorne's lost patrol, is barricaded inside, feverish, with a bite that will not close. He saw the patrol die at Greywatch, and before that he saw a man in white and gold at the ward-stone: the first clue pointing at the Church. Dead things followed him down the road, so this is where the player first fights the Ashen Legion, and has to decide whether to carry Jory home or press on.",
       tags: ['stormgate-pass', 'waystation', 'shelter', 'dangerous'],
+      map: { x: 0.5, y: 2.5 },
     },
     {
       name: 'Greywatch',
@@ -89,6 +94,7 @@ Greywatch, the nearest of the seven watchtowers, has not lit its signal fire in 
       purpose:
         "The mission's destination (objectives 2 and 3). The lost patrol is here, risen as the dead and guarding the tower. The ward-stone was cracked from outside by a relic of the Dawn: the break is ringed with scorched sunburst marks, and a fragment of the relic's gold casing lies in the snow, engraved with the seal of the Sunward Chapel. Relighting the brazier buys the city time; reporting the broken stone to Thorne starts the larger war. Beyond the tower, the pass lies open to the Ashen Wastes.",
       tags: ['watchtower', 'stormgate-pass', 'wards', 'dangerous'],
+      map: { x: 0.1, y: 5 },
     },
     {
       name: 'The Sunward Chapel',
@@ -97,6 +103,7 @@ Greywatch, the nearest of the seven watchtowers, has not lit its signal fire in 
       purpose:
         "The truth behind Greywatch, and the most dangerous place in the city for the player. Brother Hesk, Soren's aide, keeps his cell here; the reliquary vault has one empty cradle, the relic he used to break the ward, and the vault register shows he signed it out. Proving this can turn Soren from enemy to shaken ally, since he never knew. Relics here snuff out spells, and the Dawnwardens notice anyone whose presence makes the candles flare.",
       tags: ['church', 'radiant-dawn', 'dawnwardens', 'dangerous'],
+      map: { x: -0.4, y: -0.4 },
     },
   ],
 

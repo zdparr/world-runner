@@ -7,6 +7,7 @@ export const threshold: WorldTemplate = {
     'Modern-day fantasy with a game-like edge. Eight years after monster-filled Breaches began tearing open, licensed Talents are corporate celebrities, and you are a powerless salvage worker who alone can see a System that makes you stronger. It wants something.',
   demoCampaignName: 'Threshold: Level Three of the Ostrander',
   currencyName: 'dollars',
+  mapArt: 'threshold',
   ruleset: 'ascension',
 
   worldBible: `# Threshold
@@ -103,6 +104,7 @@ Do not reveal any of this early. The Protocol never explains its origin, purpose
       purpose:
         "Home base, where the character starts, and where both missions begin: Imelda has the Ostrander dispatch (objective 1) and Teo asks for Augie's tag. The dispatch whiteboard is a steady source of new Breaches. The shrine of hard hats keeps the Tolliver dead present. Imelda's secret (she signed the Tolliver staging order) and Teo's (Glasswick and his debt) both surface here in quiet moments.",
       tags: ['corbel', 'workplace', 'vireo', 'safe', 'crew'],
+      map: { x: 0, y: 0 },
     },
     {
       name: 'Harlow Annex',
@@ -111,6 +113,7 @@ Do not reveal any of this early. The Protocol never explains its origin, purpose
       purpose:
         "The Bureau's pressure point (objective 2). Achterberg interviews the player here and keeps the Lintel File in his desk: four earlier anomalous survivors, all vanished within a year. Bureau scanners read the player as a Null, which is useful cover and unsettling, since the reading is too blank. The grading lab is where the player's growth would be discovered if they were scanned at the wrong moment.",
       tags: ['bureau', 'government', 'downtown', 'interrogation'],
+      map: { x: 1.55, y: 1.8 },
     },
     {
       name: 'Ostrander Parkade',
@@ -119,6 +122,7 @@ Do not reveal any of this early. The Protocol never explains its origin, purpose
       purpose:
         "The first Breach and the first real test (objectives 3 to 5): the Protocol wants it cleared alone, before Kestrel's claim window opens in about 36 hours. Saoirse Lindqvist's team is staging nearby and will be very curious about anyone who got in first. The crux calyx carries the Protocol's geometric mark, which Florian Kuzma's anonymous buyer pays triple for.",
       tags: ['breach-site', 'vireo', 'dangerous', 'restricted'],
+      map: { x: 0.3, y: 0.45 },
     },
     {
       name: 'Kuzma Aquatics',
@@ -127,6 +131,7 @@ Do not reveal any of this early. The Protocol never explains its origin, purpose
       purpose:
         "The black market and the money trail. The player can sell calyxes here without paperwork; Teo owes Florian 3,000 dollars; and the Glasswick supply chain and the ripening racket meet in the back room. Florian's standing order for patterned calyxes is the first outside sign that someone knows about the Protocol.",
       tags: ['black-market', 'palisandro', 'shop', 'calyx'],
+      map: { x: 2.6, y: -1.5 },
     },
     {
       name: 'The Tolliver Cordon',
@@ -135,6 +140,7 @@ Do not reveal any of this early. The Protocol never explains its origin, purpose
       purpose:
         "The origin wound and the setting of Augie's Tag. Augie's crew tag lies near the old staging area, and something still hunts in the storm drains. The ruined site trailer holds the staging order with Imelda's signature and a Kestrel scheduling note: the first hard evidence that the collapse was a delayed clearance, not bad luck. Bureau drones and floodlights make getting in a stealth challenge.",
       tags: ['bureau', 'collapse-site', 'restricted', 'dangerous'],
+      map: { x: 1.0, y: -0.65 },
     },
     {
       name: 'Ninebridge',
@@ -143,6 +149,7 @@ Do not reveal any of this early. The Protocol never explains its origin, purpose
       purpose:
         'Where Glasswick is made. The cooks work out of a condemned apartment block, grinding calyxes Florian supplies from deliberately ripened Breaches, which ties the Glasswick and ripening-racket threads together. Teo buys here, so following him leads the player in. The memorial wall shows what a missed clearance costs. One of the four earlier anomalous survivors in the Lintel File lived here; neighbors remember her, and that she talked about words in the air before she vanished.',
       tags: ['ninebridge', 'ruins', 'glasswick', 'dangerous'],
+      map: { x: 0.55, y: 1.15 },
     },
     {
       name: 'Kestrel Tower',
@@ -151,6 +158,7 @@ Do not reveal any of this early. The Protocol never explains its origin, purpose
       purpose:
         "The corporate threat and the source of the ripening racket. The scheduling office on the 22nd floor buys Bureau clearance data and marks which Breaches to let ripen; the Tolliver delay is in its records. Saoirse Lindqvist has an office here and will want to sign the player once their strength shows. A meeting here is the courtship war made concrete: contracts, perks, and a clause giving Kestrel 'medical access' to its assets.",
       tags: ['kestrel', 'corporate', 'downtown', 'guarded'],
+      map: { x: 2.0, y: 2.1 },
     },
   ],
 

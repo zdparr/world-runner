@@ -7,6 +7,7 @@ export const fiveBanners: WorldTemplate = {
     'Epic high fantasy on a continent held together by a three-hundred-year-old treaty. Five peoples trade and scheme in the free city of Dunmarrow, the human throne sits empty, and the undying elves have begun, for the first time, to grow old.',
   demoCampaignName: "The Five Banners: The Envoy's Road",
   currencyName: 'marks',
+  mapArt: 'five-banners',
 
   worldBible: `# The Five Banners
 
@@ -81,6 +82,7 @@ Mythic and melancholy. The world is old and beautiful and something in it is end
       purpose:
         "Where the story starts (objective 1): the player meets Yeshkara Tulmai and a hostile Borukh here. The no-blades-on-market-day law makes it the one place the envoy is safe, which is why the killers wait further along the route. Every people's quarter meets here, so it is the best place to hear rumors from all five banners. The black Ovanth stone at its center hums now and then when no one is speaking, a first hint of the Ovanth thread that leads to the Ommerstones.",
       tags: ['dunmarrow', 'market', 'crowded', 'public', 'crossroads'],
+      map: { x: 0, y: 0 },
     },
     {
       name: 'The Vexillary',
@@ -89,6 +91,7 @@ Mythic and melancholy. The world is old and beautiful and something in it is end
       purpose:
         "The escort's goal and the stage for the endgame (objective 2, and the Bannermoot itself). Tulmai means to present the Testimony on this council floor, so whoever wants her dead needs her never to arrive. Sabeline Voss works the galleries and will steer the player toward Duke Roake. The empty gold seat is the prize of the Cendral succession. The envoys' guest apartments upstairs are where they are most exposed at night.",
       tags: ['dunmarrow', 'council', 'politics', 'treaty', 'guarded'],
+      map: { x: -0.4, y: 0.42 },
     },
     {
       name: 'Verge of Liraun',
@@ -97,6 +100,7 @@ Mythic and melancholy. The world is old and beautiful and something in it is end
       purpose:
         "The Hesterfall made visible, and where The Words of Surety begins (objective 1). Ismerai Tholle waits here, refusing to enter a stillhouse until the Bannermoot. The stillhouses show what the Lirauni are losing, and the forest's grief is the campaign's emotional heart. The way to the Ommerstones starts here, and so does the deepest mystery: the Lirauni pledged their undying years as the Quinthane's surety.",
       tags: ['liraun', 'forest', 'elven', 'melancholy', 'ruins'],
+      map: { x: 0.3, y: 5.6 },
     },
     {
       name: 'Scrivelow',
@@ -105,6 +109,7 @@ Mythic and melancholy. The world is old and beautiful and something in it is end
       purpose:
         "Following the money (objective 4). Tizzick drafted the killers' silence-quillbind and cannot say so, but his fee ledger (paid in fresh single-run Grethmoor marks) and his pointed silences can. He can also point out that a quillbind of silence does not forbid the six from writing. Borukh meets Tizzick here in secret to draft a blood-price claim, a red herring that can make the bodyguard look guilty. Every document here is a clue or a trap.",
       tags: ['pettifold', 'goblin', 'underground', 'law', 'archives'],
+      map: { x: -0.55, y: -0.25 },
     },
     {
       name: 'Grethmoor',
@@ -113,6 +118,7 @@ Mythic and melancholy. The world is old and beautiful and something in it is end
       purpose:
         "The mission giver's house, and the hidden culprit's. Brannoc hands out the escort job here, and the trail of new single-run marks ends here: this month's mint-run went only to Grethmoor. The ledger-hall holds the sealed record of the Ondrel Cession with Brannoc's seal as oathwright, the proof that he sealed a lie (objective 5). By custom no one lies inside Grethmoor, so a direct question asked here is dangerous for him, and a player with oath-sense will feel a cold prickle when he swears to his innocence.",
       tags: ['karrowdeep', 'bank', 'oaths', 'dwarven', 'records'],
+      map: { x: 0.05, y: -0.55 },
     },
     {
       name: "The Weavers' Stair",
@@ -121,6 +127,7 @@ Mythic and melancholy. The world is old and beautiful and something in it is end
       purpose:
         "The ambush (objective 3). Six Cendrali deserters wait on the rooftops and in a dye-house, wearing Princess Idrienne's colors and carrying Cendral-fletched crossbows. What they leave behind starts the trail: bolt-heads with a Karrow foundry stamp and purses of new single-run Grethmoor marks. A captured assassin physically cannot name his employer (the silence-quillbind) but can be led to write it. The hanging cloth hides shooters, blocks sightlines, and can be cut down for cover.",
       tags: ['dunmarrow', 'street', 'ambush', 'dangerous'],
+      map: { x: -0.2, y: 0.2 },
     },
     {
       name: 'The Tollward Gatehouse',
@@ -129,6 +136,7 @@ Mythic and melancholy. The world is old and beautiful and something in it is end
       purpose:
         "The player's own chain of command, and the leak. The clerk who sold the envoy's arrival date and route (for Sabeline Voss, to a buyer paying in Grethmoor coin) works in the records room, and the escort roster shows who could have known the route. The magistrate's court is where any quarrel between peoples must be tried, so it is where an arrested assassin, or an accused Borukh, would end up, and where evidence can be made public under Dunmarrow law.",
       tags: ['dunmarrow', 'tollward', 'law', 'records'],
+      map: { x: 0.6, y: -0.2 },
     },
     {
       name: 'The Ommerstones',

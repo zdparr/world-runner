@@ -301,6 +301,7 @@ export const azureMist: WorldTemplate = {
     'An open-ended fantasy of magic and ascension. You are an ordinary herb-gatherer in a remote village of Azure Mist Province when a wandering mage sets a Testing Stone under the willow. Discover your spiritual roots, find a sect, a master, or your own way, train for years if you like, and decide whether to chase the lost legacy of an ancient immortal, or immortality itself.',
   demoCampaignName: 'Ascension: The Testing Stone',
   currencyName: 'aether shards',
+  mapArt: 'azure-mist',
   reputation: { [AZURE]: 0, [CRIMSON]: 0, [VERDANT]: 0, [WANDERING]: 0 },
 
   choices: [roots, composition],
@@ -462,7 +463,7 @@ Reveal none of this early. Clues come from the rivals' notes, the Willow Song, t
         'A remote province at the edge of the Great Celestial Continent: green mountains standing in seas of cloud, terraced fields and orchards, whispering forests, and a lake that holds the moon. Mortals farm; mages climb.',
       purpose:
         "The campaign's world: the board every faction is playing on, and the home of the Azure Immortal's buried legacy. Holds every starting location; Act IV opens the wider continent beyond it.",
-      tags: ['province', 'region', 'hub'],
+      tags: ['province', 'region', 'hub', 'off-map'],
     },
     {
       name: 'Willowbrook Village',
@@ -472,6 +473,7 @@ Reveal none of this early. Clues come from the rivals' notes, the Willow Song, t
         "The starting location and the character's home: the root test, Granny Wren, Tam Ashby, and Reeve Hollin. A place to return to that changes as the character does, and, if Morcant Vire's plans go ahead, a place in danger around day 75.",
       tags: ['village', 'home', 'start', 'mortal'],
       parent: 'Azure Mist Province',
+      map: { x: 0, y: 0 },
     },
     {
       name: 'Willow Hill',
@@ -490,6 +492,7 @@ Reveal none of this early. Clues come from the rivals' notes, the Willow Song, t
         "Seat of the Azure Cloud Sect: the annual entrance trial (day 15), novice and inner circles, the library (with the founder's erased teacher), the ley-line springs, and the sect's masters. Disciplined magic and the sect's buried shame.",
       tags: ['sect', 'abbey', 'mountain', 'training'],
       parent: 'Azure Mist Province',
+      map: { x: -3, y: 15.7 },
     },
     {
       name: 'Whispering Bamboo Forest',
@@ -499,6 +502,7 @@ Reveal none of this early. Clues come from the rivals' notes, the Willow Song, t
         'Wilderness for gathering herbs (Mistbell Orchids), hunting first-rank aether beasts, and getting lost. Home of the Silver-Eyed Fox, the flowering line of bamboo, and the Listening Stone where the Bamboo Key waits for someone patient.',
       tags: ['wilderness', 'forest', 'herbs', 'beasts'],
       parent: 'Azure Mist Province',
+      map: { x: -6.4, y: -8.8 },
     },
     {
       name: 'Spiritfall Market',
@@ -508,6 +512,7 @@ Reveal none of this early. Clues come from the rivals' notes, the Willow Song, t
         "The crossroads of the province: trade, rumors, the Gilded Hall's monthly auction (Madam Ottilie Gold), the Proving Ring (Crimson Blade Hall recruitment), the Verdant Pill Pavilion, and the Drunken Crane. Where all four factions meet, and where Peddler Mott sells his remedies.",
       tags: ['market', 'town', 'trade', 'hub'],
       parent: 'Azure Mist Province',
+      map: { x: 7.2, y: 4.2 },
     },
     {
       name: 'The Verdant Pill Pavilion',
@@ -535,6 +540,7 @@ Reveal none of this early. Clues come from the rivals' notes, the Willow Song, t
         'Dangerous country for rare ores, heartstones, and ancient ruins. Home of the Crimson Blade Hall at Bladecrest Fortress and the Sunken Forge where the Iron Key lies. The old Harrowgate ice-vein mine is here.',
       tags: ['mountains', 'dangerous', 'ruins', 'ore'],
       parent: 'Azure Mist Province',
+      map: { x: 12.6, y: 20.2 },
     },
     {
       name: 'Bladecrest Fortress',
@@ -562,6 +568,7 @@ Reveal none of this early. Clues come from the rivals' notes, the Willow Song, t
         'The richest aether in the province, free to anyone: a place to train, fish for moon pike, and find Jory Stormwell and Old Barnaby drinking. Home of the Moon Hermitess, Selene, and the full-moon trial for the Moon Key on the island.',
       tags: ['lake', 'mystery', 'aether-rich', 'training'],
       parent: 'Azure Mist Province',
+      map: { x: -2.7, y: -2.7 },
     },
     {
       name: 'Forgotten Immortal Grotto',

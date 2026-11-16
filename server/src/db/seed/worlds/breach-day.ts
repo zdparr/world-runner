@@ -13,6 +13,7 @@ export const breachDay: WorldTemplate = {
     'Modern-day apocalypse prep in Kansas City. One October evening, every person on Earth saw the same System message: in 730 days the Veil fails and monsters come through. Everyone gets to claim one Power, every Power exists only once, and once one is claimed it is gone. You have two years to get ready, survive, or come out on top, while governments, corporations, cults, and your neighbors all do the same.',
   demoCampaignName: 'Breach Day: Kansas City',
   currencyName: 'dollars',
+  mapArt: 'breach-day',
   ruleset: 'ascension',
   reputation: { [BPC]: 0, [MERIDIAN]: 0, [DOOR]: 0, [COMMONS]: 0 },
 
@@ -448,6 +449,7 @@ Reveal none of this early. Clues come from Echoes, the other Powered, the Seep c
       purpose:
         "The campaign's world. Kaw Point, the region's Breach Point, is a mile from downtown, so the whole metro is in the blast zone. Shows the big picture: how a city reacts over two years, from panic to adaptation to collapse.",
       tags: ['city', 'metro', 'hub'],
+      map: { x: 0.15, y: 1.12 },
     },
     {
       name: 'Your Apartment',
@@ -456,6 +458,7 @@ Reveal none of this early. Clues come from Echoes, the other Powered, the Seep c
       purpose:
         "Where the character starts on Day 1 and their first base. Can be fortified, stocked, abandoned, or made a Bastion. Pearl downstairs and Devin's frequent visits make it the place the story's ordinary people gather. Easy to break into, hard to defend: a reason to look for somewhere better.",
       tags: ['home', 'start', 'midtown'],
+      map: { x: 0, y: 0 },
       parent: 'Kansas City',
     },
     {
@@ -465,6 +468,7 @@ Reveal none of this early. Clues come from Echoes, the other Powered, the Seep c
       purpose:
         "The region's Breach Point and the climax of the campaign. On Day 731 it opens onto a Gate, and whoever holds that Gate becomes its Warden. Everyone wants it: the BPC to hold it, the Open Door to open it early, Meridian to stay as far from it as possible. Lightning, Echoes, and Foresight all show glimpses through the seam.",
       tags: ['breach-point', 'river', 'danger-rising', 'mystery'],
+      map: { x: -0.55, y: 1.38 },
       parent: 'Kansas City',
     },
     {
@@ -474,6 +478,7 @@ Reveal none of this early. Clues come from Echoes, the other Powered, the Seep c
       purpose:
         "The BPC's seat: Power registration (the Registration mission), service contracts, the draft, public shelter assignments, and the BPC's intelligence on Kaw Point. Where Major Hartsock, Owen Dietz, and Jaylen Brooks can be found. The Liberty Memorial's tower across the street is a BPC observation post.",
       tags: ['government', 'bpc', 'landmark'],
+      map: { x: 0, y: 0.62 },
       parent: 'Kansas City',
     },
     {
@@ -483,6 +488,7 @@ Reveal none of this early. Clues come from Echoes, the other Powered, the Seep c
       purpose:
         "Meridian Ark: berths for sale, contracts for the Powered, Hollis Park's workshop, and Marcus Bell's office. Looks like the safest place in the region and is the most dangerous on Breach Day: sealed, full of cores and Powered, exactly what the Tide hunts first. Getting in, or getting someone out, can drive whole arcs.",
       tags: ['meridian', 'bunker', 'corporate', 'ark'],
+      map: { x: 1.9, y: 2.3 },
       parent: 'Kansas City',
     },
     {
@@ -492,6 +498,7 @@ Reveal none of this early. Clues come from Echoes, the other Powered, the Seep c
       purpose:
         "The Open Door's seat: food, shelter, and Grace Adeyemi's healing for the faithful; an inner circle that plans to open Kaw Point early. Small Seeps keep happening near Silas Wren's sermons (his Power, Doorway). Grace's captivity is a rescue hook.",
       tags: ['church', 'open-door', 'suburb'],
+      map: { x: -1.6, y: -2.4 },
       parent: 'Kansas City',
     },
     {
@@ -501,6 +508,7 @@ Reveal none of this early. Clues come from Echoes, the other Powered, the Seep c
       purpose:
         "The KC Commons' heart: Tomás Ibarra's base, the place to find people who need help or want to help, and the start of any community-based plan for Breach Day. Delphine Okoye's school is a Commons ally. Volunteer Seep patrols leave from here.",
       tags: ['commons', 'community', 'westside'],
+      map: { x: -0.25, y: 0.8 },
       parent: 'Kansas City',
     },
     {
@@ -510,6 +518,7 @@ Reveal none of this early. Clues come from Echoes, the other Powered, the Seep c
       purpose:
         "The gray market and the edge of the law: Tess Ramírez's mercenary crew, core buyers who don't ask questions, and the first big Seeps (it's a mile from Kaw Point). The Collector's first victims turn up here.",
       tags: ['warehouses', 'market', 'black-market', 'danger-moderate'],
+      map: { x: -0.35, y: 0.98 },
       parent: 'Kansas City',
     },
     {
@@ -519,6 +528,7 @@ Reveal none of this early. Clues come from Echoes, the other Powered, the Seep c
       purpose:
         "The region's training ground: frequent low-tier Seeps for leveling, gathering cores, and (for a Beastbonder) finding creatures. Wren Calloway hides her bonded thornhound at the zoo. Dangerous at night, more each month.",
       tags: ['park', 'woods', 'seeps', 'training', 'danger-rising'],
+      map: { x: 1.3, y: -1.25 },
       parent: 'Kansas City',
     },
     {
@@ -528,6 +538,7 @@ Reveal none of this early. Clues come from Echoes, the other Powered, the Seep c
       purpose:
         "Where the character's younger sibling Maya is a sophomore at KU, and the first person they'll want to check on. Shows how a smaller town handles the countdown: student militias, a farm co-op, a professor who thinks she can study the System.",
       tags: ['town', 'college', 'family'],
+      map: { x: -11.6, y: -1.8 },
     },
   ],
 

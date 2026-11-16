@@ -6,6 +6,7 @@ import { createTestApp } from './helpers';
 import { parseSse, scriptedModel, toolResultsIn, type Step } from './fake-model';
 import { locations } from '../src/db/schema';
 import { createFromTemplate } from '../src/db/seed/templates';
+import { unplacedPlaces } from '../src/game/map';
 
 // The world map: places have positions in hours on foot (x east, y north), so the map can be drawn to scale
 // and the narrator knows which way and how far things are.
@@ -51,6 +52,14 @@ describe('map geometry', () => {
     expect(describeHours(3)).toBe('3 hours');
     expect(describeHours(16)).toBe('about 2 days');
     expect(describeRoute({ x: 0, y: 0 }, { x: -8, y: 0 })).toBe('about 1 day west');
+  });
+});
+
+describe('unplaced places', () => {
+  it('never asks for an off-map place (the void before the story) to be placed', () => {
+    const row = (id: string, mapX: number | null, tags: string[] = []) => ({ id, name: id, parentLocationId: null, mapX, mapY: mapX, tags });
+    const rows = [row('Aurion', 0), row('The Void Between', null, ['void', 'off-map']), row('Greywatch', null)];
+    expect(unplacedPlaces(rows).map((r) => r.name)).toEqual(['Greywatch']);
   });
 });
 
@@ -118,9 +127,17 @@ describe('a mapped world (The Empty Crown)', () => {
   });
 });
 
-describe('a world with no map yet (Brinecross)', () => {
-  it('has no positions and no nudge to add them', async () => {
+describe('a campaign with no map yet', () => {
+  // Every built-in world now has a map, so take Brinecross's positions away (as in a campaign made
+  // before its world was mapped).
+  const unmapped = async () => {
     const id = await newCampaign('brinecross');
+    await t.db.update(locations).set({ mapX: null, mapY: null }).where(eq(locations.campaignId, id));
+    return id;
+  };
+
+  it('has no positions and no nudge to add them', async () => {
+    const id = await unmapped();
     const state = (await t.api('GET', `/api/campaigns/${id}/state`)).json() as CampaignState;
     expect(state.map.locations.every((l) => l.position === null)).toBe(true);
     const calls = await play(id, [{ text: 'Gulls.' }]);
@@ -129,7 +146,7 @@ describe('a world with no map yet (Brinecross)', () => {
   });
 
   it('anchors the map on the first place measured from, then asks for the rest to be placed', async () => {
-    const id = await newCampaign('brinecross');
+    const id = await unmapped();
     await play(id, [
       { tools: [{ name: 'update_location', input: { name: 'The Saltworks', position: { from: 'Dockside Market', direction: 'E', hours: 1 } } }] },
       { text: 'Steam over the pans.' },

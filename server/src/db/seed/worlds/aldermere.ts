@@ -15,6 +15,7 @@ export const aldermere: WorldTemplate = {
   currencyName: 'copper',
   ruleset: 'ascension',
   reputation: { [GUILD]: 0, [CHURCH]: 0, [INQUISITION]: 0, [CROWN]: 0 },
+  mapArt: 'aldermere',
 
   choices: [
     {
@@ -450,6 +451,7 @@ Reveal none of this early. Clues come from the Sunken Abbey, the cathedral archi
       purpose:
         "The beginner zone: hunting (hornrabbits, wolves, goblin scouts) and gathering (moonpetal, herbs) jobs. Early signs of the Hollowing show here first: slimes that drain mana from anything they touch, and animals fleeing north from something they won't name. A goblin warband gathering near an old ruin can grow into a real threat if ignored.",
       tags: ['forest', 'wilderness', 'danger-low', 'beginner'],
+      map: { x: 0, y: 0 },
     },
     {
       name: 'The Waking Glade',
@@ -467,6 +469,7 @@ Reveal none of this early. Clues come from the Sunken Abbey, the cathedral archi
       purpose:
         "The starting hub: work (the guild), healing and church politics (the chapel), rumors (the tavern), and trade (the market). Small enough that anything the character does openly is all over town by evening, so it's where they first learn that being seen has consequences.",
       tags: ['town', 'frontier', 'hub', 'safe'],
+      map: { x: 1, y: 0 },
     },
     {
       name: "Millbrook Guild Hall",
@@ -511,6 +514,7 @@ Reveal none of this early. Clues come from the Sunken Abbey, the cathedral archi
       purpose:
         "Where the politics happen: the Crown's offers, the church's split over the Returned, guild promotions to higher ranks, and two of the other Candidates (Rhea at the palace, Mirelle in the city). The character should come here when they are ready to be noticed, or when they are dragged here.",
       tags: ['city', 'capital', 'politics'],
+      map: { x: 80, y: 2 },
     },
     {
       name: 'Sunspire Palace',
@@ -546,6 +550,7 @@ Reveal none of this early. Clues come from the Sunken Abbey, the cathedral archi
       purpose:
         "Drake hunts and wyvern bounties (good money and a dilemma for a Dragon Lord), fire-salt gathering, and lost caravans. True dragons live in the deep calderas. Kestrel (if the player didn't choose Dragon Lord) roams here with her bonded dragon. Drakes fleeing north out of the Reach are a sign of the Hollowing.",
       tags: ['badlands', 'volcanic', 'wilderness', 'danger-high', 'dragons'],
+      map: { x: 2, y: -22 },
     },
     {
       name: 'The Saltmarsh Coast',
@@ -554,6 +559,7 @@ Reveal none of this early. Clues come from the Sunken Abbey, the cathedral archi
       purpose:
         "Escort jobs, smuggler crackdowns or smuggling, investigation, and marsh monsters. The black market here moves cursed goods, vault coin, and impossible items. Isidore Quill (if the player didn't choose Creation) sells his creations through the Saltmarsh syndicates.",
       tags: ['coast', 'port', 'smugglers', 'danger-moderate'],
+      map: { x: -19.4, y: -6.6 },
     },
     {
       name: 'The Greywall Mountains',
@@ -562,6 +568,7 @@ Reveal none of this early. Clues come from the Sunken Abbey, the cathedral archi
       purpose:
         "Dungeon delves and relic recovery (the guild's dungeon jobs, C rank and up). The waking dungeons are the Hollowing's clearest sign. Dwarven inscriptions in the deepest halls mention the 'bright souls' who came three hundred years ago and the war that followed.",
       tags: ['mountains', 'dungeons', 'ruins', 'danger-high'],
+      map: { x: 2, y: 24.6 },
     },
     {
       name: 'The Sunken Abbey',
@@ -570,6 +577,7 @@ Reveal none of this early. Clues come from the Sunken Abbey, the cathedral archi
       purpose:
         "The heart of the central mystery: the ruins of the Lantern Choir's abbey and, in the drowned scriptorium, the Bell that is the Arbiter's core. System glitches grow frequent near it. The way down needs a means of breathing or draining the lower halls, and the Choir's ghosts test anyone who reaches the Bell. Reaching it is the climax of the mystery, whenever the player chooses to pursue it.",
       tags: ['ruin', 'abbey', 'lake', 'danger-very-high', 'mystery'],
+      map: { x: -6.2, y: 18.2 },
     },
   ],
 
