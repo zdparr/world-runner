@@ -37,21 +37,25 @@ services:
         sync: false
       # Self-hosted model on the tailnet (Ollama on the tag:llm machine). `npm start` joins the
       # tailnet with TS_AUTHKEY (a reusable, ephemeral auth key tagged tag:render) and model calls
-      # go through tailscaled's local proxy. Remove LLM_BASE_URL and set the Claude model names to
-      # switch back to Claude.
+      # go through tailscaled's local proxy.
+      #
+      # CURRENTLY OFF: running on Claude until the RTX 3090 desktop is set up. To switch back to the
+      # self-hosted model, uncomment the block below and set both model names to gemma4:26b.
+      # Removing a key here does not delete it from the Render service: delete LLM_BASE_URL and
+      # LLM_PROXY_URL in the dashboard too (LLM_PROXY_URL would route Claude calls through the tailnet).
       - key: TS_AUTHKEY
         sync: false
-      - key: LLM_BASE_URL
-        value: http://tron-laptop.tail57bc3.ts.net:11434
-      - key: LLM_PROXY_URL
-        value: http://127.0.0.1:1055
-      # Must match OLLAMA_CONTEXT_LENGTH on the model host.
-      - key: LLM_CONTEXT_TOKENS
-        value: "32768"
-      # Narrator reasoning budget: slower turns, much better prose and tool use (0 = off).
-      - key: LLM_THINKING_TOKENS
-        value: "4000"
+      # - key: LLM_BASE_URL
+      #   value: http://tron-laptop.tail57bc3.ts.net:11434
+      # - key: LLM_PROXY_URL
+      #   value: http://127.0.0.1:1055
+      # # Must match OLLAMA_CONTEXT_LENGTH on the model host.
+      # - key: LLM_CONTEXT_TOKENS
+      #   value: "32768"
+      # # Narrator reasoning budget: slower turns, much better prose and tool use (0 = off).
+      # - key: LLM_THINKING_TOKENS
+      #   value: "4000"
       - key: NARRATOR_MODEL
-        value: gemma4:26b
+        value: claude-sonnet-5
       - key: UTILITY_MODEL
-        value: gemma4:26b
+        value: claude-haiku-4-5-20251001
